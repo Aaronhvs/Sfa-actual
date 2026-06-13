@@ -1,305 +1,233 @@
-# Plan: Afiliaciones de jugador y snapshots de equipo por aparicion
+# Plan: Snapshots de equipo por aparicion (v2 post-auditoria)
 
 ## Archivos a crear
 
-- [ ] `migrations/0021_player_team_affiliations_expand_and_backfill.sql`
-- [ ] `migrations/0022_player_team_affiliations_constraints.sql`
+- [ ] `migrations/0021_player_team_snapshots_expand.sql`
+- [ ] `migrations/0022_player_team_snapshots_constraints.sql`
 - [ ] `scripts/audit_player_team_snapshots.sql`
-- [ ] `src/sfa/domain/participation/__init__.py`
-- [ ] `src/sfa/domain/participation/entities.py` [DDD]
-- [ ] `src/sfa/domain/participation/value_objects.py` [DDD]
-- [ ] `src/sfa/domain/participation_ports.py` [DDD]
-- [ ] `src/sfa/infrastructure/models/player_team_affiliations/__init__.py`
-- [ ] `src/sfa/infrastructure/models/player_team_affiliations/models.py`
-- [ ] `src/sfa/infrastructure/repositories/player_team_affiliation_repository.py`
-- [ ] `tests/domain/participation/test_entities.py`
-- [ ] `tests/use_cases/test_ingest_competition_player_affiliations.py`
-- [ ] `tests/repositories/test_player_team_affiliation_repository.py`
-- [ ] `tests/repositories/test_player_team_attribution.py`
-- [ ] `tests/repositories/test_player_team_dual_read.py`
-- [ ] `tests/repositories/test_global_ranking_representative_team.py`
-- [ ] `tests/integration/conftest.py` solo si no existe soporte PostgreSQL equivalente
+- [ ] `tests/use_cases/test_ingest_competition_team_snapshot.py`
 
 ## Archivos a modificar
 
 - [ ] `src/sfa/domain/ingestion_ports.py`
-- [ ] `src/sfa/domain/ports.py`
-- [ ] `src/sfa/domain/scoring_ports.py`
-- [ ] `src/sfa/application/use_cases/ingest_competition.py`
-- [ ] `src/sfa/application/use_cases/reingest_player.py`
-- [ ] `src/sfa/application/use_cases/calculate_elo_ratings.py`
-- [ ] `src/sfa/infrastructure/models/enums.py`
-- [ ] `src/sfa/infrastructure/models/competitions/models.py`
-- [ ] `src/sfa/infrastructure/models/players/models.py`
 - [ ] `src/sfa/infrastructure/models/player_stats/models.py`
 - [ ] `src/sfa/infrastructure/models/events/models.py`
-- [ ] `src/sfa/infrastructure/models/__init__.py`
-- [ ] `src/sfa/infrastructure/repositories/__init__.py`
+- [ ] `src/sfa/infrastructure/models/competitions/models.py`
 - [ ] `src/sfa/infrastructure/repositories/ingestion_repository.py`
-- [ ] `src/sfa/infrastructure/repositories/scoring_repository.py`
-- [ ] `src/sfa/infrastructure/repositories/player_event_score_repository.py`
+- [ ] `src/sfa/application/use_cases/ingest_competition.py`
+- [ ] `src/sfa/application/use_cases/reingest_player.py`
 - [ ] `src/sfa/infrastructure/repositories/team_strength_repository.py`
 - [ ] `src/sfa/infrastructure/repositories/competition_achievement_repository.py`
 - [ ] `src/sfa/infrastructure/repositories/infer_achievements_repository.py`
-- [ ] `src/sfa/infrastructure/repositories/sfa_score_repository.py`
+- [ ] `src/sfa/infrastructure/repositories/player_event_score_repository.py`
 - [ ] `src/sfa/infrastructure/repositories/player_repository.py`
+- [ ] `src/sfa/infrastructure/repositories/sfa_score_repository.py`
+- [ ] `src/sfa/infrastructure/repositories/scoring_repository.py`
 - [ ] `src/sfa/infrastructure/repositories/enrich_position_repository.py`
-- [ ] `src/sfa/core/dependencies.py`
-- [ ] tests focalizados de ingestion, reingesta, scoring, ELO, logros, ranking y perfil
+- [ ] `tests/use_cases/test_reingest_player.py`
+- [ ] `tests/use_cases/test_calculate_achievement_bonuses.py`
+- [ ] `tests/use_cases/test_infer_competition_achievements.py`
+- [ ] `tests/use_cases/test_calculate_elo_ratings.py`
 
 ## Checklist de implementacion
 
-- [ ] 1. Registrar el baseline completo de tests.
-  Criterio: `pytest tests/ -x` queda documentado con fallos preexistentes identificados.
-
-- [ ] 2. Verificar infraestructura de tests de repositorio.
-  Criterio: se confirma si existe fixture async PostgreSQL; si no, se planifica
-  `tests/integration/conftest.py` contra PostgreSQL 16 y no SQLite.
-
-- [ ] 3. Auditar todas las referencias a `Player.team_id`.
-  Criterio: cada lectura/escritura de `src/` y `tests/` queda clasificada por ingestion,
-  scoring, ELO, logros o presentacion.
-
-- [ ] 4. Verificar numeracion de migraciones inmediatamente antes de crear SQL.
-  Criterio: se lista `migrations/`; si `0020` sigue siendo la ultima se usan `0021` y
-  `0022`, de lo contrario se renumeran ambos scripts consecutivamente.
-
-- [ ] 5. Ejecutar auditoria diagnostica previa sobre una copia actual.
-  Criterio: se guardan conteos totales, resolubles, conflictos y unresolved con IDs.
-
-- [ ] 6. Clasificar los contadores de auditoria.
-  Criterio: divergencia evento-stats, NULL, equipo fuera de fixture, evento sin aparicion,
-  score sin resolver y semantica invalida quedan marcados como criticos.
-
-- [ ] 7. Establecer el criterio de rollout.
-  Criterio: se documenta que constraints, cutover y Mundial requieren cero criticos, sin
-  umbral parcial.
-
-- [ ] 8. Implementar `AffiliationKind`. [DDD]
-  Criterio: Value Object frozen que acepta solo `club` y `national_team`.
-
-- [ ] 9. Implementar `PlayerTeamAffiliation`. [DDD]
-  Criterio: valida identidad, temporada, intervalo, source `fixture` e idempotencia.
-
-- [ ] 10. Implementar `PlayerFixtureAppearance` como concepto de dominio. [DDD]
-  Criterio: identidad `(player_id, fixture_id)`, equipo del fixture y persistencia en
-  `player_stats`, sin tabla ni aggregate adicional.
-
-- [ ] 11. Confirmar ausencia de `PlayerParticipation`. [DDD]
-  Criterio: no se crea una raiz artificial; el use case coordina ports en una transaccion.
-
-- [ ] 12. Escribir tests unitarios del dominio.
-  Criterio: cubren tipos invalidos, intervalos invertidos, coexistencia y extensiones
-  idempotentes.
-
-- [ ] 13. Agregar `participant_kind` persistido a Competition.
-  Criterio: default `club`, check de valores y compatibilidad con competiciones existentes.
-
-- [ ] 14. Extender `LeagueConfig` con `participant_kind`.
-  Criterio: default `club` y valor persistido al crear o actualizar Competition.
-
-- [ ] 15. Validar semantica `national_team`.
-  Criterio: una afiliacion solo adopta el kind persistido de la competicion del fixture;
-  no puede marcarse Bayern como seleccion por un parametro discordante.
-
-- [ ] 16. Crear modelo ORM de afiliaciones.
-  Criterio: FKs, unique, indices, timestamps y check `source='fixture'`.
-
-- [ ] 17. Agregar snapshots nullable en la fase expand.
-  Criterio: `player_stats.team_id` y `player_events.team_id` aceptan filas legacy.
-
-- [ ] 18. Hacer `players.team_id` nullable y deprecado.
-  Criterio: comentario de modelo prohibe nuevas escrituras y uso autoritativo.
-
-- [ ] 19. Implementar backfill de `player_stats.team_id`.
-  Criterio: aplica prioridades formales, valida home/away y reporta conflictos/unresolved.
-
-- [ ] 20. Implementar backfill de `player_events.team_id`.
-  Criterio: copia por `(player_id, fixture_id)` desde la aparicion exacta.
-
-- [ ] 21. Implementar backfill de afiliaciones.
-  Criterio: agrupa apariciones por jugador-equipo-temporada-kind y deriva intervalos.
-
-- [ ] 22. Reparar `sfa_season_scores.team_id`.
-  Criterio: mayor suma de minutos, luego aparicion mas reciente y luego menor `team_id`.
-
-- [ ] 23. Hacer el backfill idempotente y por lotes.
-  Criterio: admite reejecucion, checkpoints y pausa sin una transaccion de larga duracion.
-
-- [ ] 24. Completar el script de auditoria reutilizable.
-  Criterio: funciona en modo pre-expand y post-backfill y lista IDs de filas problematicas.
-
-- [ ] 25. Auditar divergencia critica evento-aparicion.
-  Criterio: cuenta `player_events.team_id <> player_stats.team_id` para el mismo
-  `(player_id, fixture_id)` y bloquea el rollout si es mayor que cero.
-
-- [ ] 26. Auditar pertenencia al fixture.
-  Criterio: stats y eventos solo contienen home o away del fixture.
-
-- [ ] 27. Auditar coherencia semantica de afiliaciones.
-  Criterio: cada afiliacion tiene una aparicion de respaldo y su `kind` coincide con
-  `competitions.participant_kind`.
-
-- [ ] 28. Mantener separados los scripts operativos.
-  Criterio: expand/backfill queda en la primera migracion; constraints en la segunda.
-
-- [ ] 29. Implementar dual-read temporal para apariciones.
-  Criterio: usa snapshot y luego `players.team_id` solo si pertenece al fixture; de otro
-  modo devuelve unresolved con telemetria.
-
-- [ ] 30. Implementar dual-read temporal para eventos.
-  Criterio: orden evento, stats y fallback legacy validado; nunca inventa home/away.
-
-- [ ] 31. Encapsular dual-read en infraestructura.
-  Criterio: routers y use cases no contienen `COALESCE` ni logica legacy.
-
-- [ ] 32. Cambiar `upsert_player` en port y adapter.
-  Criterio: no acepta ni escribe `team_id`.
-
-- [ ] 33. Agregar `team_id` a contratos de stats y eventos.
-  Criterio: ports, adapters y callers coinciden.
-
-- [ ] 34. Actualizar ingestion.
-  Criterio: escribe snapshots y observa afiliacion con el kind persistido.
-
-- [ ] 35. Validar equipo antes de persistir.
-  Criterio: equipo fuera del fixture aborta la transaccion con error explicito.
-
-- [ ] 36. Probar ingestion idempotente de club.
-  Criterio: no duplica identidad, afiliacion, stats ni eventos.
-
-- [ ] 37. Probar club y seleccion secuenciales.
-  Criterio: un `players.id`, dos afiliaciones y snapshots contextuales.
-
-- [ ] 38. Cubrir Pedri `external_id=133609`.
-  Criterio: Barcelona y Espana comparten identidad sin sobrescribir equipo global.
-
-- [ ] 39. Probar transferencia dentro de una temporada.
-  Criterio: dos afiliaciones club permitidas y cada aparicion mantiene su equipo.
-
-- [ ] 40. Actualizar reingesta dirigida.
-  Criterio: obtiene local/visitante y recrea eventos desde el snapshot de aparicion.
-
-- [ ] 41. Crear resolver compartido de equipo representativo.
-  Criterio: implementa exactamente minutos, fecha y `team_id` de P1.
-
-- [ ] 42. Aplicar resolver al score por competicion.
-  Criterio: `SFASeasonScore.team_id` no lee `Player.team_id`.
-
-- [ ] 43. Aplicar resolver al ranking global de temporada.
-  Criterio: agrega todas las competiciones del scope y devuelve un equipo determinista.
-
-- [ ] 44. Aplicar resolver al ranking historico.
-  Criterio: elige primero la temporada de aparicion mas reciente y luego aplica P1.
-
-- [ ] 45. Aplicar fallback formal al perfil.
-  Criterio: competicion, temporada, ultima temporada con aparicion o valores de equipo NULL;
-  nunca afiliacion nacional generica ni club inventado.
-
-- [ ] 46. Corregir enriquecimiento de posiciones.
-  Criterio: solo usa contexto club demostrable y omite jugadores sin aparicion club.
-
-- [ ] 47. Corregir ELO para usar `PlayerStats.team_id`.
-  Criterio: goles local/visitante no unen `Player.team_id`.
-
-- [ ] 48. Determinar temporadas afectadas para rebuild ELO.
-  Criterio: lista derivada de snapshots creados o corregidos y guardada en reporte.
-
-- [ ] 49. Generar baseline ELO reproducible.
-  Criterio: artefacto versionado por temporada, equipo, fecha, elo y source; ClubElo usa
-  fecha anterior al primer fixture y faltantes quedan explicitamente en 1500.
-
-- [ ] 50. Validar cobertura del baseline ELO.
-  Criterio: todos los equipos del replay tienen seed o default documentado; de lo contrario
-  se bloquea cutover.
-
-- [ ] 51. Implementar modo rebuild ELO.
-  Criterio: reemplaza solo resultados `elo_v1` y no arranca desde el ELO final preexistente.
-
-- [ ] 52. Reproducir ELO completo post-backfill.
-  Criterio: procesa `played_at ASC, fixture_id ASC` y compara fixtures, goles y equipos.
-
-- [ ] 53. Recalcular scoring dependiente de M1.
-  Criterio: versiones activas afectadas se recalculan despues del rebuild ELO.
-
-- [ ] 54. Corregir minutos y seleccion para logros.
-  Criterio: consultas filtran `PlayerStats.team_id`.
-
-- [ ] 55. Corregir ranking interno y bonuses.
-  Criterio: el scope usa score/apariciones contextuales, no jugador global.
-
-- [ ] 56. Corregir inferencia de goles y tandas.
-  Criterio: usa `PlayerEvent.team_id`.
-
-- [ ] 57. Probar bonus de club y seleccion.
-  Criterio: Barcelona y Espana seleccionan minutos propios del mismo jugador.
-
-- [ ] 58. Ejecutar auditoria post-backfill.
-  Criterio: todos los contadores criticos son cero.
-
-- [ ] 59. Eliminar dual-read en cutover.
-  Criterio: se eliminan resolvers legacy y un snapshot NULL pasa a ser error de integridad.
-
-- [ ] 60. Buscar referencias residuales.
-  Criterio: `rg` solo encuentra `players.team_id` en modelo, migraciones y comentario de
-  deprecacion.
-
-- [ ] 61. Desplegar binario sin dual-read.
-  Criterio: opera con clubes, reingesta controlada y rankings correctos antes de constraints.
-
-- [ ] 62. Aplicar migracion de constraints.
-  Criterio: FKs, checks, indices y `NOT NULL` se aplican con auditoria cero.
-
-- [ ] 63. Probar constraints en PostgreSQL 16.
-  Criterio: rechazan NULL, kind/source invalido y FKs inexistentes.
-
-- [ ] 64. Probar consistencia transaccional evento-aparicion.
-  Criterio: ingestion normal escribe ambos snapshots iguales y rollback evita estados
-  parciales.
-
-- [ ] 65. Comparar scoring antes y despues.
-  Criterio: mismas formulas y eventos producen mismos puntos salvo cambios explicados por
-  ELO o atribucion previamente incorrecta.
-
-- [ ] 66. Comparar logros y bonuses.
-  Criterio: diferencias quedan explicadas por correcciones de equipo.
-
-- [ ] 67. Mantener compatibilidad HTTP.
-  Criterio: schemas, tipos y codigos existentes no cambian.
-
-- [ ] 68. Ejecutar tests focalizados.
-  Criterio: dominio, SQL, ingestion, reingesta, ELO, scoring, logros, ranking y perfil pasan.
-
-- [ ] 69. Ejecutar suite y calidad estatica.
-  Criterio: no aparecen regresiones nuevas; deuda previa queda documentada.
-
-- [ ] 70. Habilitar gate del futuro Mundial.
-  Criterio: Pedri, transferencias, ELO rebuild, logros, ranking global, perfil y auditoria
-  pasan end-to-end con cero criticos.
-
-- [ ] 71. Registrar eliminacion fisica de `players.team_id`.
-  Criterio: existe deuda/spec posterior condicionado a despliegue estable y cero referencias.
-
-## Verificacion
-
-1. Pedri conserva un unico `players.id`.
-2. Barcelona/club y Espana/national_team coexisten.
-3. Stats y eventos de cada fixture tienen el mismo equipo.
-4. Ranking global aplica minutos, fecha y `team_id` sin "competicion principal".
-5. Perfil sin apariciones devuelve equipo NULL.
-6. ELO se reconstruye desde baseline reproducible y no desde el resultado anterior.
-7. Scoring dependiente de M1 se recalcula despues del ELO.
-8. Auditoria reporta cero divergencias evento-aparicion y cero unresolved.
-9. No hay lecturas de negocio de `players.team_id` tras cutover.
-10. No se habilita el Mundial antes de completar el gate.
-
-## Agent Routing Brief
-
-**DDD Designer needed:** yes
-
-La revision del criterio local de DDD concluye que `PlayerTeamAffiliation` es Entity,
-`PlayerFixtureAppearance` es un concepto con identidad compuesta persistido en
-`player_stats`, y `AffiliationKind` es Value Object. No se crea `PlayerParticipation`
-porque no protege una invariante agregada real. El use case coordina aparicion y afiliacion
-dentro de una transaccion. `source=squad` queda fuera hasta que exista un flujo de
-plantillas. No cambia el dominio matematico de scoring.
+- [ ] 1. Registrar baseline de tests.
+  Criterio: ejecutar `pytest tests/ -x` y documentar fallos preexistentes. Ninguno
+  nuevo puede aparecer al final del spec.
+
+- [ ] 2. Auditar referencias a `Player.team_id`.
+  Criterio: `rg "Player\.team_id|players\.team_id|p\.team_id" src/` produce una lista
+  completa clasificada por archivo y tipo de lectura. Verificar contra la tabla de la
+  seccion "Lecturas a corregir" en decisions.md; identificar si hay adicionales.
+
+- [ ] 3. Ejecutar `scripts/audit_player_team_snapshots.sql` en modo diagnostico sobre
+  copia de DB.
+  Criterio: el script no depende de columnas nuevas. Registra conteos de fixtures,
+  candidatos validos, candidatos invalidos y unresolved estimados. Resultado adjunto
+  al registro operativo antes de aplicar 0021.
+
+- [ ] 4. Crear `migrations/0021_player_team_snapshots_expand.sql`.
+  El orden dentro del script es obligatorio segun decisions.md:
+  1. `ALTER players.team_id DROP NOT NULL` — primer paso, antes de cualquier otro.
+  2. `ALTER competitions ADD participant_kind`.
+  3. `ALTER player_stats ADD team_id` nullable + indice.
+  4. `ALTER player_events ADD team_id` nullable + indice.
+  5. Backfill `player_stats.team_id` con candidato 1 (`players.team_id` validado)
+     y candidato 2 (`sfa_season_scores.team_id` validado).
+  6. Backfill `player_events.team_id` desde aparicion exacta.
+  7. Ejecutar consultas de auditoria post-backfill; mostrar conteos.
+  Criterio: el script es idempotente, no bloquea la tabla en un lock prolongado y
+  reporta IDs de filas unresolved.
+
+- [ ] 5. Crear `scripts/audit_player_team_snapshots.sql`.
+  Criterio: reporta los cinco contadores criticos definidos en decisions.md mas:
+  - conteo de snapshots resueltos por candidato 1 y candidato 2;
+  - IDs de filas unresolved con `player_id` y `fixture_id`;
+  - divergencias `player_events.team_id <> player_stats.team_id`;
+  - eventos sin `player_stats` correspondiente.
+  El script puede ejecutarse antes y despues del backfill.
+
+- [ ] 6. Ejecutar `0021` y auditoria sobre copia de DB.
+  Criterio: se guardan conteos antes/despues. Si hay unresolved, se identifican por ID
+  y se documenta la estrategia de recuperacion (reingesta, correccion manual).
+  La ingesta del Mundial queda bloqueada hasta contadores criticos = 0.
+
+- [ ] 7. Crear `migrations/0022_player_team_snapshots_constraints.sql`.
+  Criterio: solo contiene `ALTER player_stats ALTER team_id SET NOT NULL` y
+  `ALTER player_events ALTER team_id SET NOT NULL`. No modifica otras columnas.
+  Incluye comentario explicito: "ejecutar solo con contadores criticos = 0".
+
+- [ ] 8. Agregar `team_id` al modelo ORM `PlayerStats`.
+  Criterio: FK nullable a `teams.id`, indice `(team_id, season)`, comentario de
+  snapshot inmutable.
+
+- [ ] 9. Agregar `team_id` al modelo ORM `PlayerEvent`.
+  Criterio: FK nullable a `teams.id`, indice `(team_id, fixture_id)`.
+
+- [ ] 10. Agregar `participant_kind` al modelo ORM `Competition`.
+  Criterio: `String(20)` con server_default `club`. El CHECK constraint esta en la
+  migracion; el modelo no lo duplica.
+
+- [ ] 11. Agregar `participant_kind` a `LeagueConfig`.
+  Criterio: campo con default `"club"`. Competiciones existentes no requieren cambio.
+
+- [ ] 12. Marcar `players.team_id` como nullable y deprecado en el modelo ORM.
+  Criterio: la columna es `nullable=True`; se agrega comentario `# deprecated: do not write`.
+  Ningun use case escribe en este campo despues del cutover.
+
+- [ ] 13. Actualizar `IngestionRepositoryPort.upsert_player`.
+  Criterio: eliminar parametro `team_id` del contrato. Todos los callers actualizados.
+
+- [ ] 14. Actualizar `IngestionRepositoryPort.upsert_player_stats`.
+  Criterio: agregar `team_id: int` como parametro obligatorio.
+
+- [ ] 15. Actualizar `IngestionRepositoryPort.upsert_player_event`.
+  Criterio: agregar `team_id: int` como parametro obligatorio.
+
+- [ ] 16. Actualizar `IngestionRepository.upsert_player`.
+  Criterio: el `ON CONFLICT DO UPDATE` no incluye `team_id`. Solo actualiza nombre,
+  foto y posicion.
+
+- [ ] 17. Actualizar `IngestionRepository.upsert_player_stats`.
+  Criterio: escribe `team_id` en la fila persistida.
+
+- [ ] 18. Actualizar `IngestionRepository.upsert_player_event`.
+  Criterio: escribe `team_id` en la fila persistida.
+
+- [ ] 19. Actualizar `IngestCompetitionUseCase`.
+  Criterio: determina `proc_team_db_id` por lado del fixture usando `participant_kind`.
+  Valida explicitamente que el equipo sea `home_team_id` o `away_team_id` antes de
+  persistir. Lanza `ValueError` con mensaje claro si no coincide.
+
+- [ ] 20. Actualizar `ReingestPlayerUseCase` y `get_fixtures_for_player`.
+  Criterio: `PlayerFixtureInfoRow.player_team_id` proviene de `PlayerStats.team_id`.
+  Local/visitante se calcula con el snapshot. No lee `Player.team_id`.
+
+- [ ] 21. Corregir `TeamStrengthRepository.get_fixtures_for_elo_recalc`.
+  Criterio: usa el COALESCE validado contra fixture definido en decisions.md. Si el
+  resultado es NULL, el fixture se registra en log de auditoria y se excluye del
+  calculo. No continua silenciosamente.
+
+- [ ] 22. Corregir `CompetitionAchievementRepository.get_team_total_minutes`.
+  Criterio: filtra `player_stats.team_id = :team_id`. No usa `Player.team_id`.
+
+- [ ] 23. Corregir `CompetitionAchievementRepository.get_players_for_team_season`.
+  Criterio: filtra `player_stats.team_id = :team_id`. No usa `Player.team_id`.
+
+- [ ] 24. Corregir `CompetitionAchievementRepository.get_player_rank_in_team`.
+  Criterio: usa `sfa_season_scores.team_id` del alcance de la competicion para
+  determinar el ranking interno. No une `players` para obtener equipo.
+
+- [ ] 25. Corregir `InferAchievementsRepository`.
+  Criterio: agrupa goles por `player_events.team_id`. No usa `Player.team_id`.
+
+- [ ] 26. Corregir `PlayerEventScoreRepository.bulk_rebuild_season_scores`.
+  Criterio: el CTE deriva `team_id` representativo desde `player_stats` por
+  `(player_id, competition_id, season)` con mayor suma de minutos. No une `players`.
+
+- [ ] 27. Corregir `sfa_score_repository.py` (lineas 43, 211, 433).
+  Criterio: los tres joins o filtros que usan `Player.team_id` se reemplazan por
+  `sfa_season_scores.team_id` o por la logica de resolucion de fallback definida
+  en decisions.md. Ningun jugador valido desaparece del ranking si su `players.team_id`
+  es NULL.
+
+- [ ] 28. Corregir `scoring_repository.py`.
+  Criterio: la lectura de equipo para construccion de scores usa snapshot, no
+  `Player.team_id`.
+
+- [ ] 29. Corregir `enrich_position_repository.py`.
+  Criterio: el filtro de contexto de enriquecimiento usa la ultima aparicion en
+  `player_stats` para el equipo, no `Player.team_id`.
+
+- [ ] 30. Corregir fallback de perfil en `PlayerRepository`.
+  Criterio: resuelve equipo desde `player_stats` siguiendo la jerarquia definida en
+  decisions.md. No lee `players.team_id` como fuente primaria.
+
+- [ ] 31. Test: snapshot correcto en ingestion como local y como visitante.
+  Criterio: ingestar un fixture con el jugador en cada lado produce
+  `player_stats.team_id` y `player_events.team_id` correctos en ambos casos.
+
+- [ ] 32. Test: validacion home/away en ingestion.
+  Criterio: `team_id` distinto de `home_team_id` y `away_team_id` produce `ValueError`
+  antes de persistir. Ningun dato se escribe en la DB.
+
+- [ ] 33. Test: mismo `player_id` con club y seleccion.
+  Criterio: mismo `external_id`, primero un fixture de liga, luego uno del Mundial.
+  Resultado: un unico `players.id`, dos filas de `player_stats` con `team_id` distinto,
+  `players.team_id` sin modificar en ninguno de los dos procesos.
+
+- [ ] 34. Test: jugador nuevo durante la transicion (entre 0021 y 0022).
+  Criterio: insertar un jugador cuando `players.team_id` es nullable (post-0021, pre-0022)
+  no produce error NOT NULL. La fila se crea correctamente sin `team_id`.
+
+- [ ] 35. Test: ranking sin `Player.team_id` (columna NULL).
+  Criterio: un jugador con `players.team_id = NULL` aparece en el ranking si tiene
+  `sfa_season_scores` validos. No desaparece de la respuesta.
+
+- [ ] 36. Test: jugador transferido con snapshot historico unresolved.
+  Criterio: una fila de `player_stats` con `team_id = NULL` no rompe el calculo de ELO
+  ni los logros. El fixture se excluye del ELO con log; los logros usan solo filas con
+  snapshot valido.
+
+- [ ] 37. Test: COALESCE ELO devuelve NULL cuando `players.team_id` no coincide con fixture.
+  Criterio: si `players.team_id` no es home ni away del fixture historico, el fallback
+  produce NULL y el fixture se registra en auditoria. No se asigna un equipo arbitrario.
+
+- [ ] 38. Test: `get_player_rank_in_team` usa snapshot.
+  Criterio: el ranking interno del equipo se calcula con `sfa_season_scores.team_id`,
+  no con `Player.team_id`.
+
+- [ ] 39. Test: rebuild preserva `team_id` por aparicion.
+  Criterio: despues de `bulk_rebuild_season_scores`, `sfa_season_scores.team_id`
+  refleja el equipo con mayor suma de minutos segun `player_stats`, no `players.team_id`.
+
+- [ ] 40. Actualizar Fakes en tests existentes de reingesta, logros, ELO e inferencia.
+  Criterio: todos los Fakes implementan los nuevos parametros `team_id`. Ningun test
+  usa `Player.team_id` para logica de negocio.
+
+- [ ] 41. Ejecutar busqueda de referencias residuales.
+  Criterio: `rg "Player\.team_id|p\.team_id" src/` no encuentra lecturas ni escrituras
+  de negocio. Solo quedan modelo ORM, migracion y comentario de deprecacion.
+
+- [ ] 42. Ejecutar calidad estatica.
+  Criterio: `flake8 src/ tests/` e `isort --check-only src/ tests/` sin errores nuevos.
+
+- [ ] 43. Ejecutar suite completa.
+  Criterio: `pytest tests/` pasa o solo conserva fallos preexistentes del item 1.
+
+- [ ] 44. Commit en rama `refactor/SFA-0028-player-team-snapshots`.
+  Criterio: `git diff main -- src/sfa/domain/scoring/` esta vacio. El diff no incluye
+  cambios a `SFAScoringService`, `BASE_POINTS_TABLE` ni multiplicadores.
+
+## Verificacion end-to-end (antes de habilitar Mundial)
+
+1. Ejecutar `0021` sobre copia de DB.
+2. Revisar auditoria. Si hay unresolved: reingesta o correccion manual hasta cero.
+3. Desplegar codigo nuevo.
+4. Verificar que insertar un jugador nuevo no falla.
+5. Reingestar un fixture de La Liga de muestra; verificar snapshot correcto.
+6. Comparar `sfa_season_scores` antes y despues: `total_pts` identico.
+7. Verificar ELO del equipo del fixture: sin cambio.
+8. Verificar logros del equipo: mismos jugadores seleccionados.
+9. Con contadores criticos = 0: ejecutar `0022`.
+10. Solo tras completar paso 9: habilitar ingesta del Mundial.
