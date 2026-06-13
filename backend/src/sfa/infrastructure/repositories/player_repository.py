@@ -1,7 +1,8 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.ports import PlayerDTO, PlayerRepositoryProtocol
+from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.teams.models import Team
 
@@ -11,13 +12,29 @@ class PlayerRepository(PlayerRepositoryProtocol):
         self._session = session
 
     async def get_by_id(self, player_id: int) -> PlayerDTO | None:
+        latest_team = (
+            select(
+                PlayerStats.player_id,
+                PlayerStats.team_id,
+                func.row_number().over(
+                    partition_by=PlayerStats.player_id,
+                    order_by=PlayerStats.fixture_id.desc(),
+                ).label("rn"),
+            )
+            .where(PlayerStats.team_id.is_not(None))
+            .subquery()
+        )
         stmt = (
             select(
                 Player.id, Player.name, Player.position,
                 Player.photo_url,
                 Team.name.label("team_name"),
             )
-            .join(Team, Player.team_id == Team.id)
+            .join(
+                latest_team,
+                (latest_team.c.player_id == Player.id) & (latest_team.c.rn == 1),
+            )
+            .join(Team, latest_team.c.team_id == Team.id)
             .where(Player.id == player_id)
         )
         row = (await self._session.execute(stmt)).mappings().first()

@@ -1,6 +1,5 @@
 from sqlalchemy import Integer, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
 
 from sfa.domain.ports import (
     PlayerScoreDTO,
@@ -20,7 +19,6 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_best_score_for_player_season(
         self, player_id: int, season: str, rules_version_id: int | None = None,
     ) -> PlayerScoreDTO | None:
-        season_team = aliased(Team)
         rv_filter = (
             SFASeasonScore.rules_version_id == rules_version_id
             if rules_version_id is not None
@@ -30,7 +28,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             select(
                 Player.id.label("player_id"),
                 Player.name.label("player_name"),
-                func.coalesce(season_team.name, Team.name).label("team_name"),
+                Team.name.label("team_name"),
                 Player.position,
                 Competition.name.label("competition_name"),
                 SFASeasonScore.competition_id,
@@ -40,8 +38,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 SFASeasonScore.breakdown,
             )
             .join(Player, SFASeasonScore.player_id == Player.id)
-            .join(Team, Player.team_id == Team.id)
-            .outerjoin(season_team, SFASeasonScore.team_id == season_team.id)
+            .join(Team, SFASeasonScore.team_id == Team.id)
             .join(Competition, SFASeasonScore.competition_id == Competition.id)
             .where(SFASeasonScore.player_id == player_id)
             .where(SFASeasonScore.season == season)
@@ -128,7 +125,6 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         rules_version_id: int | None = None,
         use_total: bool = False,
     ) -> list[RankedPlayerDTO]:
-        season_team = aliased(Team)
         score_filters = [SFASeasonScore.season == season]
         if rules_version_id is None:
             score_filters.append(SFASeasonScore.rules_version_id.is_(None))
@@ -193,10 +189,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 rank_col,
                 Player.id.label("player_id"),
                 Player.name.label("player_name"),
-                func.coalesce(season_team.name, Team.name).label("team_name"),
-                func.coalesce(
-                    season_team.external_id, Team.external_id
-                ).label("team_external_id"),
+                Team.name.label("team_name"),
+                Team.external_id.label("team_external_id"),
                 Player.position,
                 Competition.name.label("competition_name"),
                 agg.c.sum_pts.label("total_pts"),
@@ -208,9 +202,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 agg.c.sum_duels.label("duels_won"),
             )
             .join(agg, Player.id == agg.c.player_id)
-            .join(Team, Player.team_id == Team.id)
             .join(best_comp, Player.id == best_comp.c.player_id)
-            .outerjoin(season_team, best_comp.c.team_id == season_team.id)
+            .join(Team, best_comp.c.team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
             .order_by(agg.c.sum_pts.desc())
         )
@@ -393,6 +386,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             select(
                 SFASeasonScore.player_id,
                 SFASeasonScore.competition_id,
+                SFASeasonScore.team_id,
                 func.row_number().over(
                     partition_by=SFASeasonScore.player_id,
                     order_by=[
@@ -406,7 +400,11 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .subquery()
         )
         best_comp = (
-            select(ranked_scores.c.player_id, ranked_scores.c.competition_id)
+            select(
+                ranked_scores.c.player_id,
+                ranked_scores.c.competition_id,
+                ranked_scores.c.team_id,
+            )
             .where(ranked_scores.c.rn == 1)
             .subquery()
         )
@@ -430,8 +428,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 agg.c.sum_duels.label("duels_won"),
             )
             .join(agg, Player.id == agg.c.player_id)
-            .join(Team, Player.team_id == Team.id)
             .join(best_comp, Player.id == best_comp.c.player_id)
+            .join(Team, best_comp.c.team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
             .order_by(agg.c.sum_pts.desc())
         )

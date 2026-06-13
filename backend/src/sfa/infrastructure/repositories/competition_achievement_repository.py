@@ -18,7 +18,6 @@ from sfa.infrastructure.models.competition_achievements.models import (
 from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
-from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 from sfa.infrastructure.models.teams.models import Team
 
@@ -109,10 +108,9 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         stmt = (
             select(func.coalesce(func.count(func.distinct(Fixture.id)) * 90, 0))
             .select_from(PlayerStats)
-            .join(Player, PlayerStats.player_id == Player.id)
             .join(Fixture, PlayerStats.fixture_id == Fixture.id)
             .where(
-                Player.team_id == team_id,
+                PlayerStats.team_id == team_id,
                 Fixture.competition_id == competition_id,
                 Fixture.season == season,
             )
@@ -139,11 +137,10 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         self, team_id: int, competition_id: int, season: str
     ) -> list[int]:
         stmt = (
-            select(Player.id)
-            .join(PlayerStats, PlayerStats.player_id == Player.id)
+            select(PlayerStats.player_id)
             .join(Fixture, PlayerStats.fixture_id == Fixture.id)
             .where(
-                Player.team_id == team_id,
+                PlayerStats.team_id == team_id,
                 Fixture.competition_id == competition_id,
                 Fixture.season == season,
                 PlayerStats.minutes > 0,
@@ -187,9 +184,8 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
                 SFASeasonScore.player_id,
                 func.rank().over(order_by=SFASeasonScore.total_pts.desc()).label("rn"),
             )
-            .join(Player, SFASeasonScore.player_id == Player.id)
             .where(
-                Player.team_id == team_id,
+                SFASeasonScore.team_id == team_id,
                 SFASeasonScore.competition_id == competition_id,
                 SFASeasonScore.season == season,
                 SFASeasonScore.rules_version_id == rules_version_id,

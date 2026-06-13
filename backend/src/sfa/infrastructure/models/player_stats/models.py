@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, Numeric, SmallInteger, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Numeric, SmallInteger, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from sfa.infrastructure.database import Base
@@ -10,6 +10,8 @@ class PlayerStats(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
     fixture_id: Mapped[int] = mapped_column(ForeignKey("fixtures.id"), nullable=False)
+    # Immutable appearance snapshot; nullable until migration 0022.
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
     season: Mapped[str] = mapped_column(String(10), nullable=False)
     goals: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     assists: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
@@ -40,6 +42,7 @@ class PlayerStats(Base):
 
     __table_args__ = (
         UniqueConstraint("player_id", "fixture_id", name="uq_player_stats"),
+        Index("ix_player_stats_team_season", "team_id", "season"),
         CheckConstraint("goals >= 0", name="ck_ps_goals"),
         CheckConstraint("assists >= 0", name="ck_ps_assists"),
         CheckConstraint("corner_assists >= 0", name="ck_ps_corner_assists"),

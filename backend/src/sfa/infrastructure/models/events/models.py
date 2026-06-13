@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, CheckConstraint, Enum, ForeignKey, Integer, Numeric, SmallInteger, String
+from sqlalchemy import Boolean, CheckConstraint, Enum, ForeignKey, Index, Integer, Numeric, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from sfa.infrastructure.database import Base
@@ -11,6 +11,7 @@ class PlayerEvent(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
     fixture_id: Mapped[int] = mapped_column(ForeignKey("fixtures.id"), nullable=False)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
     minute: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     event_type: Mapped[EventType] = mapped_column(
         Enum(EventType, native_enum=False), nullable=False
@@ -31,6 +32,7 @@ class PlayerEvent(Base):
     is_away: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     __table_args__ = (
+        Index("ix_player_events_team_fixture", "team_id", "fixture_id"),
         CheckConstraint("minute BETWEEN 1 AND 120", name="ck_event_minute"),
         CheckConstraint("psxg BETWEEN 0 AND 1", name="ck_event_psxg"),
         CheckConstraint("m1 BETWEEN 0.5 AND 2.0", name="ck_event_m1"),

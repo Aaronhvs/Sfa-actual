@@ -17,8 +17,8 @@ from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.standings.models import StandingSnapshot
-from sfa.infrastructure.models.teams.models import Team
 from sfa.infrastructure.models.team_strengths.models import TeamStrength
+from sfa.infrastructure.models.teams.models import Team
 
 logger = logging.getLogger(__name__)
 
@@ -184,14 +184,25 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
         if not competition_ids:
             return []
 
+        resolved_team = func.coalesce(
+            PlayerStats.team_id,
+            case(
+                (Player.team_id == Fixture.home_team_id, Fixture.home_team_id),
+                (Player.team_id == Fixture.away_team_id, Fixture.away_team_id),
+                else_=None,
+            ),
+        )
         home_goals_expr = func.coalesce(
-            func.sum(case((Player.team_id == Fixture.home_team_id, PlayerStats.goals), else_=0)),
+            func.sum(case((resolved_team == Fixture.home_team_id, PlayerStats.goals), else_=0)),
             0,
         ).label("home_goals")
         away_goals_expr = func.coalesce(
-            func.sum(case((Player.team_id == Fixture.away_team_id, PlayerStats.goals), else_=0)),
+            func.sum(case((resolved_team == Fixture.away_team_id, PlayerStats.goals), else_=0)),
             0,
         ).label("away_goals")
+        unresolved_expr = func.sum(
+            case((resolved_team.is_(None), 1), else_=0)
+        ).label("unresolved_players")
 
         stmt = (
             select(
@@ -203,6 +214,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 Fixture.season,
                 home_goals_expr,
                 away_goals_expr,
+                unresolved_expr,
             )
             .join(PlayerStats, PlayerStats.fixture_id == Fixture.id)
             .join(Player, Player.id == PlayerStats.player_id)
@@ -221,8 +233,17 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
             .order_by(Fixture.played_at.asc().nulls_last())
         )
         result = await self._session.execute(stmt)
-        return [
-            FixtureEloRow(
+        rows: list[FixtureEloRow] = []
+        for row in result.all():
+            if int(row.unresolved_players or 0) > 0:
+                logger.warning(
+                    "[TeamStrengthRepository] Excluding fixture_id=%d from ELO: "
+                    "%d player appearances have no valid team snapshot",
+                    row.fixture_id,
+                    int(row.unresolved_players),
+                )
+                continue
+            rows.append(FixtureEloRow(
                 fixture_id=row.fixture_id,
                 home_team_id=row.home_team_id,
                 away_team_id=row.away_team_id,
@@ -231,9 +252,8 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 home_goals=int(row.home_goals),
                 away_goals=int(row.away_goals),
                 season=row.season,
-            )
-            for row in result.all()
-        ]
+            ))
+        return rows
 
     async def get_team_name_id_map(self, season: str) -> dict[str, int]:
         stmt = (

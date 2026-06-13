@@ -143,6 +143,7 @@ class FootballDataProviderPort(Protocol):
 class IngestionRepositoryPort(Protocol):
     async def upsert_competition(
         self, name: str, country: str, factor: float,
+        participant_kind: str = "club",
     ) -> int: ...
 
     async def upsert_team(
@@ -150,7 +151,7 @@ class IngestionRepositoryPort(Protocol):
     ) -> int: ...
 
     async def upsert_player(
-        self, external_id: int, name: str, team_id: int, position: Position,
+        self, external_id: int, name: str, position: Position,
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
@@ -169,7 +170,7 @@ class IngestionRepositoryPort(Protocol):
     ) -> None: ...
 
     async def upsert_player_event(
-        self, player_id: int, fixture_id: int,
+        self, player_id: int, fixture_id: int, team_id: int,
         minute: int, event_type: EventType,
         score_before: str | None, score_diff: int | None,
         psxg: float | None,
@@ -181,7 +182,7 @@ class IngestionRepositoryPort(Protocol):
     ) -> None: ...
 
     async def upsert_player_stats(
-        self, player_id: int, fixture_id: int,
+        self, player_id: int, fixture_id: int, team_id: int,
         season: str, stats: dict,
     ) -> None: ...
 

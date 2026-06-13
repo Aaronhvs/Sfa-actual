@@ -405,6 +405,29 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 FROM player_event_scores
                 WHERE {base_filter}
                 GROUP BY player_id, competition_id, season, rules_version_id
+            ),
+            team_minutes AS (
+                SELECT
+                    ps.player_id,
+                    f.competition_id,
+                    ps.season,
+                    ps.team_id,
+                    SUM(ps.minutes) AS total_minutes,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ps.player_id, f.competition_id, ps.season
+                        ORDER BY SUM(ps.minutes) DESC, ps.team_id
+                    ) AS rn
+                FROM player_stats ps
+                JOIN fixtures f ON f.id = ps.fixture_id
+                WHERE ps.season = :season
+                  AND ps.team_id IS NOT NULL
+                  {f"AND f.competition_id = :competition_id" if competition_id is not None else ""}
+                GROUP BY ps.player_id, f.competition_id, ps.season, ps.team_id
+            ),
+            representative_team AS (
+                SELECT player_id, competition_id, season, team_id
+                FROM team_minutes
+                WHERE rn = 1
             )
             INSERT INTO sfa_season_scores (
                 player_id,
@@ -421,7 +444,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
             SELECT
                 pt.player_id,
                 pt.competition_id,
-                p.team_id,
+                rt.team_id,
                 pt.season,
                 pt.rules_version_id,
                 pt.total_pts,
@@ -430,7 +453,10 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 ba.breakdown,
                 NOW()
             FROM player_totals pt
-            JOIN players p ON pt.player_id = p.id
+            JOIN representative_team rt
+                ON pt.player_id = rt.player_id
+                AND pt.competition_id = rt.competition_id
+                AND pt.season = rt.season
             JOIN match_counts mc
                 ON pt.player_id = mc.player_id
                 AND pt.competition_id = mc.competition_id

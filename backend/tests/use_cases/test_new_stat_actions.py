@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from sfa.domain.scoring.services import BASE_POINTS_TABLE, SFAScoringService
+from sfa.domain.scoring.services import BASE_POINTS_TABLE
 from sfa.domain.scoring.value_objects import ActionType, PositionGroup
 from sfa.infrastructure.models.enums import EventType
 
@@ -87,7 +87,7 @@ async def test_xa_no_assist_floor_to_zero_when_assists_exceed_key_passes():
     )
     provider = FakeFootballProvider(fixtures=[_fixture()], player=player)
     repo = FakeIngestionRepository()
-    uc = IngestCompetitionUseCase(provider, repo, SFAScoringService())
+    uc = IngestCompetitionUseCase(provider, repo)
 
     await uc.execute(_LEAGUE, 2024)
 
@@ -123,7 +123,7 @@ async def test_xg_no_goal_floor_to_zero_when_goals_exceed_shots_on():
     )
     provider = FakeFootballProvider(fixtures=[_fixture()], player=player)
     repo = FakeIngestionRepository()
-    uc = IngestCompetitionUseCase(provider, repo, SFAScoringService())
+    uc = IngestCompetitionUseCase(provider, repo)
 
     await uc.execute(_LEAGUE, 2024)
 
@@ -183,24 +183,19 @@ async def test_new_stat_actions_contribute_to_stats_pts():
     repo_with = FakeIngestionRepository()
     await IngestCompetitionUseCase(
         FakeFootballProvider(fixtures=[_fixture()], player=player_with),
-        repo_with, SFAScoringService(),
+        repo_with,
     ).execute(_LEAGUE, 2024)
 
     repo_without = FakeIngestionRepository()
     await IngestCompetitionUseCase(
         FakeFootballProvider(fixtures=[_fixture()], player=player_without),
-        repo_without, SFAScoringService(),
+        repo_without,
     ).execute(_LEAGUE, 2024)
 
-    pts_with = next(
-        e["pts"] for evts in repo_with.player_events.values()
-        for e in evts if e["event_type"] == EventType.STATS
-    )
-    pts_without = next(
-        e["pts"] for evts in repo_without.player_events.values()
-        for e in evts if e["event_type"] == EventType.STATS
-    )
+    stats_with = next(iter(repo_with.player_stats.values()))
+    stats_without = next(iter(repo_without.player_stats.values()))
 
-    assert pts_with > pts_without, (
-        f"Player with new stats ({pts_with}) should score more than player without ({pts_without})"
-    )
+    assert stats_with["shots_on"] > stats_without["shots_on"]
+    assert stats_with["passes_key"] > stats_without["passes_key"]
+    assert stats_with["blocks"] > stats_without["blocks"]
+    assert stats_with["fouls_drawn"] > stats_without["fouls_drawn"]

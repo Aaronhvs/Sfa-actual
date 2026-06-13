@@ -11,7 +11,6 @@ from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.enums import EventType
 from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
-from sfa.infrastructure.models.players.models import Player
 
 
 class InferAchievementsRepository(InferAchievementsRepositoryPort):
@@ -47,10 +46,7 @@ class InferAchievementsRepository(InferAchievementsRepositoryPort):
 
     async def get_goals_for_fixture(self, fixture_id: int) -> dict[int, int]:
         stmt = (
-            select(
-                Player.team_id,
-            )
-            .join(PlayerEvent, PlayerEvent.player_id == Player.id)
+            select(PlayerEvent.team_id)
             .where(
                 PlayerEvent.fixture_id == fixture_id,
                 PlayerEvent.event_type.in_([EventType.GOAL, EventType.GOAL_PENALTY]),
@@ -66,10 +62,7 @@ class InferAchievementsRepository(InferAchievementsRepositoryPort):
 
     async def get_shootout_goals_for_fixture(self, fixture_id: int) -> dict[int, int]:
         stmt = (
-            select(
-                Player.team_id,
-            )
-            .join(PlayerEvent, PlayerEvent.player_id == Player.id)
+            select(PlayerEvent.team_id)
             .where(
                 PlayerEvent.fixture_id == fixture_id,
                 PlayerEvent.event_type == EventType.GOAL_SHOOTOUT,

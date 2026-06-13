@@ -11,8 +11,9 @@ class Player(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     external_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
-    team_id: Mapped[int] = mapped_column(
-        ForeignKey("teams.id", ondelete="RESTRICT"), nullable=False
+    # deprecated: do not write; team identity belongs to appearance snapshots.
+    team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="RESTRICT"), nullable=True
     )
     position: Mapped[Position] = mapped_column(
         Enum(Position, native_enum=False), nullable=False

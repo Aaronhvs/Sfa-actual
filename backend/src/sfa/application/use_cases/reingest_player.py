@@ -195,6 +195,7 @@ class ReingestPlayerUseCase:
                 await self._ingestion_repo.upsert_player_event(
                     player_id=player_id,
                     fixture_id=row.fixture_id,
+                    team_id=row.player_team_id,
                     minute=db_minute,
                     event_type=event_type,
                     score_before=score_before_str,
@@ -218,6 +219,7 @@ class ReingestPlayerUseCase:
                 await self._ingestion_repo.upsert_player_stats(
                     player_id,
                     row.fixture_id,
+                    row.player_team_id,
                     season_str,
                     {
                         "goals": player_stats.goals,
@@ -250,6 +252,7 @@ class ReingestPlayerUseCase:
                 await self._ingestion_repo.upsert_player_event(
                     player_id=player_id,
                     fixture_id=row.fixture_id,
+                    team_id=row.player_team_id,
                     minute=90,
                     event_type=EventType.STATS,
                     score_before=None,

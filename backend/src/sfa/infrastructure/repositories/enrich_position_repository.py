@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.transfermarkt_ports import EnrichPositionRepositoryPort, PlayerForEnrichDTO
 from sfa.infrastructure.models.enums import Position
+from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.teams.models import Team
 
@@ -14,6 +15,18 @@ class EnrichPositionRepository(EnrichPositionRepositoryPort):
         self._session = session
 
     async def get_players_without_tm_source(self, limit: int) -> list[PlayerForEnrichDTO]:
+        latest_team = (
+            select(
+                PlayerStats.player_id,
+                PlayerStats.team_id,
+                func.row_number().over(
+                    partition_by=PlayerStats.player_id,
+                    order_by=PlayerStats.fixture_id.desc(),
+                ).label("rn"),
+            )
+            .where(PlayerStats.team_id.is_not(None))
+            .subquery()
+        )
         stmt = (
             select(
                 Player.id,
@@ -21,7 +34,11 @@ class EnrichPositionRepository(EnrichPositionRepositoryPort):
                 Team.name.label("team_name"),
                 Player.position_source,
             )
-            .join(Team, Player.team_id == Team.id)
+            .join(
+                latest_team,
+                (latest_team.c.player_id == Player.id) & (latest_team.c.rn == 1),
+            )
+            .join(Team, latest_team.c.team_id == Team.id)
             .where(Player.position_source != "transfermarkt")
             .limit(limit)
         )

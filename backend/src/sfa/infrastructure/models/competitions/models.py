@@ -13,6 +13,9 @@ class Competition(Base):
     competition_factor: Mapped[float] = mapped_column(
         Numeric(4, 2), nullable=False, default=1.0
     )
+    participant_kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="club"
+    )
 
     __table_args__ = (
         CheckConstraint("competition_factor > 0", name="ck_competition_factor_positive"),

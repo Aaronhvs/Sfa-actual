@@ -11,7 +11,6 @@ from sfa.domain.ingestion_ports import PlayerSeasonScoreRow, ScoringRepositoryPo
 from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
-from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 
 
@@ -110,7 +109,16 @@ class ScoringRepository(ScoringRepositoryPort):
         if team_id is None:
             team_id = (
                 await self._session.execute(
-                    select(Player.team_id).where(Player.id == player_id)
+                    select(PlayerStats.team_id)
+                    .join(Fixture, PlayerStats.fixture_id == Fixture.id)
+                    .where(
+                        PlayerStats.player_id == player_id,
+                        Fixture.competition_id == competition_id,
+                        PlayerStats.season == season,
+                    )
+                    .group_by(PlayerStats.team_id)
+                    .order_by(func.sum(PlayerStats.minutes).desc())
+                    .limit(1)
                 )
             ).scalar_one_or_none()
         insert_stmt = pg_insert(SFASeasonScore).values(

@@ -9,10 +9,10 @@ from sfa.application.use_cases.ingest_competition import IngestCompetitionUseCas
 from sfa.domain.ingestion_ports import (
     FixtureEventRawDTO,
     FixtureRawDTO,
+    PlayerFixtureInfoRow,
     PlayerStatsRawDTO,
     StandingRawDTO,
 )
-from sfa.domain.scoring.services import SFAScoringService
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 
 # ---------------------------------------------------------------------------
@@ -71,14 +71,22 @@ def _fixture(ext_id: int = 9001, home_team: int = 1, away_team: int = 2) -> Fixt
 class FakeFootballProvider:
     """Returns deterministic data; fixtures only for team_id=1."""
 
-    def __init__(self, fixtures: list[FixtureRawDTO], player: PlayerStatsRawDTO):
+    def __init__(
+        self,
+        fixtures: list[FixtureRawDTO],
+        player: PlayerStatsRawDTO,
+        player_team_id: int = 1,
+        standing_team_id: int = 1,
+    ):
         self._fixtures = fixtures
         self._player = player
+        self._player_team_id = player_team_id
+        self._standing_team_id = standing_team_id
 
     async def fetch_standings(self, league_id: int, season: int) -> list[StandingRawDTO]:
         return [StandingRawDTO(
-            team_external_id=1,
-            team_name="Home FC",
+            team_external_id=self._standing_team_id,
+            team_name=f"Team {self._standing_team_id}",
             position=5,
             points=30,
             played=10,
@@ -87,7 +95,7 @@ class FakeFootballProvider:
     async def fetch_team_fixtures(
         self, team_id: int, league_id: int, season: int,
     ) -> list[FixtureRawDTO]:
-        return self._fixtures if team_id == 1 else []
+        return self._fixtures if team_id == self._standing_team_id else []
 
     async def fetch_fixture_events(self, fixture_id: int) -> list[FixtureEventRawDTO]:
         return []
@@ -95,7 +103,7 @@ class FakeFootballProvider:
     async def fetch_fixture_players(
         self, fixture_id: int, team_id: int,
     ) -> list[PlayerStatsRawDTO]:
-        return [self._player] if team_id == 1 else []
+        return [self._player] if team_id == self._player_team_id else []
 
     def get_stage(self, round_str: str, league_name: str) -> str:
         return "regular"
@@ -118,10 +126,17 @@ class FakeIngestionRepository:
         self._fixture_ids: dict[int, int] = {}
         # player_events keyed by (player_id, fixture_id) → list of event dicts
         self.player_events: dict[tuple[int, int], list[dict]] = {}
+        self.player_stats: dict[tuple[int, int], dict] = {}
         # latest upsert_season_score call per player_id
         self.season_scores: dict[int, dict] = {}
 
-    async def upsert_competition(self, name: str, country: str, factor: float) -> int:
+    async def upsert_competition(
+        self,
+        name: str,
+        country: str,
+        factor: float,
+        participant_kind: str = "club",
+    ) -> int:
         self._comp_counter += 1
         return self._comp_counter
 
@@ -134,7 +149,7 @@ class FakeIngestionRepository:
         return self._team_ids[external_id]
 
     async def upsert_player(
-        self, external_id: int, name: str, team_id: int, position: Position,
+        self, external_id: int, name: str, position: Position,
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
@@ -172,14 +187,19 @@ class FakeIngestionRepository:
         pass
 
     async def upsert_player_stats(
-        self, player_id: int, fixture_id: int, season: str, stats: dict,
+        self, player_id: int, fixture_id: int, team_id: int, season: str, stats: dict,
     ) -> None:
-        pass
+        self.player_stats[(player_id, fixture_id)] = {
+            **stats,
+            "team_id": team_id,
+            "season": season,
+        }
 
     async def upsert_player_event(
         self,
         player_id: int,
         fixture_id: int,
+        team_id: int,
         minute: int,
         event_type: EventType,
         score_before: str | None,
@@ -200,6 +220,7 @@ class FakeIngestionRepository:
             "event_type": event_type,
             "pts": pts,
             "minute": minute,
+            "team_id": team_id,
         })
 
     async def delete_player_events_for_fixture(
@@ -234,6 +255,14 @@ class FakeIngestionRepository:
     ) -> None:
         pass
 
+    async def get_fixtures_for_player(
+        self,
+        player_id: int,
+        season: str,
+        competition_id: int | None = None,
+    ) -> list[PlayerFixtureInfoRow]:
+        return []
+
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -245,7 +274,7 @@ async def test_player_without_goal_gets_stats_event():
     player = _player_stats(dribbles_success=3, duels_won=2, tackles=1)
     provider = FakeFootballProvider(fixtures=[_fixture()], player=player)
     repo = FakeIngestionRepository()
-    uc = IngestCompetitionUseCase(provider, repo, SFAScoringService())
+    uc = IngestCompetitionUseCase(provider, repo)
 
     await uc.execute(_LEAGUE, 2024)
 
@@ -256,7 +285,7 @@ async def test_player_without_goal_gets_stats_event():
         if e["event_type"] == EventType.STATS
     ]
     assert len(stats_events) == 1, f"Expected 1 STATS event, got {len(stats_events)}"
-    assert stats_events[0]["pts"] > 0, "STATS event pts should be > 0"
+    assert stats_events[0]["pts"] == 0.0
 
 
 @pytest.mark.anyio
@@ -265,7 +294,7 @@ async def test_stats_event_not_duplicated_on_second_run():
     player = _player_stats(dribbles_success=3, duels_won=2, tackles=1)
     provider = FakeFootballProvider(fixtures=[_fixture()], player=player)
     repo = FakeIngestionRepository()
-    uc = IngestCompetitionUseCase(provider, repo, SFAScoringService())
+    uc = IngestCompetitionUseCase(provider, repo)
 
     await uc.execute(_LEAGUE, 2024)
     await uc.execute(_LEAGUE, 2024)
@@ -291,7 +320,7 @@ async def test_stats_events_created_for_all_fixtures():
     ]
     provider = FakeFootballProvider(fixtures=fixtures, player=player)
     repo = FakeIngestionRepository()
-    uc = IngestCompetitionUseCase(provider, repo, SFAScoringService())
+    uc = IngestCompetitionUseCase(provider, repo)
 
     await uc.execute(_LEAGUE, 2024)
 
@@ -306,3 +335,71 @@ async def test_stats_events_created_for_all_fixtures():
     assert len(stats_events) == 2, (
         f"Expected 2 STATS events (one per fixture), got {len(stats_events)}"
     )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("player_team_id", "expected_team_id"),
+    [(1, 1), (2, 2)],
+)
+async def test_ingestion_persists_home_and_away_team_snapshots(
+    player_team_id: int,
+    expected_team_id: int,
+):
+    provider = FakeFootballProvider(
+        fixtures=[_fixture()],
+        player=_player_stats(),
+        player_team_id=player_team_id,
+    )
+    repo = FakeIngestionRepository()
+
+    result = await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE, 2024)
+
+    assert result.status == "completed"
+    assert {row["team_id"] for row in repo.player_stats.values()} == {expected_team_id}
+    snapshots = {
+        event["team_id"]
+        for events in repo.player_events.values()
+        for event in events
+    }
+    assert snapshots == {expected_team_id}
+
+
+@pytest.mark.anyio
+async def test_same_external_player_keeps_distinct_club_and_national_snapshots():
+    player = _player_stats(external_id=133609, name="Pedri")
+    repo = FakeIngestionRepository()
+
+    club_provider = FakeFootballProvider(
+        fixtures=[_fixture(ext_id=9001, home_team=1, away_team=2)],
+        player=player,
+        player_team_id=1,
+        standing_team_id=1,
+    )
+    national_provider = FakeFootballProvider(
+        fixtures=[_fixture(ext_id=9002, home_team=3, away_team=4)],
+        player=player,
+        player_team_id=4,
+        standing_team_id=3,
+    )
+
+    club_result = await IngestCompetitionUseCase(club_provider, repo).execute(
+        _LEAGUE,
+        2025,
+    )
+    national_result = await IngestCompetitionUseCase(national_provider, repo).execute(
+        LeagueConfig(
+            id=2,
+            name="World Cup",
+            country="INT",
+            comp_factor=1.0,
+            top_n=1,
+            participant_kind="national_team",
+        ),
+        2026,
+    )
+
+    assert club_result.status == "completed"
+    assert national_result.status == "completed"
+    assert repo._player_ids == {133609: 1}
+    assert {row["team_id"] for row in repo.player_stats.values()} == {1, 4}

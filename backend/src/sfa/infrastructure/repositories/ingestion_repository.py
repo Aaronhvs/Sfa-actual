@@ -28,13 +28,28 @@ class IngestionRepository(IngestionRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def upsert_competition(self, name: str, country: str, factor: float) -> int:
+    async def upsert_competition(
+        self,
+        name: str,
+        country: str,
+        factor: float,
+        participant_kind: str = "club",
+    ) -> int:
         stmt = (
             pg_insert(Competition)
-            .values(name=name, country=country, competition_factor=factor)
+            .values(
+                name=name,
+                country=country,
+                competition_factor=factor,
+                participant_kind=participant_kind,
+            )
             .on_conflict_do_update(
                 index_elements=["name"],
-                set_={"country": country, "competition_factor": factor},
+                set_={
+                    "country": country,
+                    "competition_factor": factor,
+                    "participant_kind": participant_kind,
+                },
             )
             .returning(Competition.id)
         )
@@ -71,18 +86,17 @@ class IngestionRepository(IngestionRepositoryPort):
         return result2.scalar_one()
 
     async def upsert_player(
-        self, external_id: int, name: str, team_id: int, position: Position,
+        self, external_id: int, name: str, position: Position,
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
     ) -> int:
         insert_stmt = pg_insert(Player).values(
-            external_id=external_id, name=name, team_id=team_id,
+            external_id=external_id, name=name,
             position=position, photo_url=photo_url, position_source=position_source,
         )
         set_dict = {
             "name": insert_stmt.excluded.name,
-            "team_id": insert_stmt.excluded.team_id,
             "photo_url": func.coalesce(insert_stmt.excluded.photo_url, Player.photo_url),
         }
         if update_position:
@@ -167,6 +181,7 @@ class IngestionRepository(IngestionRepositoryPort):
         self,
         player_id: int,
         fixture_id: int,
+        team_id: int,
         minute: int,
         event_type: EventType,
         score_before: str | None,
@@ -185,6 +200,7 @@ class IngestionRepository(IngestionRepositoryPort):
         stmt = pg_insert(PlayerEvent).values(
             player_id=player_id,
             fixture_id=fixture_id,
+            team_id=team_id,
             minute=minute,
             event_type=event_type,
             score_before=score_before,
@@ -204,11 +220,12 @@ class IngestionRepository(IngestionRepositoryPort):
         await self._session.flush()
 
     async def upsert_player_stats(
-        self, player_id: int, fixture_id: int, season: str, stats: dict,
+        self, player_id: int, fixture_id: int, team_id: int, season: str, stats: dict,
     ) -> None:
         values = dict(
             player_id=player_id,
             fixture_id=fixture_id,
+            team_id=team_id,
             season=season,
             goals=stats.get("goals", 0),
             assists=stats.get("assists", 0),
@@ -260,7 +277,16 @@ class IngestionRepository(IngestionRepositoryPort):
         if team_id is None:
             team_id = (
                 await self._session.execute(
-                    select(Player.team_id).where(Player.id == player_id)
+                    select(PlayerStats.team_id)
+                    .join(Fixture, PlayerStats.fixture_id == Fixture.id)
+                    .where(
+                        PlayerStats.player_id == player_id,
+                        Fixture.competition_id == competition_id,
+                        PlayerStats.season == season,
+                    )
+                    .group_by(PlayerStats.team_id)
+                    .order_by(func.sum(PlayerStats.minutes).desc())
+                    .limit(1)
                 )
             ).scalar_one_or_none()
         insert_stmt = pg_insert(SFASeasonScore).values(
@@ -418,7 +444,7 @@ class IngestionRepository(IngestionRepositoryPort):
                 Fixture.competition_id,
                 Fixture.home_team_id,
                 Fixture.away_team_id,
-                Player.team_id.label("player_team_id"),
+                PlayerStats.team_id.label("player_team_id"),
                 Player.external_id.label("player_external_id"),
                 Player.name.label("player_name"),
                 Fixture.stage,
@@ -426,6 +452,7 @@ class IngestionRepository(IngestionRepositoryPort):
             .join(PlayerStats, PlayerStats.fixture_id == Fixture.id)
             .join(Player, Player.id == PlayerStats.player_id)
             .where(PlayerStats.player_id == player_id)
+            .where(PlayerStats.team_id.is_not(None))
             .where(Fixture.season == season)
             .order_by(Fixture.id)
         )

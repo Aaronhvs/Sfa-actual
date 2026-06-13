@@ -40,9 +40,23 @@ class BackfillFixtureStatsUseCase:
                     skipped += 1
                     continue
 
+                fixture_rows = await self._repo.get_fixtures_for_player(
+                    player_id,
+                    fx.season,
+                    competition_id,
+                )
+                appearance = next(
+                    (row for row in fixture_rows if row.fixture_id == fx.fixture_id),
+                    None,
+                )
+                if appearance is None:
+                    skipped += 1
+                    continue
+
                 await self._repo.upsert_player_stats(
                     player_id=player_id,
                     fixture_id=fx.fixture_id,
+                    team_id=appearance.player_team_id,
                     season=fx.season,
                     stats={
                         "goals": ps.goals,

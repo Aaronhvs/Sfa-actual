@@ -11,7 +11,7 @@ from sfa.domain.ingestion_ports import (
 )
 from sfa.domain.name_matching import name_matches as _name_matches
 from sfa.domain.position_mapping import KNOWN_POSITIONS, map_position
-from sfa.domain.scoring.value_objects import ActionType, position_to_group
+from sfa.domain.scoring.value_objects import position_to_group
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ class LeagueConfig:
     comp_factor: float
     top_n: int | None = None  # None = all teams
     standings_league_id: int | None = None  # borrow standings from another league (cups)
+    participant_kind: str = "club"
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,17 @@ def _parse_matchday(round_str: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
+def _validate_appearance_team(
+    fixture_id: int,
+    team_id: int,
+    home_team_id: int,
+    away_team_id: int,
+) -> None:
+    if team_id not in (home_team_id, away_team_id):
+        raise ValueError(
+            "Appearance team must match fixture home or away team: "
+            f"fixture_id={fixture_id} team_id={team_id}"
+        )
 
 # ---------------------------------------------------------------------------
 # Use case
@@ -115,7 +127,10 @@ class IngestCompetitionUseCase:
                 )
 
             competition_id = await self._repo.upsert_competition(
-                league.name, league.country, league.comp_factor
+                league.name,
+                league.country,
+                league.comp_factor,
+                league.participant_kind,
             )
 
             matchday = max((s.played for s in standings), default=0)
@@ -195,6 +210,12 @@ class IngestCompetitionUseCase:
                         rival_pos = pos_cache.get(rival_ext_id, 10)
                         is_away = proc_team_ext_id == fixture.away_team_external_id
                         proc_team_db_id = team_id_map[proc_team_ext_id]
+                        _validate_appearance_team(
+                            fixture_db_id,
+                            proc_team_db_id,
+                            home_db_id,
+                            away_db_id,
+                        )
 
                         for ps in player_stats_list:
                             if ps.minutes < 1:
@@ -207,13 +228,16 @@ class IngestCompetitionUseCase:
                             )
                             player_db_id = await self._repo.upsert_player(
                                 ps.player_external_id, ps.player_name,
-                                proc_team_db_id, position,
+                                position,
                                 photo_url=ps.photo_url,
                                 update_position=update_pos,
                             )
 
                             await self._repo.upsert_player_stats(
-                                player_db_id, fixture_db_id, season_str,
+                                player_db_id,
+                                fixture_db_id,
+                                proc_team_db_id,
+                                season_str,
                                 {
                                     "goals": ps.goals,
                                     "assists": ps.assists,
@@ -267,6 +291,7 @@ class IngestCompetitionUseCase:
                                     all_events=events,
                                     player_db_id=player_db_id,
                                     fixture_db_id=fixture_db_id,
+                                    team_id=proc_team_db_id,
                                     group=group,
                                     player_team_pos=player_team_pos,
                                     rival_pos=rival_pos,
@@ -291,6 +316,7 @@ class IngestCompetitionUseCase:
                                     all_events=events,
                                     player_db_id=player_db_id,
                                     fixture_db_id=fixture_db_id,
+                                    team_id=proc_team_db_id,
                                     group=group,
                                     player_team_pos=player_team_pos,
                                     rival_pos=rival_pos,
@@ -304,6 +330,7 @@ class IngestCompetitionUseCase:
                             await self._repo.upsert_player_event(
                                 player_id=player_db_id,
                                 fixture_id=fixture_db_id,
+                                team_id=proc_team_db_id,
                                 minute=90,
                                 event_type=EventType.STATS,
                                 score_before=None,
@@ -363,6 +390,7 @@ class IngestCompetitionUseCase:
         all_events: list[FixtureEventRawDTO],
         player_db_id: int,
         fixture_db_id: int,
+        team_id: int,
         group: object,
         player_team_pos: int,
         rival_pos: int,
@@ -397,7 +425,7 @@ class IngestCompetitionUseCase:
 
         # Store raw event; pts calculated by scoring pipeline v2
         await self._repo.upsert_player_event(
-            player_db_id, fixture_db_id,
+            player_db_id, fixture_db_id, team_id,
             db_minute, event_type,
             score_before_str, score_diff, psxg,
             1.0, 1.0, 1.0, 1.0, 1.0,
