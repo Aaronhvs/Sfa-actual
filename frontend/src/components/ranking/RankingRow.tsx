@@ -4,6 +4,7 @@ import type { RankedPlayer } from '../../types'
 interface Props {
   player: RankedPlayer
   index?: number
+  season?: string
 }
 
 function initials(name: string): string {
@@ -14,12 +15,13 @@ function formatPts(pts: number): string {
   return pts.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-export default function RankingRow({ player, index = 0 }: Props) {
+export default function RankingRow({ player, index = 0, season }: Props) {
   const isTop = player.rank <= 3
+  const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
 
   return (
     <Link
-      to={`/player/${player.id}`}
+      to={playerLink}
       className="ranking-row"
       style={{ animationDelay: `${Math.min(index * 35, 500)}ms` }}
     >

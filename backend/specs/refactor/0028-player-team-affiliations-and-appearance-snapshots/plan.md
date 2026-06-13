@@ -24,8 +24,9 @@
   `player_events.team_id IS NULL`; los otros tres contadores criticos dieron cero.
 
 - [ ] 3. Resolver todas las apariciones sin snapshot.
-  Orden: reingesta controlada del fixture, correccion manual auditada y, solo como
-  ultima fuente, datos de bonos/logros validados contra home/away.
+  Mecanismo oficial: ejecutar el flujo auditable y reanudable definido en
+  `../0029-resolve-player-team-snapshot-backfill/`. La reingesta completa queda
+  descartada porque puede modificar stats, eventos y scores.
 
 - [ ] 4. Propagar el snapshot resuelto desde `player_stats` hacia `player_events`
   y repetir la auditoria.

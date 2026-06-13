@@ -6,6 +6,8 @@ interface Props {
   player: RankedPlayer
   index?: number
   competitionName?: string
+  season?: string
+  isWorldCup?: boolean
 }
 
 function formatPts(pts: number): string {
@@ -16,14 +18,15 @@ function initials(name: string): string {
   return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 }
 
-export default function RankingCard({ player, index = 0 }: Props) {
+export default function RankingCard({ player, index = 0, season, isWorldCup = false }: Props) {
   const goalContributions = player.goals + player.assists
   const animatedRank = useCountUp(player.rank, 620)
+  const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
 
   return (
     <Link
-      to={`/player/${player.id}`}
-      className="ranking-card"
+      to={playerLink}
+      className={`ranking-card${isWorldCup ? ' ranking-card--wc' : ''}`}
       style={{ animationDelay: `${index * 45}ms` }}
     >
       {player.photo_url ? (
@@ -33,7 +36,7 @@ export default function RankingCard({ player, index = 0 }: Props) {
       )}
 
       <div className="rc-rank-wm" aria-hidden="true">
-        {String(animatedRank).padStart(2, '0')}
+        {String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')}
       </div>
 
       <div className="rc-top-meta">
@@ -47,6 +50,9 @@ export default function RankingCard({ player, index = 0 }: Props) {
         <div className="rc-name-row">
           <div className="rc-name">{player.name}</div>
         </div>
+        {isWorldCup && (
+          <div className="rc-national-team">{player.team}</div>
+        )}
         <div className="rc-divider" />
         <div className="rc-stats">
           <div className="rc-stat-main">

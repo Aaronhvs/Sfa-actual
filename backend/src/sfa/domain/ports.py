@@ -162,6 +162,7 @@ class SystemCountsDTO:
 class SeasonDTO:
     season: str
     is_latest: bool
+    is_world_cup: bool = False
 
 
 # ─── Protocols (Ports) ───────────────────────────────────────────────

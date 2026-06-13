@@ -57,8 +57,10 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
         ts_home = TeamStrength.__table__.alias("ts_home")
         ts_away = TeamStrength.__table__.alias("ts_away")
 
-        # Main query: events JOIN fixtures JOIN competition_stages JOIN players
+        # Main query: events JOIN fixtures LEFT JOIN competition_stages JOIN players
         #             LEFT JOIN team_strengths (home + away) for v2 M1
+        # competition_stages is LEFT JOIN so competitions without configured stages
+        # (e.g. World Cup group stage) still produce events; stage_factor defaults to 1.0.
         stmt = (
             select(
                 PlayerEvent.id,
@@ -75,13 +77,13 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 Fixture.home_team_id,
                 Fixture.away_team_id,
                 Fixture.season,
-                CompetitionStage.stage_factor,
+                func.coalesce(CompetitionStage.stage_factor, 1.0).label("stage_factor"),
                 Player.position,
                 ts_home.c.strength.label("home_team_strength"),
                 ts_away.c.strength.label("away_team_strength"),
             )
             .join(Fixture, PlayerEvent.fixture_id == Fixture.id)
-            .join(
+            .outerjoin(
                 CompetitionStage,
                 (CompetitionStage.competition_id == Fixture.competition_id)
                 & (CompetitionStage.stage == Fixture.stage),

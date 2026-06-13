@@ -6,6 +6,8 @@ interface Props {
   player: RankedPlayer
   detail: PlayerDetail | null
   isFirst?: boolean
+  season?: string
+  isWorldCup?: boolean
 }
 
 function initials(name: string): string {
@@ -16,19 +18,21 @@ function formatPts(pts: number): string {
   return Math.round(pts).toLocaleString('es-ES')
 }
 
-function cardClass(rank: number): string {
-  if (rank === 1) return 'player-showcase-card player-showcase-card--first'
-  if (rank === 2) return 'player-showcase-card player-showcase-card--second'
-  return 'player-showcase-card player-showcase-card--third'
+function cardClass(rank: number, isWorldCup: boolean): string {
+  const tournamentClass = isWorldCup ? ' player-showcase-card--wc' : ''
+  if (rank === 1) return `player-showcase-card player-showcase-card--first${tournamentClass}`
+  if (rank === 2) return `player-showcase-card player-showcase-card--second${tournamentClass}`
+  return `player-showcase-card player-showcase-card--third${tournamentClass}`
 }
 
-export default function ShowcaseCard({ player }: Props) {
+export default function ShowcaseCard({ player, season, isWorldCup = false }: Props) {
   const animatedRank = useCountUp(player.rank, 620)
+  const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
 
   return (
     <Link
-      to={`/player/${player.id}`}
-      className={cardClass(player.rank)}
+      to={playerLink}
+      className={cardClass(player.rank, isWorldCup)}
     >
       {player.photo_url ? (
         <img src={player.photo_url} alt={player.name} />
@@ -37,7 +41,7 @@ export default function ShowcaseCard({ player }: Props) {
       )}
 
       <div className="psc-rank-watermark" aria-label={`Posición ${player.rank}`}>
-        {String(animatedRank).padStart(2, '0')}
+        {String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')}
       </div>
 
       <div className="psc-top-right">
@@ -53,6 +57,9 @@ export default function ShowcaseCard({ player }: Props) {
 
       <div className="psc-content">
         <div className="psc-name">{player.name}</div>
+        {isWorldCup && (
+          <div className="psc-national-team">{player.team}</div>
+        )}
         <div className="psc-divider" />
         <div className="psc-stats">
           <div className="psc-stat-main">

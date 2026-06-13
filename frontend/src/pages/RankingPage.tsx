@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Competition, RankedPlayer, PlayerDetail } from '../types'
+import type { Competition, RankedPlayer, PlayerDetail, SeasonItem } from '../types'
 import { fetchRanking, fetchPlayer, fetchCompetitions, fetchSeasons } from '../api/client'
 import FilterBar from '../components/ranking/FilterBar'
 import RankingCard from '../components/ranking/RankingCard'
 import ShowcaseCard from '../components/ranking/ShowcaseCard'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
+import WorldCupBanner from '../components/shared/WorldCupBanner'
+import WorldCupPageHeader from '../components/shared/WorldCupPageHeader'
 import { useCountUp } from '../hooks/useCountUp'
+import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 
 const PAGE_SIZE = 12
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
 
 export default function RankingPage() {
-  const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
+  const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
   const [season, setSeason] = useState<string>('')
   const [position, setPosition] = useState('')
   const [competition, setCompetition] = useState<number | undefined>(undefined)
@@ -29,18 +32,39 @@ export default function RankingPage() {
   const [page, setPage] = useState(0)
   const [pageDir, setPageDir] = useState<'next' | 'prev'>('next')
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isWcSeason = isWorldCupSeason(season, seasonItems)
+  const showWcBanner = isSeasonReceivingWcPoints(season, seasonItems)
+  const wcSeason = seasonItems.find((item) => item.is_world_cup)?.season
 
   useEffect(() => {
     fetchCompetitions().then(setCompetitions).catch(() => {})
     fetchSeasons()
       .then((data) => {
-        const names = data.seasons.map((s) => s.season)
-        setAvailableSeasons(names)
-        const current = data.seasons.find((s) => s.is_latest)?.season ?? names[0]
+        setSeasonItems(data.seasons)
+        const current = data.seasons.find((item) => item.is_latest)?.season
+          ?? data.seasons[0]?.season
         if (current) setSeason(current)
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (isWcSeason) {
+      document.body.classList.add('mode-tournament')
+    } else {
+      document.body.classList.remove('mode-tournament')
+    }
+    return () => {
+      document.body.classList.remove('mode-tournament')
+    }
+  }, [isWcSeason])
+
+  useEffect(() => {
+    if (!isWcSeason) return
+    setPosition('')
+    setCompetition(undefined)
+    setSearch('')
+  }, [isWcSeason])
 
   useEffect(() => {
     setPage(0)
@@ -165,6 +189,25 @@ export default function RankingPage() {
 
   return (
     <div className="ranking-page">
+      {isWcSeason ? (
+        <>
+          <WorldCupPageHeader totalPlayers={totalPlayers} />
+          {seasonItems.length > 0 && (
+            <div className="rp-tournament-season-bar">
+              <SeasonDropdown
+                items={seasonItems}
+                value={season}
+                onChange={(nextSeason) => {
+                  setSeason(nextSeason)
+                  setPage(0)
+                  setPageDir('next')
+                }}
+                includeAll={true}
+              />
+            </div>
+          )}
+        </>
+      ) : (
       <header className="rp-header">
         <div className="rp-header__copy">
           <span className="rp-header__eyebrow">
@@ -182,9 +225,9 @@ export default function RankingPage() {
               <dd>{totalPlayers > 0 ? animatedTotal.toLocaleString('es-ES') : '—'}</dd>
             </div>
           </dl>
-          {availableSeasons.length > 0 && (
+          {seasonItems.length > 0 && (
             <SeasonDropdown
-              seasons={availableSeasons}
+              items={seasonItems}
               value={season}
               onChange={(s) => { setSeason(s); setPage(0); setPageDir('next') }}
               includeAll={true}
@@ -192,6 +235,15 @@ export default function RankingPage() {
           )}
         </div>
       </header>
+      )}
+
+      {showWcBanner && !isWcSeason && (
+        <div className="rp-wc-banner-wrap">
+          <WorldCupBanner
+            onViewWorldCup={wcSeason ? () => setSeason(wcSeason) : undefined}
+          />
+        </div>
+      )}
 
       {loadingRanking && (
         <>
@@ -211,13 +263,18 @@ export default function RankingPage() {
       )}
 
       {!loadingRanking && error && (
-        <div className="empty-state">{error}</div>
+        <div className="empty-state">
+          {isWcSeason ? `Mundial 2026 · ${error}` : error}
+        </div>
       )}
 
       {!loadingRanking && !error && (
         <>
           {showHero && (
-            <section className="rp-podium" aria-label="Podio del ranking">
+            <section
+              className={`rp-podium${isWcSeason ? ' rp-podium--wc' : ''}`}
+              aria-label="Podio del ranking"
+            >
               <div className="players-showcase">
                 {top3.map((p) => (
                   <ShowcaseCard
@@ -225,29 +282,33 @@ export default function RankingPage() {
                     player={p}
                     detail={loadingShowcase ? null : (topDetails.get(p.id) ?? null)}
                     isFirst={p.rank === 1}
+                    season={season}
+                    isWorldCup={isWcSeason}
                   />
                 ))}
               </div>
             </section>
           )}
 
-          <div className="rp-table-section">
-            <div className="rp-ranking-head">
+          <div className={`rp-table-section${isWcSeason ? ' rp-table-section--wc' : ''}`}>
+            <div className={`rp-ranking-head${isWcSeason ? ' rp-ranking-head--wc' : ''}`}>
               <div>
-                <span>Clasificación completa</span>
+                <span>{isWcSeason ? 'Edición Mundial' : 'Clasificación completa'}</span>
                 <h2>Todos los jugadores</h2>
               </div>
             </div>
 
-            <FilterBar
-              position={position}
-              onPosition={setPosition}
-              competition={competition}
-              onCompetition={setCompetition}
-              competitions={mainCompetitions}
-              search={search}
-              onSearch={setSearch}
-            />
+            {!isWcSeason && (
+              <FilterBar
+                position={position}
+                onPosition={setPosition}
+                competition={competition}
+                onCompetition={setCompetition}
+                competitions={mainCompetitions}
+                search={search}
+                onSearch={setSearch}
+              />
+            )}
 
             {contextLabel && (
               <div className="rp-context-label">
@@ -261,7 +322,9 @@ export default function RankingPage() {
               <div className="empty-state">
                 {search
                   ? `Sin resultados para "${search}"`
-                  : 'Sin jugadores para los filtros seleccionados.'}
+                  : isWcSeason
+                    ? 'Mundial 2026 · Todavía no hay jugadores clasificados.'
+                    : 'Sin jugadores para los filtros seleccionados.'}
               </div>
             ) : (
               <>
@@ -279,7 +342,14 @@ export default function RankingPage() {
                   className={`ranking-cards-grid ranking-cards-grid--${pageDir === 'next' ? 'from-right' : 'from-left'}`}
                 >
                   {currentPagePlayers.map((p, i) => (
-                    <RankingCard key={p.id} player={p} index={i} competitionName={activeComp?.name} />
+                    <RankingCard
+                      key={p.id}
+                      player={p}
+                      index={i}
+                      competitionName={activeComp?.name}
+                      season={season}
+                      isWorldCup={isWcSeason}
+                    />
                   ))}
                 </div>
 

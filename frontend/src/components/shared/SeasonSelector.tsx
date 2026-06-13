@@ -1,23 +1,31 @@
 import type { CSSProperties, KeyboardEvent } from 'react'
-import { seasonLabel } from '../../utils/season'
+import type { SeasonItem } from '../../types'
+import { getSeasonLabel, isWorldCupSeason } from '../../utils/season'
 
 interface Props {
-  seasons: string[]
+  items: SeasonItem[]
   value: string
-  onChange: (s: string) => void
+  onChange: (season: string) => void
   includeAll?: boolean
 }
 
-export default function SeasonSelector({ seasons, value, onChange, includeAll = true }: Props) {
-  const options = includeAll ? [...seasons, 'all'] : seasons
-  const activeIdx = options.indexOf(value)
+export default function SeasonSelector({
+  items,
+  value,
+  onChange,
+  includeAll = true,
+}: Props) {
+  const allOption: SeasonItem = { season: 'all', is_latest: false }
+  const options = includeAll ? [...items, allOption] : items
+  const activeIndex = options.findIndex((option) => option.season === value)
 
   if (options.length <= 1) return null
 
   const selectorStyle = {
     '--season-count': options.length,
-    '--season-index': Math.max(activeIdx, 0),
+    '--season-index': Math.max(activeIndex, 0),
   } as CSSProperties
+  const isWorldCupActive = isWorldCupSeason(value, items)
 
   function moveSelection(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
@@ -29,7 +37,7 @@ export default function SeasonSelector({ seasons, value, onChange, includeAll = 
     if (event.key === 'Home') nextIndex = 0
     if (event.key === 'End') nextIndex = options.length - 1
 
-    onChange(options[nextIndex])
+    onChange(options[nextIndex].season)
     event.currentTarget.parentElement
       ?.querySelectorAll<HTMLButtonElement>('.season-btn')
       [nextIndex]?.focus()
@@ -37,31 +45,44 @@ export default function SeasonSelector({ seasons, value, onChange, includeAll = 
 
   return (
     <div
-      className="season-selector"
+      className={`season-selector${isWorldCupActive ? ' season-selector--wc' : ''}`}
       role="radiogroup"
       aria-label="Temporada de estadísticas"
       style={selectorStyle}
     >
       <div className="season-selector__track" aria-hidden="true" />
-      {options.map((s, i) => (
-        <button
-          key={s}
-          type="button"
-          role="radio"
-          className={`season-btn${value === s ? ' season-btn--active' : ''}`}
-          onClick={() => onChange(s)}
-          onKeyDown={(event) => moveSelection(event, i)}
-          aria-checked={value === s}
-          tabIndex={value === s ? 0 : -1}
-        >
-          <span className="season-btn__label">
-            {s === 'all' ? 'Todas' : seasonLabel(s)}
-          </span>
-          <span className="season-btn__meta">
-            {s === 'all' ? 'Histórico' : i === 0 ? 'Actual' : 'Temporada'}
-          </span>
-        </button>
-      ))}
+      {options.map((item, index) => {
+        const isWorldCup = item.is_world_cup === true
+        const label = item.season === 'all'
+          ? 'Todas'
+          : getSeasonLabel(item.season, items)
+        const meta = item.season === 'all'
+          ? 'Histórico'
+          : isWorldCup
+            ? 'Mundial'
+            : item.is_latest
+              ? 'Actual'
+              : 'Temporada'
+        return (
+          <button
+            key={item.season}
+            type="button"
+            role="radio"
+            className={[
+              'season-btn',
+              value === item.season ? 'season-btn--active' : '',
+              isWorldCup ? 'season-btn--wc' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={() => onChange(item.season)}
+            onKeyDown={(event) => moveSelection(event, index)}
+            aria-checked={value === item.season}
+            tabIndex={value === item.season ? 0 : -1}
+          >
+            <span className="season-btn__label">{label}</span>
+            <span className="season-btn__meta">{meta}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }

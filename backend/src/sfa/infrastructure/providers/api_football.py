@@ -175,6 +175,14 @@ class APIFootballProvider:
                 continue
             for p in team_data.get("players", []):
                 try:
+                    player_data = p.get("player") or {}
+                    player_external_id = player_data.get("id")
+                    if not isinstance(player_external_id, int) or player_external_id <= 0:
+                        logger.warning(
+                            "Skipping player stats with invalid external ID: %r",
+                            player_external_id,
+                        )
+                        continue
                     stats = p["statistics"][0] if p.get("statistics") else {}
                     games = stats.get("games") or {}
                     goals = stats.get("goals") or {}
@@ -201,9 +209,9 @@ class APIFootballProvider:
 
                     result.append(
                         PlayerStatsRawDTO(
-                            player_external_id=p["player"]["id"],
-                            player_name=p["player"]["name"],
-                            photo_url=p["player"].get("photo") or None,
+                            player_external_id=player_external_id,
+                            player_name=player_data["name"],
+                            photo_url=player_data.get("photo") or None,
                             position=games.get("position") or "Midfielder",
                             minutes=games.get("minutes") or 0,
                             goals=goals.get("total") or 0,
@@ -245,6 +253,14 @@ class APIFootballProvider:
         for team_data in data.get("response", []):
             for p in team_data.get("players", []):
                 try:
+                    player_data = p.get("player") or {}
+                    player_external_id = player_data.get("id")
+                    if not isinstance(player_external_id, int) or player_external_id <= 0:
+                        logger.warning(
+                            "Skipping player stats with invalid external ID: %r",
+                            player_external_id,
+                        )
+                        continue
                     stats = p["statistics"][0] if p.get("statistics") else {}
                     games = stats.get("games") or {}
                     goals = stats.get("goals") or {}
@@ -271,9 +287,9 @@ class APIFootballProvider:
 
                     result.append(
                         PlayerStatsRawDTO(
-                            player_external_id=p["player"]["id"],
-                            player_name=p["player"]["name"],
-                            photo_url=p["player"].get("photo") or None,
+                            player_external_id=player_external_id,
+                            player_name=player_data["name"],
+                            photo_url=player_data.get("photo") or None,
                             position=games.get("position") or "Midfielder",
                             minutes=games.get("minutes") or 0,
                             goals=goals.get("total") or 0,

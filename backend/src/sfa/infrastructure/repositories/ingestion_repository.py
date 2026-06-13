@@ -91,6 +91,9 @@ class IngestionRepository(IngestionRepositoryPort):
         update_position: bool = True,
         position_source: str = "apifootball",
     ) -> int:
+        if external_id <= 0:
+            raise ValueError("player external_id must be a positive integer")
+
         insert_stmt = pg_insert(Player).values(
             external_id=external_id, name=name,
             position=position, photo_url=photo_url, position_source=position_source,

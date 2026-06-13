@@ -42,6 +42,8 @@ class IngestionResult:
 
 
 LEAGUES: list[LeagueConfig] = [
+    # ── Torneos internacionales ─────────────────────────────────────────────
+    LeagueConfig(id=1,   name="World Cup",            country="INT", comp_factor=1.75, participant_kind="national_team"),
     # ── Ligas principales ───────────────────────────────────────────────────
     LeagueConfig(id=140, name="La Liga",              country="ESP", comp_factor=1.0),
     LeagueConfig(id=39,  name="Premier League",       country="ENG", comp_factor=1.0),
@@ -219,6 +221,14 @@ class IngestCompetitionUseCase:
 
                         for ps in player_stats_list:
                             if ps.minutes < 1:
+                                continue
+                            if ps.player_external_id <= 0:
+                                logger.warning(
+                                    "Skipping player %r in fixture %s: invalid external ID %r",
+                                    ps.player_name,
+                                    fixture.external_id,
+                                    ps.player_external_id,
+                                )
                                 continue
 
                             position = map_position(ps.player_name, ps.position)

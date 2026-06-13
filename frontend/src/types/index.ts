@@ -1,6 +1,12 @@
 export interface SeasonItem {
   season: string
   is_latest: boolean
+  is_world_cup?: boolean
+  label?: string
+}
+
+export function isWorldCupItem(item: SeasonItem): boolean {
+  return item.is_world_cup === true
 }
 
 export interface SeasonsResponse {

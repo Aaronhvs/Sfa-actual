@@ -403,3 +403,29 @@ async def test_same_external_player_keeps_distinct_club_and_national_snapshots()
     assert national_result.status == "completed"
     assert repo._player_ids == {133609: 1}
     assert {row["team_id"] for row in repo.player_stats.values()} == {1, 4}
+
+
+@pytest.mark.anyio
+async def test_ingestion_skips_player_with_non_positive_external_id():
+    provider = FakeFootballProvider(
+        fixtures=[_fixture()],
+        player=_player_stats(external_id=0, name="Invalid Identity"),
+    )
+    repo = FakeIngestionRepository()
+
+    result = await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE, 2024)
+
+    assert result.status == "completed"
+    assert repo._player_ids == {}
+    assert repo.player_stats == {}
+    assert repo.player_events == {}
+
+
+@pytest.mark.anyio
+async def test_repository_rejects_non_positive_player_external_id():
+    from sfa.infrastructure.repositories.ingestion_repository import IngestionRepository
+
+    repository = IngestionRepository(session=object())  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="positive integer"):
+        await repository.upsert_player(0, "Invalid Identity", Position.MC)

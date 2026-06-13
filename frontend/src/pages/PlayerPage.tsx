@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats } from '../types'
-import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerFixtures, fetchPlayerSeasonStats } from '../api/client'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
+import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, SeasonItem } from '../types'
+import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerFixtures, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
 import PlayerHeader from '../components/player/PlayerHeader'
 import StatBar from '../components/player/StatBar'
 import SeasonSelector from '../components/shared/SeasonSelector'
+import { isWorldCupSeason } from '../utils/season'
 
 import PointsBreakdown from '../components/player/PointsBreakdown'
 import FixtureList from '../components/player/FixtureList'
@@ -13,9 +14,12 @@ import CompetitionJourney from '../components/player/CompetitionJourney'
 
 export default function PlayerPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const seasonFromUrl = searchParams.get('season') ?? ''
 
   const [player, setPlayer] = useState<PlayerDetail | null>(null)
   const [season, setSeason] = useState<string>('')
+  const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
   const [events, setEvents] = useState<PlayerEvent[]>([])
   const [fixtures, setFixtures] = useState<PlayerFixture[]>([])
   const [seasonStats, setSeasonStats] = useState<PlayerSeasonStats | null>(null)
@@ -24,17 +28,28 @@ export default function PlayerPage() {
   const [seasonChanging, setSeasonChanging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const initialSeasonRef = useRef('')
+  const isWcSeason = isWorldCupSeason(season, seasonItems)
+  const playerSeasonItems: SeasonItem[] = (player?.available_seasons ?? []).map((item) => {
+    const metadata = seasonItems.find((seasonItem) => seasonItem.season === item)
+    return metadata ?? { season: item, is_latest: false }
+  })
 
-  // Initial load: fetch player with no season (backend resolves latest)
+  useEffect(() => {
+    fetchSeasons()
+      .then((data) => setSeasonItems(data.seasons))
+      .catch(() => {})
+  }, [])
+
+  // Carga inicial: respeta la temporada enlazada o deja que el backend resuelva la actual.
   useEffect(() => {
     if (!id) return
     const playerId = Number(id)
     setLoading(true)
     setError(null)
-    fetchPlayer(playerId)
+    fetchPlayer(playerId, seasonFromUrl || undefined)
       .then((p) => {
         setPlayer(p)
-        const initialSeason = p.available_seasons?.[0] ?? ''
+        const initialSeason = seasonFromUrl || p.available_seasons?.[0] || ''
         initialSeasonRef.current = initialSeason
         setSeason(initialSeason)
         return Promise.all([
@@ -52,7 +67,18 @@ export default function PlayerPage() {
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, seasonFromUrl])
+
+  useEffect(() => {
+    if (isWcSeason) {
+      document.body.classList.add('mode-tournament')
+    } else {
+      document.body.classList.remove('mode-tournament')
+    }
+    return () => {
+      document.body.classList.remove('mode-tournament')
+    }
+  }, [isWcSeason])
 
   // Reload when season changes (after initial load)
   useEffect(() => {
@@ -117,16 +143,23 @@ export default function PlayerPage() {
   }
 
   return (
-    <div className="page-container">
+    <div className={`page-container${isWcSeason ? ' player-page--wc' : ''}`}>
       <Link to="/ranking" className="back-link">← Volver al ranking</Link>
 
       <PlayerHeader player={player} />
+
+      {isWcSeason && player.team && (
+        <div className="pp-national-badge">
+          <span className="pp-national-badge__label">Selección</span>
+          <span className="pp-national-badge__team">{player.team}</span>
+        </div>
+      )}
 
       {player.available_seasons && player.available_seasons.length > 1 && (
         <div className="pp-season-bar">
           <span className="pp-season-bar__label">Temporada</span>
           <SeasonSelector
-            seasons={player.available_seasons}
+            items={playerSeasonItems}
             value={season}
             onChange={setSeason}
             includeAll={true}
