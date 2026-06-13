@@ -153,6 +153,33 @@ export interface PlayerSeasonStats {
   duel_win_rate: number | null
 }
 
+export interface WcTeam {
+  id: number
+  name: string
+  external_id: number | null
+}
+
+export interface WcFixture {
+  id: number
+  external_id: number
+  stage: string
+  matchday: number | null
+  played_at: string
+  is_live: boolean
+  home_team: WcTeam
+  away_team: WcTeam
+}
+
+export interface WcFixturesResponse {
+  fixtures: WcFixture[]
+  season: string
+}
+
+export interface WcLiveResponse {
+  live: WcFixture[]
+  has_live: boolean
+}
+
 export interface PlayerCompetitionAchievement {
   achievement_id: number
   competition_id: number

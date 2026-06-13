@@ -15,6 +15,7 @@ from sfa.api.v1.ranking import router as ranking_router
 from sfa.api.v1.scoring_rules_router import router as scoring_rules_router
 from sfa.api.v1.seasons import router as seasons_router
 from sfa.api.v1.status import router as status_router
+from sfa.api.v1.wc_router import router as wc_router
 from sfa.core.config import get_settings
 from sfa.infrastructure.database import AsyncSessionLocal, engine
 from sfa.infrastructure.models import Base  # noqa: F401 — also registers all SQLAlchemy models
@@ -34,6 +35,7 @@ tags_metadata = [
     {"name": "health", "description": "Health check de infraestructura"},
     {"name": "admin", "description": "Administración: disparar ingestas manualmente"},
     {"name": "scoring", "description": "Gestión de versiones de reglas de scoring y recálculo"},
+    {"name": "mundial", "description": "Partidos y estado en vivo del Mundial 2026"},
 ]
 
 
@@ -82,3 +84,4 @@ app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
 app.include_router(elo_router, prefix="/api/v1", tags=["elo"])
 app.include_router(scoring_rules_router, prefix="/api/v1", tags=["scoring"])
 app.include_router(achievements_router, prefix="/api/v1", tags=["scoring"])
+app.include_router(wc_router, prefix="/api/v1", tags=["mundial"])

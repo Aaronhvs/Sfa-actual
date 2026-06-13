@@ -5,6 +5,7 @@ import RankingPage from './pages/RankingPage'
 import TeamsPage from './pages/TeamsPage'
 import ComparePage from './pages/ComparePage'
 import MetodologiaPage from './pages/MetodologiaPage'
+import MundialPage from './pages/MundialPage'
 import Footer from './components/layout/Footer'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/metodologia" element={<MetodologiaPage />} />
+          <Route path="/mundial" element={<MundialPage />} />
         </Routes>
       </main>
       <Footer />

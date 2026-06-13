@@ -2,10 +2,11 @@ import { Link, NavLink } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
 const LINKS = [
-  { to: '/ranking', label: 'Ranking' },
-  { to: '/teams',   label: 'Equipos' },
-  { to: '/compare', label: 'Comparar' },
-  { to: '/metodologia', label: 'Metodología' },
+  { to: '/ranking', label: 'Ranking', wc: false },
+  { to: '/mundial', label: 'Mundial 26', wc: true },
+  { to: '/teams',   label: 'Equipos', wc: false },
+  { to: '/compare', label: 'Comparar', wc: false },
+  { to: '/metodologia', label: 'Metodología', wc: false },
 ]
 
 export default function Navbar() {
@@ -25,12 +26,12 @@ export default function Navbar() {
       <nav className={`navbar${scrolled ? ' navbar--scrolled' : ''}`}>
 <div className="navbar__pill">
           <div className="navbar__nav">
-            {LINKS.map(({ to, label }) => (
+            {LINKS.map(({ to, label, wc }) => (
               <NavLink
                 key={to}
                 to={to}
                 className={({ isActive }) =>
-                  `navbar__link${isActive ? ' navbar__link--active' : ''}`
+                  `navbar__link${wc ? ' navbar__link--wc' : ''}${isActive ? ' navbar__link--active' : ''}`
                 }
               >
                 {label}
@@ -55,12 +56,12 @@ export default function Navbar() {
         onClick={close}
       >
         <div className="navbar__drawer" onClick={(e) => e.stopPropagation()}>
-          {LINKS.map(({ to, label }, i) => (
+          {LINKS.map(({ to, label, wc }, i) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `navbar__drawer-link${isActive ? ' navbar__drawer-link--active' : ''}`
+                `navbar__drawer-link${wc ? ' navbar__drawer-link--wc' : ''}${isActive ? ' navbar__drawer-link--active' : ''}`
               }
               onClick={close}
               style={menuOpen ? { animationDelay: `${i * 55}ms` } : undefined}

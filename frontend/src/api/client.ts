@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingResponse, SeasonsResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingResponse, SeasonsResponse, WcFixturesResponse, WcLiveResponse } from '../types'
 
 const BASE = '/api/v1'
 
@@ -123,6 +123,19 @@ export async function fetchPlayerSeasonStats(
   } catch {
     return null
   }
+}
+
+export async function fetchWcFixtures(): Promise<WcFixturesResponse> {
+  const key = 'wc:fixtures'
+  const cached = getCached<WcFixturesResponse>(key)
+  if (cached) return cached
+  const data = await get<WcFixturesResponse>('/wc/fixtures')
+  setCache(key, data)
+  return data
+}
+
+export async function fetchWcLive(): Promise<WcLiveResponse> {
+  return get<WcLiveResponse>('/wc/live')
 }
 
 export async function fetchPlayerAchievements(

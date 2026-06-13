@@ -225,6 +225,16 @@ img { display: block; }
   background: rgba(201, 168, 76, 0.11);
 }
 
+.navbar__link--wc {
+  color: var(--tm-sun, #FFC83D);
+  font-weight: 600;
+}
+
+.navbar__link--wc.navbar__link--active {
+  background: rgba(255, 200, 61, 0.12);
+  color: var(--tm-sun, #FFC83D);
+}
+
 /* ── Hamburger (mobile only) ── */
 .navbar__hamburger {
   display: none;
@@ -319,6 +329,9 @@ img { display: block; }
 .navbar__drawer-link:active { background: rgba(255,255,255,0.06); }
 
 .navbar__drawer-link--active { color: var(--gold); }
+
+.navbar__drawer-link--wc { color: var(--tm-sun, #FFC83D); font-weight: 600; }
+.navbar__drawer-link--wc.navbar__drawer-link--active { color: var(--tm-sun, #FFC83D); }
 
 /* ── Responsive ── */
 @media (max-width: 640px) {
@@ -8225,4 +8238,490 @@ body.mode-tournament .main-content {
 .player-page--wc .stat-bar__section-label {
   border-left-color: transparent;
   border-image: var(--tm-spectrum) 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   WC LIVE CHIP — RankingPage header live indicator
+   ═══════════════════════════════════════════════════════════════════ */
+
+.wc-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background: rgba(240, 75, 63, 0.12);
+  border: 1px solid rgba(240, 75, 63, 0.35);
+  border-radius: 20px;
+  text-decoration: none;
+  transition: background 180ms var(--tm-ease, ease), border-color 180ms;
+  cursor: pointer;
+}
+
+.wc-live-chip:hover {
+  background: rgba(240, 75, 63, 0.22);
+  border-color: rgba(240, 75, 63, 0.6);
+}
+
+.wc-live-chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tm-red, #F04B3F);
+  flex-shrink: 0;
+  animation: wc-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes wc-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+.wc-live-chip__text {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--tm-red, #F04B3F);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.wc-live-chip__label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dim, rgba(255,255,255,0.5));
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MUNDIAL PAGE — Festival SFA 2026
+   ═══════════════════════════════════════════════════════════════════ */
+
+.mundial-page {
+  min-height: 100vh;
+  background: var(--tm-bg, #0B1010);
+  color: var(--tm-text, #fff);
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+
+.wm-header {
+  position: relative;
+  overflow: hidden;
+  padding: 40px 24px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.wm-header__pattern {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255,255,255,0.025) 0px,
+    rgba(255,255,255,0.025) 1px,
+    transparent 1px,
+    transparent 18px
+  );
+  pointer-events: none;
+}
+
+.wm-header__spectrum {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--tm-spectrum, linear-gradient(90deg, #F04B3F 0 25%, #FFC83D 25% 43%, #20A866 43% 68%, #3978F6 68% 100%));
+  transform-origin: left;
+  animation: wm-spectrum-in 380ms var(--tm-ease, cubic-bezier(0.23,1,0.32,1)) both;
+}
+
+@keyframes wm-spectrum-in {
+  from { transform: scaleX(0.88); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+.wm-header__content {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  animation: wm-fade-up 260ms var(--tm-ease, ease) both;
+}
+
+@keyframes wm-fade-up {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.wm-header__back {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: 12px;
+  color: var(--tm-text-dim, rgba(255,255,255,0.45));
+  text-decoration: none;
+  transition: color 160ms;
+}
+
+.wm-header__back:hover {
+  color: var(--tm-text, #fff);
+}
+
+.wm-header__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wm-header__eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tm-text-dim, rgba(255,255,255,0.45));
+}
+
+.wm-header__title {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+}
+
+.wm-header__title-main {
+  color: var(--tm-text, #fff);
+}
+
+.wm-header__title-year {
+  color: var(--tm-sun, #FFC83D);
+}
+
+.wm-header__subtitle {
+  font-size: 13px;
+  color: var(--tm-text-dim, rgba(255,255,255,0.45));
+  margin: 0;
+}
+
+.wm-header__stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 90px;
+  height: 90px;
+  border: 1px solid var(--tm-border, rgba(255,255,255,0.09));
+  border-radius: 6px;
+  background: var(--tm-surface, #121918);
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.wm-header__stamp-count {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--tm-sun, #FFC83D);
+  line-height: 1;
+}
+
+.wm-header__stamp-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tm-text, #fff);
+  line-height: 1;
+}
+
+.wm-header__stamp-edition {
+  font-size: 9px;
+  color: var(--tm-text-dim, rgba(255,255,255,0.45));
+  line-height: 1;
+}
+
+/* ── Live banner ────────────────────────────────────────────────── */
+
+.wm-live-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 960px;
+  margin: 0 auto 4px;
+  padding: 10px 24px;
+  background: rgba(240, 75, 63, 0.1);
+  border-top: 1px solid rgba(240, 75, 63, 0.25);
+  border-bottom: 1px solid rgba(240, 75, 63, 0.25);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tm-red, #F04B3F);
+}
+
+.wm-live-banner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tm-red, #F04B3F);
+  flex-shrink: 0;
+  animation: wc-dot-pulse 1.6s ease-in-out infinite;
+}
+
+/* ── Body / Rounds ──────────────────────────────────────────────── */
+
+.wm-body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 24px 80px;
+}
+
+.wm-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.wm-round {
+  animation: wm-fade-up 280ms var(--tm-ease, ease) both;
+}
+
+.wm-round__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.wm-round__spectrum {
+  display: block;
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--tm-spectrum, linear-gradient(180deg, #F04B3F 0%, #3978F6 100%));
+  flex-shrink: 0;
+}
+
+.wm-round__title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tm-text, #fff);
+  margin: 0;
+}
+
+.wm-round__count {
+  font-size: 11px;
+  color: var(--tm-text-dim, rgba(255,255,255,0.4));
+  margin-left: auto;
+}
+
+/* ── Fixture grid ───────────────────────────────────────────────── */
+
+.wm-fixtures-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Fixture card ───────────────────────────────────────────────── */
+
+.wm-fixture {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--tm-surface, #121918);
+  border: 1px solid var(--tm-border, rgba(255,255,255,0.07));
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 180ms, background 180ms;
+}
+
+.wm-fixture:hover {
+  background: var(--tm-surface2, #18211F);
+  border-color: rgba(255,255,255,0.12);
+}
+
+.wm-fixture--live {
+  border-color: rgba(240, 75, 63, 0.4);
+  background: rgba(240, 75, 63, 0.05);
+}
+
+.wm-fixture--live:hover {
+  border-color: rgba(240, 75, 63, 0.6);
+  background: rgba(240, 75, 63, 0.08);
+}
+
+.wm-fixture__spectrum-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--tm-spectrum, linear-gradient(90deg, #F04B3F 0 25%, #FFC83D 25% 43%, #20A866 43% 68%, #3978F6 68% 100%));
+}
+
+/* ── Team side ──────────────────────────────────────────────────── */
+
+.wm-fixture__team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wm-fixture__team--home {
+  justify-content: flex-end;
+}
+
+.wm-fixture__team--away {
+  justify-content: flex-start;
+}
+
+.wm-fixture__logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+.wm-fixture__team-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tm-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Center meta ────────────────────────────────────────────────── */
+
+.wm-fixture__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.wm-fixture__date {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold, #e9b84a);
+  text-transform: capitalize;
+  line-height: 1;
+}
+
+.wm-fixture__time {
+  font-size: 11px;
+  color: var(--tm-text-dim, rgba(255,255,255,0.45));
+  line-height: 1;
+}
+
+/* ── Live badge ─────────────────────────────────────────────────── */
+
+.wm-fixture__live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(240, 75, 63, 0.15);
+  border: 1px solid rgba(240, 75, 63, 0.4);
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tm-red, #F04B3F);
+  white-space: nowrap;
+}
+
+.wm-fixture__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tm-red, #F04B3F);
+  flex-shrink: 0;
+  animation: wc-dot-pulse 1.6s ease-in-out infinite;
+}
+
+/* ── Skeletons ──────────────────────────────────────────────────── */
+
+.wm-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.wm-round__skeleton-title {
+  width: 120px;
+  height: 14px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.wm-fixture-skeleton {
+  height: 60px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .wm-header {
+    padding: 32px 16px 28px;
+  }
+
+  .wm-header__stamp {
+    width: 72px;
+    height: 72px;
+  }
+
+  .wm-header__stamp-count {
+    font-size: 22px;
+  }
+
+  .wm-body {
+    padding: 16px 16px 60px;
+  }
+
+  .wm-fixture {
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    padding: 12px 12px;
+  }
+
+  .wm-fixture__team-name {
+    font-size: 12px;
+  }
+
+  .wm-fixture__logo {
+    width: 22px;
+    height: 22px;
+  }
+
+  .wm-fixture__center {
+    min-width: 60px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-header__spectrum,
+  .wm-header__content,
+  .wm-round,
+  .wc-live-chip__dot,
+  .wm-fixture__live-dot,
+  .wm-live-banner__dot {
+    animation: none;
+  }
 }

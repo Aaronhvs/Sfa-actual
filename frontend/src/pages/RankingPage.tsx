@@ -7,6 +7,7 @@ import ShowcaseCard from '../components/ranking/ShowcaseCard'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
 import WorldCupBanner from '../components/shared/WorldCupBanner'
 import WorldCupPageHeader from '../components/shared/WorldCupPageHeader'
+import WcLiveChip from '../components/shared/WcLiveChip'
 import { useCountUp } from '../hooks/useCountUp'
 import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 
@@ -225,6 +226,7 @@ export default function RankingPage() {
               <dd>{totalPlayers > 0 ? animatedTotal.toLocaleString('es-ES') : '—'}</dd>
             </div>
           </dl>
+          <WcLiveChip />
           {seasonItems.length > 0 && (
             <SeasonDropdown
               items={seasonItems}
