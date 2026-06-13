@@ -3,12 +3,54 @@
 ## Estado de ejecucion - 2026-06-13
 
 - Implementacion de codigo, migraciones y auditoria completada.
-- Suite completa: `287 passed`.
+- Rama: `refactor/SFA-0028-player-team-snapshots`.
+- Commit de implementacion: `0045faa`.
+- Suite completa: `293 passed`.
 - `0021` validada de forma idempotente sobre una copia de la DB local.
 - Totales de `sfa_season_scores` antes/despues: identicos.
 - Gate operativo pendiente: quedaron 20.728 `player_stats` y 24.047
   `player_events` sin snapshot en la copia. `0022` no fue ejecutada.
 - La DB activa no fue modificada y la ingesta del Mundial debe seguir bloqueada.
+
+## Tareas operativas pendientes
+
+- [ ] 1. Crear una copia actualizada de la DB activa y ejecutar
+  `scripts/audit_player_team_snapshots.sql`.
+  Salida esperada: conservar los conteos antes de aplicar `0021`.
+
+- [ ] 2. Aplicar `migrations/0021_player_team_snapshots_expand.sql` unicamente sobre
+  la copia y volver a ejecutar la auditoria.
+  Ultimo resultado conocido: 20.728 `player_stats.team_id IS NULL` y 24.047
+  `player_events.team_id IS NULL`; los otros tres contadores criticos dieron cero.
+
+- [ ] 3. Resolver todas las apariciones sin snapshot.
+  Orden: reingesta controlada del fixture, correccion manual auditada y, solo como
+  ultima fuente, datos de bonos/logros validados contra home/away.
+
+- [ ] 4. Propagar el snapshot resuelto desde `player_stats` hacia `player_events`
+  y repetir la auditoria.
+  Condicion de salida: los cinco contadores criticos deben ser exactamente cero.
+
+- [ ] 5. Comparar antes/despues en la copia:
+  `sfa_season_scores.total_pts`, `achievement_bonus_pts`, top de rankings, ELO de
+  clubes y jugadores seleccionados para logros.
+  Condicion de salida: ninguna diferencia funcional en datos de clubes.
+
+- [ ] 6. Aplicar `0021` en la DB activa durante una ventana controlada, desplegar el
+  codigo nuevo y realizar una reingesta de muestra de La Liga.
+
+- [ ] 7. Ejecutar `migrations/0022_player_team_snapshots_constraints.sql` solamente
+  cuando no haya callers antiguos y los cinco contadores sean cero.
+
+- [ ] 8. Habilitar la ingesta y ranking aislado del Mundial solo despues de completar
+  `0022`.
+
+### Bloqueos vigentes
+
+- No ejecutar `0022` con snapshots unresolved.
+- No ingestar el Mundial ni competiciones `national_team`.
+- No recalcular ni modificar formulas, multiplicadores o puntos actuales.
+- No mezclar puntos del Mundial con temporadas de clubes.
 
 ## Archivos a crear
 
