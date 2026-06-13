@@ -1,0 +1,31 @@
+### Full recalculation (scoring + achievement bonuses)
+POST http://localhost:8000/api/v1/scoring/recalculate-full
+Content-Type: application/json
+
+{
+  "rules_version_id": 3,
+  "season": "2024",
+  "force_recalculate": true
+}
+
+###
+### Scoring only
+POST http://localhost:8000/api/v1/scoring/recalculate
+Content-Type: application/json
+
+{
+  "rules_version_id": 3,
+  "season": "2024",
+  "force_recalculate": true
+}
+
+###
+### Achievement bonuses for one competition
+POST http://localhost:8000/api/v1/scoring/achievements/calculate-bonuses
+Content-Type: application/json
+
+{
+  "season": "2024",
+  "competition_id": 1,
+  "rules_version_id": 3
+}

@@ -1,0 +1,44 @@
+### Infer achievements for Champions League 2025
+POST http://localhost:8000/api/v1/scoring/infer-achievements
+Content-Type: application/json
+
+{
+  "competition_id": 10,
+  "season": "2025",
+  "rules_version_id": 3
+}
+
+###
+
+### Infer achievements for ALL competitions 2025
+POST http://localhost:8000/api/v1/scoring/infer-achievements-all
+Content-Type: application/json
+
+{
+  "season": "2025",
+  "rules_version_id": 3
+}
+
+###
+
+### Error: domestic league (no knockout stages → skipped silently)
+POST http://localhost:8000/api/v1/scoring/infer-achievements
+Content-Type: application/json
+
+{
+  "competition_id": 1,
+  "season": "2025",
+  "rules_version_id": 3
+}
+
+###
+
+### Infer achievements for Europa League 2025
+POST http://localhost:8000/api/v1/scoring/infer-achievements
+Content-Type: application/json
+
+{
+  "competition_id": 253,
+  "season": "2025",
+  "rules_version_id": 3
+}

@@ -1,0 +1,46 @@
+# ── Backend ──────────────────────────────────────────────────────────────────
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.egg-info/
+backend/venv/
+backend/.venv/
+backend/.env
+backend/.env.prod
+backend/.env.local
+backend/.env.*.local
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/celerybeat-schedule
+backend/celerybeat.pid
+backend/.idea/
+
+# ── Frontend ─────────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.env
+frontend/.env.local
+frontend/*.local
+
+# ── Claude local ─────────────────────────────────────────────────────────────
+.claude/
+backend/.claude/
+frontend/.claude/
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ── Images / builds grandes ──────────────────────────────────────────────────
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp

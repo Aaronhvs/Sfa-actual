@@ -1,0 +1,103 @@
+### Calcular team strengths para una competición
+POST http://localhost:8000/api/v1/scoring/team-strengths/calculate
+Content-Type: application/json
+
+{
+  "season": "2024",
+  "competition_id": 1,
+  "matchday": 20,
+  "league_factor": 0.90
+}
+
+###
+
+### Calcular team strengths — Champions League (factor 1.0)
+POST http://localhost:8000/api/v1/scoring/team-strengths/calculate
+Content-Type: application/json
+
+{
+  "season": "2024",
+  "competition_id": 2,
+  "matchday": 6,
+  "league_factor": 1.0
+}
+
+###
+
+### Registrar logro: Real Madrid campeón de Champions
+POST http://localhost:8000/api/v1/scoring/achievements
+Content-Type: application/json
+
+{
+  "competition_id": 2,
+  "team_id": 5,
+  "season": "2024",
+  "phase": "winner",
+  "rules_version_id": 1
+}
+
+###
+
+### Registrar logro: equipo llega a semifinal
+POST http://localhost:8000/api/v1/scoring/achievements
+Content-Type: application/json
+
+{
+  "competition_id": 2,
+  "team_id": 10,
+  "season": "2024",
+  "phase": "semi_final",
+  "rules_version_id": 1
+}
+
+###
+
+### Error case: fase inválida → 400
+POST http://localhost:8000/api/v1/scoring/achievements
+Content-Type: application/json
+
+{
+  "competition_id": 2,
+  "team_id": 5,
+  "season": "2024",
+  "phase": "fase_inventada",
+  "rules_version_id": 1
+}
+
+###
+
+### Error case: rules_version_id inexistente → 404
+POST http://localhost:8000/api/v1/scoring/achievements
+Content-Type: application/json
+
+{
+  "competition_id": 2,
+  "team_id": 5,
+  "season": "2024",
+  "phase": "winner",
+  "rules_version_id": 9999
+}
+
+###
+
+### Calcular bonuses por logros competitivos
+POST http://localhost:8000/api/v1/scoring/achievements/calculate-bonuses
+Content-Type: application/json
+
+{
+  "season": "2024",
+  "competition_id": 2,
+  "rules_version_id": 1
+}
+
+###
+
+### Ranking versionado con sfa_total (incluye bonuses)
+GET http://localhost:8000/api/v1/ranking?season=2024&rules_version_id=1&use_total=true&limit=10
+
+###
+
+### Ranking legacy (backward-compat, sin bonuses)
+GET http://localhost:8000/api/v1/ranking?season=2024&limit=10
+
+###

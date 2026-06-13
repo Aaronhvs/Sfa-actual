@@ -1,0 +1,132 @@
+### Listar versiones de reglas
+GET http://localhost:8000/api/v1/scoring/rules-versions
+
+###
+
+### Crear versión de reglas (config mínima de ejemplo)
+POST http://localhost:8000/api/v1/scoring/rules-versions
+Content-Type: application/json
+
+{
+  "name": "v1.0-initial",
+  "version": "1.0.0",
+  "description": "Primera versión versionada de reglas SFA",
+  "config_json": {
+    "base_points": {
+      "FW": {
+        "goal": 500, "goal_penalty": 300, "goal_shootout": 300,
+        "assist": 500, "corner_assist": 250,
+        "xg_no_goal": 70, "xa_no_assist": 60,
+        "dribbles_won": 100, "duels_won": 30, "tackles": 110,
+        "interceptions": 90, "blocks": 150, "fouls_drawn": 50,
+        "passes_completed": 2, "fouls_committed": -30,
+        "yellow_card": -150, "red_card": -500,
+        "penalty_won": 200, "dribbles_past": 0
+      },
+      "MF": {
+        "goal": 700, "goal_penalty": 380, "goal_shootout": 380,
+        "assist": 520, "corner_assist": 280,
+        "xg_no_goal": 50, "xa_no_assist": 100,
+        "dribbles_won": 100, "duels_won": 25, "tackles": 110,
+        "interceptions": 150, "blocks": 100, "fouls_drawn": 35,
+        "passes_completed": 3, "fouls_committed": -20,
+        "yellow_card": -150, "red_card": -500,
+        "penalty_won": 180, "dribbles_past": -20
+      },
+      "DF": {
+        "goal": 850, "goal_penalty": 380, "goal_shootout": 380,
+        "assist": 640, "corner_assist": 320,
+        "xg_no_goal": 30, "xa_no_assist": 80,
+        "dribbles_won": 130, "duels_won": 25, "tackles": 150,
+        "interceptions": 200, "blocks": 130, "fouls_drawn": 20,
+        "passes_completed": 1, "fouls_committed": -15,
+        "yellow_card": -150, "red_card": -500,
+        "penalty_won": 80, "dribbles_past": -50
+      }
+    },
+    "m1_clamp": [0.5, 2.0],
+    "m1_divisor": 20.0,
+    "m4_psxg_multiplier": 0.8,
+    "m4_clamp": [1.0, 1.8],
+    "mvisit_bonus": 1.3,
+    "mvisit_eligible_actions": ["goal", "goal_penalty", "goal_shootout", "assist", "corner_assist"],
+    "mrating_thresholds": [[7.0, 0.3], [8.0, 0.5], [8.5, 0.75]],
+    "mrating_top_value": 1.0,
+    "mrating_none_value": 0.5,
+    "combined_clamp": [0.3, 4.0]
+  }
+}
+
+###
+
+### Activar versión 1
+PATCH http://localhost:8000/api/v1/scoring/rules-versions/1/activate
+
+###
+
+### Error case: activar versión inexistente → 404
+PATCH http://localhost:8000/api/v1/scoring/rules-versions/9999/activate
+
+###
+
+### Disparar recálculo de temporada completa
+POST http://localhost:8000/api/v1/scoring/recalculate
+Content-Type: application/json
+
+{
+  "rules_version_id": 1,
+  "season": "2024",
+  "force_recalculate": false
+}
+
+###
+
+### Disparar recálculo forzado (sobreescribe cálculos existentes)
+POST http://localhost:8000/api/v1/scoring/recalculate
+Content-Type: application/json
+
+{
+  "rules_version_id": 1,
+  "season": "2024",
+  "force_recalculate": true
+}
+
+###
+
+### Recálculo acotado a una competición
+POST http://localhost:8000/api/v1/scoring/recalculate
+Content-Type: application/json
+
+{
+  "rules_version_id": 1,
+  "season": "2024",
+  "competition_id": 140,
+  "force_recalculate": false
+}
+
+###
+
+### Ranking legacy (sin rules_version_id → scores con rules_version_id IS NULL)
+GET http://localhost:8000/api/v1/ranking?season=2024&limit=10
+
+###
+
+### Ranking con reglas v1
+GET http://localhost:8000/api/v1/ranking?season=2024&rules_version_id=1&limit=10
+
+###
+
+### Error case: crear versión con config inválida → 400
+POST http://localhost:8000/api/v1/scoring/rules-versions
+Content-Type: application/json
+
+{
+  "name": "v-invalid",
+  "version": "0.0.1",
+  "description": "Config inválida",
+  "config_json": {
+    "base_points": {}
+  }
+}
+
+###

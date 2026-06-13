@@ -1,0 +1,29 @@
+### Estado de ingesta 2024
+GET http://localhost:8000/api/v1/admin/ingestion-status?season=2024
+
+###
+
+### Estado de temporada sin datos
+GET http://localhost:8000/api/v1/admin/ingestion-status?season=2025
+
+###
+
+### Alias compatible de logs
+GET http://localhost:8000/api/v1/admin/ingestion-logs?season=2024
+
+###
+
+### Ingesta idempotente de La Liga
+POST http://localhost:8000/api/v1/admin/ingest/140?season=2024&force=false
+
+###
+
+### Forzar re-ingesta de La Liga
+POST http://localhost:8000/api/v1/admin/ingest/140?season=2024&force=true
+
+###
+
+### Ingestar todas las competiciones pendientes
+POST http://localhost:8000/api/v1/admin/ingest-all?season=2025&force=false
+
+###

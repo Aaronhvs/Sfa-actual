@@ -1,0 +1,97 @@
+### Ingestar una liga especifica (La Liga, temporada 2024)
+POST http://localhost:8000/api/v1/admin/ingest/140?season=2024
+
+###
+
+### Ingestar Premier League
+POST http://localhost:8000/api/v1/admin/ingest/39?season=2024
+
+###
+
+### Ingestar Bundesliga
+POST http://localhost:8000/api/v1/admin/ingest/78?season=2024
+
+###
+
+### Ingestar Serie A
+POST http://localhost:8000/api/v1/admin/ingest/135?season=2024
+
+###
+
+### Ingestar Ligue 1
+POST http://localhost:8000/api/v1/admin/ingest/61?season=2024
+
+###
+
+### Ingestar Champions League
+POST http://localhost:8000/api/v1/admin/ingest/2?season=2024
+
+###
+
+### Ingestar todas las ligas configuradas
+POST http://localhost:8000/api/v1/admin/ingest-all?season=2024
+
+###
+
+### Backfill stats nuevas (Spec 0010) — La Liga 2024
+POST http://localhost:8000/api/v1/admin/backfill-fixture-stats?competition_id=1&season=2024
+
+###
+
+### Backfill stats nuevas — Premier League 2024
+POST http://localhost:8000/api/v1/admin/backfill-fixture-stats?competition_id=2&season=2024
+
+###
+
+### Backfill stats nuevas — Champions League 2024
+POST http://localhost:8000/api/v1/admin/backfill-fixture-stats?competition_id=3&season=2024
+
+###
+
+### Backfill stats nuevas — Bundesliga 2024
+POST http://localhost:8000/api/v1/admin/backfill-fixture-stats?competition_id=4&season=2024
+
+###
+
+### Backfill stats nuevas — Serie A 2024
+POST http://localhost:8000/api/v1/admin/backfill-fixture-stats?competition_id=5&season=2024
+
+###
+
+### Backfill stats nuevas — Ligue 1 2024
+POST http://localhost:8000/api/v1/admin/backfill-fixture-stats?competition_id=6&season=2024
+
+###
+
+### Recalcular scores para todas las ligas (tras backfill)
+POST http://localhost:8000/api/v1/admin/enrich-all?season=2024&season_int=2024
+
+###
+
+### Recalcular scores — La Liga (util despues de cambiar parametros de scoring)
+POST http://localhost:8000/api/v1/admin/recalculate/1?season=2024
+
+###
+
+### Recalcular scores — Premier League
+POST http://localhost:8000/api/v1/admin/recalculate/2?season=2024
+
+###
+
+### Ver logs de ingestion (pendiente implementacion)
+GET http://localhost:8000/api/v1/admin/ingestion-logs
+
+###
+
+### Re-ingest Vinicius Jr (player_id=889) — La Liga 2025
+POST http://localhost:8000/api/v1/admin/players/889/reingest?season=2025
+
+###
+
+### Re-ingest con filtro de competicion
+POST http://localhost:8000/api/v1/admin/players/889/reingest?season=2025&competition_id=1
+
+###
+
+### Re-ingest jugador inexistente (espera no_fixtures)
+POST http://localhost:8000/api/v1/admin/players/99999/reingest?season=2025

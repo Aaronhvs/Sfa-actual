@@ -1,0 +1,55 @@
+### Seed ClubElo snapshot
+POST http://localhost:8000/api/v1/admin/elo/seed
+Content-Type: application/json
+
+{
+  "date_str": "2024-08-01",
+  "season": "2024"
+}
+
+###
+
+### Recalculate ELO ratings (SFA internal IDs: La Liga=1, PL=3, Bundesliga=6, Serie A=7, Ligue 1=9)
+POST http://localhost:8000/api/v1/admin/elo/recalculate
+Content-Type: application/json
+
+{
+  "season": "2024",
+  "competition_ids": [1, 3, 6, 7, 9],
+  "k_factors": {
+    "1": 30,
+    "3": 30,
+    "6": 30,
+    "7": 30,
+    "9": 30
+  },
+  "default_k": 30.0
+}
+
+###
+
+### Recalculate ELO with higher K for Champions League (SFA internal ID: Champions League=10)
+POST http://localhost:8000/api/v1/admin/elo/recalculate
+Content-Type: application/json
+
+{
+  "season": "2024",
+  "competition_ids": [1, 3, 10],
+  "k_factors": {
+    "1": 30,
+    "3": 30,
+    "10": 35
+  },
+  "default_k": 30.0
+}
+
+###
+
+### Error case: invalid date
+POST http://localhost:8000/api/v1/admin/elo/seed
+Content-Type: application/json
+
+{
+  "date_str": "not-a-date",
+  "season": "2024"
+}

@@ -1,0 +1,9 @@
+### Fix player positions (one-shot admin operation)
+POST http://localhost:8000/api/v1/admin/players/fix-positions
+Content-Type: application/json
+
+###
+
+### Compatibility route from spec wording
+POST http://localhost:8000/api/v1/admin/fix-player-positions
+Content-Type: application/json

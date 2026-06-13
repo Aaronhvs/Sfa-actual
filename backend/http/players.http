@@ -1,0 +1,96 @@
+### Stats agregadas de temporada — La Liga 2024
+GET http://localhost:8000/api/v1/players/1/stats?competition_id=1&season=2024
+
+###
+
+### Stats agregadas — Champions League 2024
+GET http://localhost:8000/api/v1/players/1/stats?competition_id=3&season=2024
+
+###
+
+### Stats de jugador inexistente (espera 404)
+GET http://localhost:8000/api/v1/players/999999/stats?competition_id=1&season=2024
+
+###
+
+### Detalle de jugador (última temporada)
+GET http://localhost:8000/api/v1/players/1
+
+###
+
+### Detalle de jugador en temporada específica
+GET http://localhost:8000/api/v1/players/1?season=2024-25
+
+###
+
+### Jugador inexistente (espera 404)
+GET http://localhost:8000/api/v1/players/999999
+
+###
+
+### Eventos del jugador (última temporada)
+GET http://localhost:8000/api/v1/players/1/events
+
+###
+
+### Eventos del jugador en temporada específica
+GET http://localhost:8000/api/v1/players/1/events?season=2024-25
+
+###
+
+### Eventos filtrados por competición
+GET http://localhost:8000/api/v1/players/1/events?season=2024-25&competition_id=1
+
+###
+
+### Fixtures del jugador (última temporada)
+GET http://localhost:8000/api/v1/players/1/fixtures
+
+###
+
+### Fixtures del jugador en temporada específica
+GET http://localhost:8000/api/v1/players/1/fixtures?season=2024-25
+
+###
+
+### Fixtures filtrados por competición
+GET http://localhost:8000/api/v1/players/1/fixtures?season=2024-25&competition_id=1
+
+###
+
+### Fixtures con desglose de acciones (default)
+GET http://localhost:8000/api/v1/players/1/fixtures?include_breakdown=true
+
+###
+
+### Fixtures sin desglose (más rápido)
+GET http://localhost:8000/api/v1/players/1/fixtures?include_breakdown=false
+
+###
+
+### Filtrar por nombre de competición (partial, case-insensitive)
+GET http://localhost:8000/api/v1/players/1/fixtures?competition_name=Champions
+
+###
+
+### Filtrar por rival (partial match sobre local y visitante)
+GET http://localhost:8000/api/v1/players/1/fixtures?rival=Barcelona
+
+###
+
+### Filtrar por fecha exacta (ISO 8601)
+GET http://localhost:8000/api/v1/players/1/fixtures?date=2024-11-03
+
+###
+
+### Combinar rival + desglose
+GET http://localhost:8000/api/v1/players/1/fixtures?rival=Real+Madrid&include_breakdown=true
+
+###
+
+### Combinar competition_id + competition_name (AND semántico)
+GET http://localhost:8000/api/v1/players/1/fixtures?competition_id=1&competition_name=Liga
+### Detalle de jugador - stats acumuladas de todas las temporadas
+GET http://localhost:8000/api/v1/players/1?season=all
+
+###

@@ -1,0 +1,349 @@
+import { useEffect, useRef, useState } from 'react'
+import type { Competition, RankedPlayer, PlayerDetail } from '../types'
+import { fetchRanking, fetchPlayer, fetchCompetitions, fetchSeasons } from '../api/client'
+import FilterBar from '../components/ranking/FilterBar'
+import RankingCard from '../components/ranking/RankingCard'
+import ShowcaseCard from '../components/ranking/ShowcaseCard'
+import SeasonDropdown from '../components/shared/SeasonDropdown'
+import { useCountUp } from '../hooks/useCountUp'
+
+const PAGE_SIZE = 12
+const SEARCH_DEBOUNCE_MS = 350
+const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
+
+export default function RankingPage() {
+  const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
+  const [season, setSeason] = useState<string>('')
+  const [position, setPosition] = useState('')
+  const [competition, setCompetition] = useState<number | undefined>(undefined)
+  const [competitions, setCompetitions] = useState<Competition[]>([])
+  const [search, setSearch] = useState('')
+  const [players, setPlayers] = useState<RankedPlayer[]>([])
+  const [totalPlayers, setTotalPlayers] = useState(0)
+  const [searchResults, setSearchResults] = useState<RankedPlayer[] | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [topDetails, setTopDetails] = useState<Map<number, PlayerDetail>>(new Map())
+  const [loadingRanking, setLoadingRanking] = useState(true)
+  const [loadingShowcase, setLoadingShowcase] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [pageDir, setPageDir] = useState<'next' | 'prev'>('next')
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    fetchCompetitions().then(setCompetitions).catch(() => {})
+    fetchSeasons()
+      .then((data) => {
+        const names = data.seasons.map((s) => s.season)
+        setAvailableSeasons(names)
+        const current = data.seasons.find((s) => s.is_latest)?.season ?? names[0]
+        if (current) setSeason(current)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    setPage(0)
+    setPageDir('next')
+    setSearchResults(null)
+  }, [position, competition, search])
+
+  // Server-side name search — fires when local filter yields nothing and query >= 2 chars
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+
+    const localHits = search
+      ? players.filter((p) => {
+          const q = search.toLowerCase()
+          return p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q)
+        })
+      : players
+
+    if (!search || search.length < 2 || localHits.length > 0) {
+      setSearchResults(null)
+      return
+    }
+
+    setSearchLoading(true)
+    searchTimerRef.current = setTimeout(() => {
+      fetchRanking({ season, name: search, limit: 50 })
+        .then((data) => setSearchResults(data.ranking))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearchLoading(false))
+    }, SEARCH_DEBOUNCE_MS)
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
+  }, [search, players])
+
+  useEffect(() => {
+    if (!season) return
+    setLoadingRanking(true)
+    setLoadingShowcase(true)
+    setError(null)
+
+    fetchRanking({ season, position: position || undefined, competition_id: competition, limit: 100 })
+      .then((data) => {
+        setPlayers(data.ranking)
+        setTotalPlayers(data.total)
+        setLoadingRanking(false)
+
+        if (data.ranking.length >= 3) {
+          Promise.allSettled(
+            data.ranking.slice(0, 3).map((p) => fetchPlayer(p.id, season))
+          ).then((results) => {
+            const map = new Map<number, PlayerDetail>()
+            data.ranking.slice(0, 3).forEach((p, i) => {
+              const r = results[i]
+              if (r.status === 'fulfilled') map.set(p.id, r.value)
+            })
+            setTopDetails(map)
+            setLoadingShowcase(false)
+          })
+        } else {
+          setTopDetails(new Map())
+          setLoadingShowcase(false)
+        }
+      })
+      .catch((e) => {
+        setError(e.message ?? 'Error al cargar el ranking')
+        setLoadingRanking(false)
+        setLoadingShowcase(false)
+      })
+  }, [position, competition, season])
+
+  const top3 = players.slice(0, 3)
+  const restPlayers = players.slice(3)
+
+  const localFiltered = search
+    ? players.filter((p) => {
+        const q = search.toLowerCase()
+        return p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q)
+      })
+    : restPlayers
+
+  const isServerSearch = search.length >= 2 && localFiltered.length === 0
+  const filteredPlayers = isServerSearch ? (searchResults ?? []) : localFiltered
+
+  const showHero = !search && players.length >= 3
+  const totalPages = Math.ceil(filteredPlayers.length / PAGE_SIZE)
+  const currentPagePlayers = filteredPlayers.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  const mainCompetitions = competitions
+    .filter((c) => MAIN_COMPETITION_IDS.includes(c.id))
+    .sort((a, b) => MAIN_COMPETITION_IDS.indexOf(a.id) - MAIN_COMPETITION_IDS.indexOf(b.id))
+
+  const activeComp = competitions.find((c) => c.id === competition)
+  const contextParts = [activeComp?.name, position || null].filter(Boolean)
+  const contextLabel = contextParts.length > 0 ? contextParts.join(' · ') : null
+
+  const animatedTotal = useCountUp(totalPlayers)
+
+  function goNext() {
+    setPageDir('next')
+    setPage((p) => p + 1)
+  }
+
+  function goPrev() {
+    setPageDir('prev')
+    setPage((p) => p - 1)
+  }
+
+  function goToPage(nextPage: number) {
+    if (nextPage === page) return
+    setPageDir(nextPage > page ? 'next' : 'prev')
+    setPage(nextPage)
+  }
+
+  const visiblePages = Array.from({ length: totalPages }, (_, index) => index)
+    .filter((index) => (
+      index === 0
+      || index === totalPages - 1
+      || Math.abs(index - page) <= 1
+    ))
+
+  return (
+    <div className="ranking-page">
+      <header className="rp-header">
+        <div className="rp-header__copy">
+          <span className="rp-header__eyebrow">
+            {season === 'all' ? 'Historial · Clasificación SFA' : 'Clasificación SFA'}
+          </span>
+          <h1 className="rp-header__title">Ranking global</h1>
+          <p className="rp-header__sub">
+            Rendimiento comparado por impacto real en cada fase del juego.
+          </p>
+        </div>
+        <div className="rp-header__right">
+          <dl className="rp-header__summary" aria-label="Resumen del ranking">
+            <div>
+              <dt>Jugadores contabilizados</dt>
+              <dd>{totalPlayers > 0 ? animatedTotal.toLocaleString('es-ES') : '—'}</dd>
+            </div>
+          </dl>
+          {availableSeasons.length > 0 && (
+            <SeasonDropdown
+              seasons={availableSeasons}
+              value={season}
+              onChange={(s) => { setSeason(s); setPage(0); setPageDir('next') }}
+              includeAll={true}
+            />
+          )}
+        </div>
+      </header>
+
+      {loadingRanking && (
+        <>
+          <div className="players-showcase">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="skeleton skeleton-showcase-card" />
+            ))}
+          </div>
+          <div className="rp-table-section">
+            <div className="ranking-cards-grid">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="skeleton rc-skeleton" />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {!loadingRanking && error && (
+        <div className="empty-state">{error}</div>
+      )}
+
+      {!loadingRanking && !error && (
+        <>
+          {showHero && (
+            <section className="rp-podium" aria-label="Podio del ranking">
+              <div className="players-showcase">
+                {top3.map((p) => (
+                  <ShowcaseCard
+                    key={p.id}
+                    player={p}
+                    detail={loadingShowcase ? null : (topDetails.get(p.id) ?? null)}
+                    isFirst={p.rank === 1}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div className="rp-table-section">
+            <div className="rp-ranking-head">
+              <div>
+                <span>Clasificación completa</span>
+                <h2>Todos los jugadores</h2>
+              </div>
+            </div>
+
+            <FilterBar
+              position={position}
+              onPosition={setPosition}
+              competition={competition}
+              onCompetition={setCompetition}
+              competitions={mainCompetitions}
+              search={search}
+              onSearch={setSearch}
+            />
+
+            {contextLabel && (
+              <div className="rp-context-label">
+                {contextLabel}
+              </div>
+            )}
+
+            {isServerSearch && searchLoading ? (
+              <div className="empty-state">Buscando "{search}"…</div>
+            ) : currentPagePlayers.length === 0 ? (
+              <div className="empty-state">
+                {search
+                  ? `Sin resultados para "${search}"`
+                  : 'Sin jugadores para los filtros seleccionados.'}
+              </div>
+            ) : (
+              <>
+                <div className="ranking-table-head" aria-hidden="true">
+                  <span>Pos.</span>
+                  <span />
+                  <span>Jugador</span>
+                  <span>Rol</span>
+                  <span>PJ</span>
+                  <span>G + A</span>
+                  <span>Puntos SFA</span>
+                </div>
+                <div
+                  key={`${page}-${pageDir}`}
+                  className={`ranking-cards-grid ranking-cards-grid--${pageDir === 'next' ? 'from-right' : 'from-left'}`}
+                >
+                  {currentPagePlayers.map((p, i) => (
+                    <RankingCard key={p.id} player={p} index={i} competitionName={activeComp?.name} />
+                  ))}
+                </div>
+
+                {totalPages > 1 && (
+                  <nav className="ranking-pagination" aria-label="Páginas del ranking">
+                    <button
+                      className="pagination-btn pagination-btn--prev"
+                      onClick={goPrev}
+                      disabled={page === 0}
+                      aria-label="Ir a la página anterior"
+                    >
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="m10 3-5 5 5 5" />
+                      </svg>
+                      <span>Anterior</span>
+                    </button>
+
+                    <div className="ranking-pagination__center">
+                      <div className="pagination-pages">
+                        {visiblePages.map((pageIndex, index) => {
+                          const previousVisible = visiblePages[index - 1]
+                          const needsGap = previousVisible != null && pageIndex - previousVisible > 1
+                          return (
+                            <span className="pagination-pages__slot" key={pageIndex}>
+                              {needsGap && <span className="pagination-ellipsis">…</span>}
+                              <button
+                                className={`pagination-page${pageIndex === page ? ' pagination-page--active' : ''}`}
+                                onClick={() => goToPage(pageIndex)}
+                                aria-label={`Ir a la página ${pageIndex + 1}`}
+                                aria-current={pageIndex === page ? 'page' : undefined}
+                              >
+                                {pageIndex + 1}
+                              </button>
+                            </span>
+                          )
+                        })}
+                      </div>
+                      <div className="pagination-progress" aria-hidden="true">
+                        <span style={{ transform: `scaleX(${(page + 1) / totalPages})` }} />
+                      </div>
+                      <span className="ranking-pagination__status">
+                        {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredPlayers.length)}
+                        {' '}de {filteredPlayers.length} jugadores
+                      </span>
+                    </div>
+
+                    <button
+                      className="pagination-btn pagination-btn--next"
+                      onClick={goNext}
+                      disabled={page >= totalPages - 1}
+                      aria-label="Ir a la página siguiente"
+                    >
+                      <span>Siguiente</span>
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="m6 3 5 5-5 5" />
+                      </svg>
+                    </button>
+                  </nav>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

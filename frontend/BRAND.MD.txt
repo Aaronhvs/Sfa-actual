@@ -1,0 +1,37 @@
+cat > /mnt/c/Users/formu/OneDrive/Escritorio/sfa-project/frontend/BRAND.md << 'EOF'
+# SFA — Brand Guidelines
+
+## Identidad
+**Stats Football Award** — el primer sistema de puntuación 
+futbolística que mide el impacto real de cada acción según 
+su contexto: rival, competición, momento y dificultad.
+
+## Filosofía de diseño
+- Precisión estadística con narrativa editorial
+- Premium deportivo — ESPN + FIFA pero más oscuro y propio
+- Datos con contexto, no números fríos
+- SOLO modo dark — no existe modo light
+
+---
+
+## Colores
+
+| Variable     | Hex       | Uso |
+|-------------|-----------|-----|
+| --bg         | #222831   | Fondo principal |
+| --bg-deep    | #1a2028   | Fondo profundo |
+| --surface    | #393E46   | Cards y superficies |
+| --surface2   | #2e333b   | Superficies alternativas |
+| --gold       | #B8962E   | Acento — SOLO puntos SFA |
+| --gold-light | #D4AF55   | Hover / énfasis |
+| --text       | #DFD0B8   | Texto principal (Cream) |
+| --text-dim   | #948979   | Texto secundario |
+| --text-faint | #4e5561   | Labels / texto débil |
+| --border     | rgba(184,150,46,0.22) | Bordes de acento |
+| --border-sub | rgba(223,208,184,0.07) | Bordes sutiles |
+
+---
+
+## Tipografía
+
+- Títulos y números grandes: Barlow Condensed UPPERCASE 700-800
