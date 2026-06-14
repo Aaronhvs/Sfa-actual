@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { Competition, RankedPlayer, PlayerDetail, SeasonItem } from '../types'
 import { fetchRanking, fetchPlayer, fetchCompetitions, fetchSeasons } from '../api/client'
 import FilterBar from '../components/ranking/FilterBar'
@@ -100,7 +101,7 @@ export default function RankingPage() {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
-  }, [search, players])
+  }, [search, players, season])
 
   useEffect(() => {
     if (!season) return
@@ -213,11 +214,14 @@ export default function RankingPage() {
       <header className="rp-header">
         <div className="rp-header__copy">
           <span className="rp-header__eyebrow">
-            {season === 'all' ? 'Historial · Clasificación SFA' : 'Clasificación SFA'}
+            {season === 'all'
+              ? 'Stats Football Award · Historial'
+              : 'Stats Football Award · Clasificación SFA'}
           </span>
-          <h1 className="rp-header__title">Ranking global</h1>
+          <h1 className="rp-header__title">Ranking de jugadores</h1>
           <p className="rp-header__sub">
-            Rendimiento comparado por impacto real en cada fase del juego.
+            SFA mide el impacto real de cada futbolista. Una acción cambia de valor
+            según el rival, el momento del partido y la competición.
           </p>
         </div>
         <div className="rp-header__right">
@@ -239,6 +243,30 @@ export default function RankingPage() {
         </div>
       </header>
       )}
+
+      <section
+        className={`rp-intro${isWcSeason ? ' rp-intro--wc' : ''}`}
+        aria-labelledby="rp-intro-title"
+      >
+        <div className="rp-intro__copy">
+          <span className="rp-intro__eyebrow">
+            {isWcSeason ? 'Cómo funciona este ranking' : 'Qué mide SFA'}
+          </span>
+          <h2 id="rp-intro-title">
+            {isWcSeason
+              ? 'Todos empiezan en cero; cada actuación suma según su impacto real.'
+              : 'No contamos solo acciones: medimos cuánto cambiaron el partido.'}
+          </h2>
+        </div>
+        <p className="rp-intro__summary">
+          Rival, marcador, minuto, dificultad y trascendencia modifican el valor
+          de cada gol, asistencia y acción defensiva.
+        </p>
+        <Link to="/metodologia" className="rp-intro__link">
+          Ver metodología
+          <span aria-hidden="true">→</span>
+        </Link>
+      </section>
 
       {showWcBanner && !isWcSeason && (
         <div className="rp-wc-banner-wrap">
@@ -299,6 +327,30 @@ export default function RankingPage() {
                 <span>{isWcSeason ? 'Edición Mundial' : 'Clasificación completa'}</span>
                 <h2>Todos los jugadores</h2>
               </div>
+              {isWcSeason && (
+                <label className="wc-ranking-search">
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <circle cx="8.5" cy="8.5" r="5.5" />
+                    <path d="m13 13 4 4" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Buscar jugador o selección"
+                    aria-label="Buscar en el ranking del Mundial"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      aria-label="Limpiar búsqueda"
+                    >
+                      ×
+                    </button>
+                  )}
+                </label>
+              )}
             </div>
 
             {!isWcSeason && (

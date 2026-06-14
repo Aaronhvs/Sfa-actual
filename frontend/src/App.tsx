@@ -9,10 +9,12 @@ import MundialPage from './pages/MundialPage'
 import MundialMatchPage from './pages/MundialMatchPage'
 import LegalPage from './pages/LegalPage'
 import Footer from './components/layout/Footer'
+import SeoController from './components/shared/SeoController'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <SeoController />
       <Navbar />
       <main className="main-content">
         <Routes>

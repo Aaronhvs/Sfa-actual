@@ -232,9 +232,19 @@ export default function MundialPage() {
               <span aria-hidden="true">←</span>
               Volver
             </button>
-            <span className="wm-hero__eyebrow">SFA · Centro del torneo</span>
+            <span className="wm-hero__eyebrow">Stats Football Award · Edición Mundial</span>
             <h1><span>Mundial</span> <strong>2026</strong></h1>
-            <p>Partidos, clasificación y camino hacia la final.</p>
+            <p className="wm-hero__description">
+              Sigue los partidos, la clasificación y el camino hacia la final.
+              SFA mide qué jugadores generan mayor impacto real durante el torneo.
+            </p>
+            <div className="wm-hero__actions">
+              <Link to="/ranking" className="wm-hero__ranking-link">
+                Ver ranking de jugadores
+                <span aria-hidden="true">→</span>
+              </Link>
+              <span>Ranking independiente · Todos comienzan en cero</span>
+            </div>
           </div>
           <div className="wm-hero__summary">
             <span>{fixtures.length}</span>
