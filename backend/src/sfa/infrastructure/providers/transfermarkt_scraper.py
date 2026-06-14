@@ -66,22 +66,50 @@ class TransfermarktScraper:
         )
 
     async def search_player(self, name: str, team_name: str) -> TmSearchResult | None:
-        encoded = urllib.parse.quote(name)
-        url = f"{_TM_BASE}/schnellsuche/ergebnis/schnellsuche?query={encoded}"
-        html = await self._get_html(url)
-        if not html:
-            return None
-
         team_name_lower = team_name.lower()
         team_parts = [part for part in team_name_lower.split() if len(part) > 2]
-        for match in _PROFILE_HREF_PATTERN.finditer(html):
-            slug = match.group(1)
-            tm_id = int(match.group(2))
-            start = max(0, match.start() - 300)
-            end = min(len(html), match.end() + 300)
-            context = html[start:end].lower()
-            if team_name_lower in context or any(part in context for part in team_parts):
-                return TmSearchResult(tm_id=tm_id, name=name, team_name=team_name, slug=slug)
+        name_parts = name.split()
+        variants = [name]
+        if len(name_parts) == 2:
+            variants.append(f"{name_parts[1]} {name_parts[0]}")
+
+        for query_name in dict.fromkeys(variants):
+            encoded = urllib.parse.quote(query_name)
+            url = f"{_TM_BASE}/schnellsuche/ergebnis/schnellsuche?query={encoded}"
+            html = await self._get_html(url)
+            if not html:
+                continue
+
+            candidates: dict[int, str] = {}
+            for match in _PROFILE_HREF_PATTERN.finditer(html):
+                slug = match.group(1)
+                tm_id = int(match.group(2))
+                candidates[tm_id] = slug
+                start = max(0, match.start() - 300)
+                end = min(len(html), match.end() + 300)
+                context = html[start:end].lower()
+                if team_name_lower in context or any(part in context for part in team_parts):
+                    return TmSearchResult(
+                        tm_id=tm_id,
+                        name=name,
+                        team_name=team_name,
+                        slug=slug,
+                    )
+
+            if len(candidates) == 1:
+                tm_id, slug = next(iter(candidates.items()))
+                logger.info(
+                    "[TransfermarktScraper] Unique name fallback tm_id=%s for %s (%s)",
+                    tm_id,
+                    name,
+                    team_name,
+                )
+                return TmSearchResult(
+                    tm_id=tm_id,
+                    name=name,
+                    team_name=team_name,
+                    slug=slug,
+                )
 
         logger.info("[TransfermarktScraper] No match for %s (%s)", name, team_name)
         return None

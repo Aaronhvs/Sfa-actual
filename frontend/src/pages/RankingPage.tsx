@@ -195,6 +195,7 @@ export default function RankingPage() {
           <WorldCupPageHeader totalPlayers={totalPlayers} />
           {seasonItems.length > 0 && (
             <div className="rp-tournament-season-bar">
+              <WcLiveChip />
               <SeasonDropdown
                 items={seasonItems}
                 value={season}

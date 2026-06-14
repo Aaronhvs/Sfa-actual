@@ -43,3 +43,14 @@ Thumbs.db
 
 # Legacy
 _archive/
+
+# Logs
+*.log
+
+# Database backups
+*.sql
+*.dump
+
+# Frontend (if building from repo root)
+frontend/node_modules/
+frontend/dist/

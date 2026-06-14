@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     API_FOOTBALL_KEY: str = ""
     API_FOOTBALL_BASE_URL: str = "https://v3.football.api-sports.io"
 
+    # Admin API key — empty string disables the check (dev only)
+    # In production, must be set or all /admin requests are blocked
+    ADMIN_API_KEY: str = ""
+
+    # CORS — comma-separated origins allowed to call the API
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

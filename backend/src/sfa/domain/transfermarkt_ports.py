@@ -77,7 +77,11 @@ class PlayerTmIdRepositoryPort(Protocol):
 
 @runtime_checkable
 class EnrichPositionRepositoryPort(Protocol):
-    async def get_players_without_tm_source(self, limit: int) -> list[PlayerForEnrichDTO]: ...
+    async def get_players_without_tm_source(
+        self,
+        limit: int,
+        season: str | None = None,
+    ) -> list[PlayerForEnrichDTO]: ...
 
     async def update_player_position(
         self, player_id: int, position: Position, source: str,

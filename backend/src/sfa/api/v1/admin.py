@@ -16,6 +16,7 @@ from sfa.core.dependencies import (
     get_fix_player_positions_use_case,
     get_ingestion_status_use_case,
     get_reingest_player_use_case,
+    require_admin_key,
 )
 from sfa.tasks.enrichment_tasks import (
     backfill_fixture_stats_task,
@@ -25,7 +26,7 @@ from sfa.tasks.enrichment_tasks import (
 )
 from sfa.tasks.ingestion_tasks import ingest_all_competitions_task, ingest_competition_task
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_key)])
 
 CURRENT_SEASON = 2024
 CURRENT_SEASON_STR = "2024"
@@ -167,7 +168,7 @@ async def trigger_enrich_player_positions(
             "task_id": None,
         }
 
-    task = enrich_player_positions_task.delay(requested_batch_size)
+    task = enrich_player_positions_task.delay(requested_batch_size, season)
     return {
         "status": "queued",
         "dry_run": False,

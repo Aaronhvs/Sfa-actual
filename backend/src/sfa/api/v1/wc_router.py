@@ -1,115 +1,168 @@
-import json
-from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
-
-import redis.asyncio as aioredis
+from fastapi import APIRouter, Depends, HTTPException
 
 from sfa.api.v1.schemas.wc_schemas import (
+    WcFixtureDetailResponseSchema,
     WcFixtureSchema,
     WcFixturesResponseSchema,
+    WcLineupPlayerSchema,
     WcLiveResponseSchema,
+    WcStandingSchema,
+    WcStandingsResponseSchema,
+    WcStatisticSchema,
     WcTeamSchema,
+    WcTeamLineupSchema,
+    WcVenueSchema,
 )
-from sfa.infrastructure.database import get_db
-from sfa.infrastructure.models.competitions.models import Competition
-from sfa.infrastructure.models.fixtures.models import Fixture
-from sfa.infrastructure.models.teams.models import Team
-from sfa.infrastructure.redis_client import get_redis
+from sfa.application.use_cases.get_world_cup import (
+    GetWorldCupFixtureDetailUseCase,
+    GetWorldCupFixturesUseCase,
+    GetWorldCupLiveUseCase,
+    GetWorldCupStandingsUseCase,
+    LIVE_STATUSES,
+)
+from sfa.core.dependencies import (
+    get_world_cup_fixture_detail_use_case,
+    get_world_cup_fixtures_use_case,
+    get_world_cup_live_use_case,
+    get_world_cup_standings_use_case,
+)
+from sfa.domain.world_cup_ports import (
+    WorldCupFixtureDTO,
+    WorldCupStandingDTO,
+    WorldCupTeamLineupDTO,
+)
 
 router = APIRouter()
 
-_CACHE_FIXTURES = "wc:fixtures:2026"
-_CACHE_LIVE = "wc:live:2026"
-_TTL_FIXTURES = 900   # 15 min — schedule rarely changes
-_TTL_LIVE = 60        # 1 min — live status needs freshness
-_LIVE_WINDOW_MINUTES = 130  # 90 + 40 buffer for extra time / delays
-_WC_SEASON = "2026"
+
+def _team_schema(external_id: int, name: str) -> WcTeamSchema:
+    return WcTeamSchema(id=external_id, external_id=external_id, name=name)
 
 
-def _is_live(played_at: datetime) -> bool:
-    now = datetime.now(timezone.utc)
-    end = played_at + timedelta(minutes=_LIVE_WINDOW_MINUTES)
-    return played_at <= now <= end
-
-
-async def _fetch_wc_fixtures(db: AsyncSession) -> list[WcFixtureSchema]:
-    HomeTeam = aliased(Team)
-    AwayTeam = aliased(Team)
-
-    stmt = (
-        select(
-            Fixture.id,
-            Fixture.external_id,
-            Fixture.stage,
-            Fixture.matchday,
-            Fixture.played_at,
-            HomeTeam.id.label("home_id"),
-            HomeTeam.name.label("home_name"),
-            HomeTeam.external_id.label("home_ext_id"),
-            AwayTeam.id.label("away_id"),
-            AwayTeam.name.label("away_name"),
-            AwayTeam.external_id.label("away_ext_id"),
-        )
-        .join(Competition, Competition.id == Fixture.competition_id)
-        .join(HomeTeam, HomeTeam.id == Fixture.home_team_id)
-        .join(AwayTeam, AwayTeam.id == Fixture.away_team_id)
-        .where(
-            Competition.participant_kind == "national_team",
-            Fixture.season == _WC_SEASON,
-        )
-        .order_by(Fixture.played_at, Fixture.id)
+def _fixture_schema(fixture: WorldCupFixtureDTO) -> WcFixtureSchema:
+    return WcFixtureSchema(
+        id=fixture.external_id,
+        external_id=fixture.external_id,
+        stage=fixture.stage,
+        matchday=fixture.matchday,
+        played_at=fixture.played_at,
+        is_live=fixture.status in LIVE_STATUSES,
+        status=fixture.status,
+        status_label=fixture.status_label,
+        elapsed=fixture.elapsed,
+        home_goals=fixture.home_goals,
+        away_goals=fixture.away_goals,
+        home_team=_team_schema(
+            fixture.home_team.external_id,
+            fixture.home_team.name,
+        ),
+        away_team=_team_schema(
+            fixture.away_team.external_id,
+            fixture.away_team.name,
+        ),
     )
 
-    rows = (await db.execute(stmt)).all()
 
-    return [
-        WcFixtureSchema(
-            id=r.id,
-            external_id=r.external_id,
-            stage=r.stage,
-            matchday=r.matchday,
-            played_at=r.played_at,
-            is_live=_is_live(r.played_at),
-            home_team=WcTeamSchema(id=r.home_id, name=r.home_name, external_id=r.home_ext_id),
-            away_team=WcTeamSchema(id=r.away_id, name=r.away_name, external_id=r.away_ext_id),
-        )
-        for r in rows
-    ]
+def _standing_schema(standing: WorldCupStandingDTO) -> WcStandingSchema:
+    return WcStandingSchema(
+        group=standing.group,
+        position=standing.position,
+        team=_team_schema(standing.team.external_id, standing.team.name),
+        played=standing.played,
+        won=standing.won,
+        drawn=standing.drawn,
+        lost=standing.lost,
+        goals_for=standing.goals_for,
+        goals_against=standing.goals_against,
+        goal_difference=standing.goal_difference,
+        points=standing.points,
+        form=standing.form,
+    )
 
 
-@router.get("/wc/fixtures", response_model=WcFixturesResponseSchema, tags=["mundial"])
+def _lineup_schema(lineup: WorldCupTeamLineupDTO) -> WcTeamLineupSchema:
+    return WcTeamLineupSchema(
+        team=_team_schema(lineup.team.external_id, lineup.team.name),
+        formation=lineup.formation,
+        coach_name=lineup.coach_name,
+        coach_photo=lineup.coach_photo,
+        start_xi=[
+            WcLineupPlayerSchema(**player.__dict__) for player in lineup.start_xi
+        ],
+        substitutes=[
+            WcLineupPlayerSchema(**player.__dict__)
+            for player in lineup.substitutes
+        ],
+    )
+
+
+@router.get("/wc/fixtures", response_model=WcFixturesResponseSchema)
 async def get_wc_fixtures(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    use_case: Annotated[
+        GetWorldCupFixturesUseCase,
+        Depends(get_world_cup_fixtures_use_case),
+    ],
 ) -> WcFixturesResponseSchema:
-    cached = await redis.get(_CACHE_FIXTURES)
-    if cached:
-        data = json.loads(cached)
-        return WcFixturesResponseSchema(**data)
-
-    fixtures = await _fetch_wc_fixtures(db)
-    response = WcFixturesResponseSchema(fixtures=fixtures, season=_WC_SEASON)
-    await redis.setex(_CACHE_FIXTURES, _TTL_FIXTURES, response.model_dump_json())
-    return response
+    result = await use_case.execute()
+    return WcFixturesResponseSchema(
+        season=result.season,
+        fixtures=[_fixture_schema(fixture) for fixture in result.fixtures],
+    )
 
 
-@router.get("/wc/live", response_model=WcLiveResponseSchema, tags=["mundial"])
+@router.get("/wc/live", response_model=WcLiveResponseSchema)
 async def get_wc_live(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    use_case: Annotated[
+        GetWorldCupLiveUseCase,
+        Depends(get_world_cup_live_use_case),
+    ],
 ) -> WcLiveResponseSchema:
-    cached = await redis.get(_CACHE_LIVE)
-    if cached:
-        data = json.loads(cached)
-        return WcLiveResponseSchema(**data)
+    result = await use_case.execute()
+    return WcLiveResponseSchema(
+        live=[_fixture_schema(fixture) for fixture in result.live],
+        has_live=result.has_live,
+    )
 
-    fixtures = await _fetch_wc_fixtures(db)
-    live = [f for f in fixtures if f.is_live]
-    response = WcLiveResponseSchema(live=live, has_live=len(live) > 0)
-    await redis.setex(_CACHE_LIVE, _TTL_LIVE, response.model_dump_json())
-    return response
+
+@router.get(
+    "/wc/fixtures/{fixture_id}",
+    response_model=WcFixtureDetailResponseSchema,
+)
+async def get_wc_fixture_detail(
+    fixture_id: int,
+    use_case: Annotated[
+        GetWorldCupFixtureDetailUseCase,
+        Depends(get_world_cup_fixture_detail_use_case),
+    ],
+) -> WcFixtureDetailResponseSchema:
+    try:
+        detail = await use_case.execute(fixture_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return WcFixtureDetailResponseSchema(
+        fixture=_fixture_schema(detail.fixture),
+        venue=WcVenueSchema(**detail.venue.__dict__),
+        referee=detail.referee,
+        lineups=[_lineup_schema(lineup) for lineup in detail.lineups],
+        statistics=[
+            WcStatisticSchema(**statistic.__dict__)
+            for statistic in detail.statistics
+        ],
+    )
+
+
+@router.get("/wc/standings", response_model=WcStandingsResponseSchema)
+async def get_wc_standings(
+    use_case: Annotated[
+        GetWorldCupStandingsUseCase,
+        Depends(get_world_cup_standings_use_case),
+    ],
+) -> WcStandingsResponseSchema:
+    result = await use_case.execute()
+    return WcStandingsResponseSchema(
+        season=result.season,
+        standings=[_standing_schema(standing) for standing in result.standings],
+    )

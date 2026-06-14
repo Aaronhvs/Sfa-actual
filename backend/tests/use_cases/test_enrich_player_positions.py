@@ -48,8 +48,14 @@ class FakeEnrichPositionRepo(EnrichPositionRepositoryPort):
     def __init__(self, players: list[PlayerForEnrichDTO]) -> None:
         self._players = players
         self.updates: list[tuple[int, Position, str]] = []
+        self.requested_season: str | None = None
 
-    async def get_players_without_tm_source(self, limit: int) -> list[PlayerForEnrichDTO]:
+    async def get_players_without_tm_source(
+        self,
+        limit: int,
+        season: str | None = None,
+    ) -> list[PlayerForEnrichDTO]:
+        self.requested_season = season
         return self._players[:limit]
 
     async def update_player_position(
@@ -200,3 +206,17 @@ class TestEnrichPlayerPositionsUseCase:
         result = await use_case.execute(batch_size=3)
 
         assert result.total_processed == 3
+
+    @pytest.mark.anyio
+    async def test_passes_season_filter_to_repository(self):
+        enrich_repo = FakeEnrichPositionRepo([])
+        use_case = EnrichPlayerPositionsUseCase(
+            provider=FakeTransfermarktProvider(),
+            tm_id_repo=FakePlayerTmIdRepo(),
+            enrich_repo=enrich_repo,
+            rate_limit_seconds=0.0,
+        )
+
+        await use_case.execute(batch_size=500, season="2026")
+
+        assert enrich_repo.requested_season == "2026"

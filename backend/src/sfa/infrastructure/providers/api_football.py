@@ -12,6 +12,16 @@ from sfa.domain.ingestion_ports import (
     PlayerStatsRawDTO,
     StandingRawDTO,
 )
+from sfa.domain.world_cup_ports import (
+    WorldCupFixtureDetailDTO,
+    WorldCupFixtureDTO,
+    WorldCupLineupPlayerDTO,
+    WorldCupStandingDTO,
+    WorldCupStatisticDTO,
+    WorldCupTeamDTO,
+    WorldCupTeamLineupDTO,
+    WorldCupVenueDTO,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +123,272 @@ class APIFootballProvider:
                 )
             )
         return result
+
+    async def fetch_world_cup_fixtures(
+        self,
+        league_id: int,
+        season: int,
+    ) -> list[WorldCupFixtureDTO]:
+        data = await self._get("fixtures", {"league": league_id, "season": season})
+        fixtures: list[WorldCupFixtureDTO] = []
+
+        for item in data.get("response", []):
+            try:
+                fixture = item["fixture"]
+                league = item["league"]
+                teams = item["teams"]
+                goals = item["goals"]
+                round_name = league.get("round") or "Mundial 2026"
+                fixtures.append(
+                    WorldCupFixtureDTO(
+                        external_id=fixture["id"],
+                        stage=round_name,
+                        matchday=self._world_cup_matchday(round_name),
+                        played_at=datetime.fromisoformat(fixture["date"]),
+                        status=fixture["status"].get("short") or "NS",
+                        status_label=fixture["status"].get("long") or "Programado",
+                        elapsed=fixture["status"].get("elapsed"),
+                        home_team=WorldCupTeamDTO(
+                            external_id=teams["home"]["id"],
+                            name=teams["home"]["name"],
+                        ),
+                        away_team=WorldCupTeamDTO(
+                            external_id=teams["away"]["id"],
+                            name=teams["away"]["name"],
+                        ),
+                        home_goals=goals.get("home"),
+                        away_goals=goals.get("away"),
+                    )
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                logger.warning(
+                    "[APIFootballProvider] Skipping malformed World Cup fixture: %s",
+                    exc,
+                )
+
+        return sorted(fixtures, key=lambda item: item.played_at)
+
+    async def fetch_world_cup_standings(
+        self,
+        league_id: int,
+        season: int,
+    ) -> list[WorldCupStandingDTO]:
+        data = await self._get("standings", {"league": league_id, "season": season})
+        try:
+            groups = data["response"][0]["league"]["standings"]
+        except (IndexError, KeyError, TypeError):
+            logger.warning(
+                "[APIFootballProvider] No World Cup standings for league=%d season=%d",
+                league_id,
+                season,
+            )
+            return []
+
+        standings: list[WorldCupStandingDTO] = []
+        for group in groups:
+            for entry in group:
+                group_name = entry.get("group") or ""
+                if group_name == "Group Stage":
+                    continue
+                try:
+                    all_stats = entry.get("all") or {}
+                    goals = all_stats.get("goals") or {}
+                    standings.append(
+                        WorldCupStandingDTO(
+                            group=group_name,
+                            position=entry["rank"],
+                            team=WorldCupTeamDTO(
+                                external_id=entry["team"]["id"],
+                                name=entry["team"]["name"],
+                            ),
+                            played=all_stats.get("played") or 0,
+                            won=all_stats.get("win") or 0,
+                            drawn=all_stats.get("draw") or 0,
+                            lost=all_stats.get("lose") or 0,
+                            goals_for=goals.get("for") or 0,
+                            goals_against=goals.get("against") or 0,
+                            goal_difference=entry.get("goalsDiff") or 0,
+                            points=entry.get("points") or 0,
+                            form=entry.get("form"),
+                        )
+                    )
+                except (KeyError, TypeError, ValueError) as exc:
+                    logger.warning(
+                        "[APIFootballProvider] Skipping malformed World Cup standing: %s",
+                        exc,
+                    )
+
+        return standings
+
+    async def fetch_world_cup_fixture_detail(
+        self,
+        fixture_id: int,
+    ) -> WorldCupFixtureDetailDTO | None:
+        fixture_data, lineup_data, statistics_data = await asyncio.gather(
+            self._get("fixtures", {"id": fixture_id}),
+            self._get("fixtures/lineups", {"fixture": fixture_id}),
+            self._get("fixtures/statistics", {"fixture": fixture_id}),
+        )
+        fixture_items = fixture_data.get("response", [])
+        if not fixture_items:
+            return None
+
+        item = fixture_items[0]
+        fixture = item.get("fixture") or {}
+        league = item.get("league") or {}
+        teams = item.get("teams") or {}
+        goals = item.get("goals") or {}
+        status = fixture.get("status") or {}
+        venue = fixture.get("venue") or {}
+        round_name = league.get("round") or "Mundial 2026"
+
+        home_team = self._world_cup_team(teams.get("home"))
+        away_team = self._world_cup_team(teams.get("away"))
+        if home_team is None or away_team is None:
+            logger.warning(
+                "[APIFootballProvider] Missing teams for fixture=%d",
+                fixture_id,
+            )
+            return None
+
+        fixture_dto = WorldCupFixtureDTO(
+            external_id=fixture["id"],
+            stage=round_name,
+            matchday=self._world_cup_matchday(round_name),
+            played_at=datetime.fromisoformat(fixture["date"]),
+            status=status.get("short") or "NS",
+            status_label=status.get("long") or "Programado",
+            elapsed=status.get("elapsed"),
+            home_team=home_team,
+            away_team=away_team,
+            home_goals=goals.get("home"),
+            away_goals=goals.get("away"),
+        )
+
+        lineups = [
+            lineup
+            for raw_lineup in lineup_data.get("response", [])
+            if (lineup := self._world_cup_lineup(raw_lineup)) is not None
+        ]
+        statistics = self._world_cup_statistics(
+            statistics_data.get("response", []),
+            home_team.external_id,
+            away_team.external_id,
+        )
+        return WorldCupFixtureDetailDTO(
+            fixture=fixture_dto,
+            venue=WorldCupVenueDTO(
+                name=venue.get("name"),
+                city=venue.get("city"),
+            ),
+            referee=fixture.get("referee"),
+            lineups=lineups,
+            statistics=statistics,
+        )
+
+    @staticmethod
+    def _world_cup_team(data: dict | None) -> WorldCupTeamDTO | None:
+        if not data or not isinstance(data.get("id"), int):
+            return None
+        return WorldCupTeamDTO(
+            external_id=data["id"],
+            name=data.get("name") or "",
+        )
+
+    @staticmethod
+    def _world_cup_lineup_player(data: dict) -> WorldCupLineupPlayerDTO:
+        player = data.get("player") or {}
+        return WorldCupLineupPlayerDTO(
+            external_id=player.get("id"),
+            name=player.get("name") or "",
+            number=player.get("number"),
+            position=player.get("pos"),
+            grid=player.get("grid"),
+        )
+
+    def _world_cup_lineup(
+        self,
+        data: dict,
+    ) -> WorldCupTeamLineupDTO | None:
+        team = self._world_cup_team(data.get("team"))
+        if team is None:
+            return None
+        coach = data.get("coach") or {}
+        return WorldCupTeamLineupDTO(
+            team=team,
+            formation=data.get("formation"),
+            coach_name=coach.get("name"),
+            coach_photo=coach.get("photo"),
+            start_xi=[
+                self._world_cup_lineup_player(player)
+                for player in data.get("startXI", [])
+            ],
+            substitutes=[
+                self._world_cup_lineup_player(player)
+                for player in data.get("substitutes", [])
+            ],
+        )
+
+    @classmethod
+    def _world_cup_statistics(
+        cls,
+        team_statistics: list[dict],
+        home_team_id: int,
+        away_team_id: int,
+    ) -> list[WorldCupStatisticDTO]:
+        values_by_team: dict[int, dict[str, object]] = {}
+        labels: list[str] = []
+        for entry in team_statistics:
+            team_id = (entry.get("team") or {}).get("id")
+            if not isinstance(team_id, int):
+                continue
+            values: dict[str, object] = {}
+            for statistic in entry.get("statistics", []):
+                label = statistic.get("type")
+                if not label:
+                    continue
+                if label not in labels:
+                    labels.append(label)
+                values[label] = statistic.get("value")
+            values_by_team[team_id] = values
+
+        home_values = values_by_team.get(home_team_id, {})
+        away_values = values_by_team.get(away_team_id, {})
+        return [
+            WorldCupStatisticDTO(
+                label=label,
+                home_value=cls._stat_display(home_values.get(label)),
+                away_value=cls._stat_display(away_values.get(label)),
+                home_numeric=cls._stat_numeric(home_values.get(label)),
+                away_numeric=cls._stat_numeric(away_values.get(label)),
+            )
+            for label in labels
+        ]
+
+    @staticmethod
+    def _stat_display(value: object) -> str | None:
+        if value is None:
+            return None
+        return str(value)
+
+    @staticmethod
+    def _stat_numeric(value: object) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(str(value).rstrip("%"))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _world_cup_matchday(round_name: str) -> int | None:
+        marker = "Group Stage - "
+        if not round_name.startswith(marker):
+            return None
+        try:
+            return int(round_name.removeprefix(marker))
+        except ValueError:
+            return None
 
     async def fetch_team_fixtures(
         self, team_id: int, league_id: int, season: int,

@@ -57,23 +57,20 @@ export default function ShowcaseCard({ player, season, isWorldCup = false }: Pro
 
       <div className="psc-content">
         <div className="psc-name">{player.name}</div>
-        {isWorldCup && (
-          <div className="psc-national-team">{player.team}</div>
-        )}
         <div className="psc-divider" />
         <div className="psc-stats">
           <div className="psc-stat-main">
             <div className="psc-stat-val">{formatPts(player.sfa_pts)}</div>
             <div className="psc-stat-lbl">PTS SFA</div>
           </div>
-          <div className="psc-stats-secondary">
-            <div className="psc-stat-side">
+          <div className="psc-stats-secondary psc-stats-secondary--ga">
+            <div className="psc-stat-compact">
               <div className="psc-stat-side-val">{player.goals}</div>
-              <div className="psc-stat-lbl">GOLES</div>
+              <div className="psc-stat-lbl">G</div>
             </div>
-            <div className="psc-stat-side">
+            <div className="psc-stat-compact">
               <div className="psc-stat-side-val">{player.assists}</div>
-              <div className="psc-stat-lbl">ASIST.</div>
+              <div className="psc-stat-lbl">A</div>
             </div>
           </div>
         </div>

@@ -166,6 +166,11 @@ export interface WcFixture {
   matchday: number | null
   played_at: string
   is_live: boolean
+  status: string
+  status_label: string
+  elapsed: number | null
+  home_goals: number | null
+  away_goals: number | null
   home_team: WcTeam
   away_team: WcTeam
 }
@@ -178,6 +183,66 @@ export interface WcFixturesResponse {
 export interface WcLiveResponse {
   live: WcFixture[]
   has_live: boolean
+}
+
+export interface WcStanding {
+  group: string
+  position: number
+  team: WcTeam
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  goal_difference: number
+  points: number
+  form: string | null
+}
+
+export interface WcStandingsResponse {
+  standings: WcStanding[]
+  season: string
+}
+
+export interface WcVenue {
+  name: string | null
+  city: string | null
+}
+
+export interface WcLineupPlayer {
+  external_id: number | null
+  name: string
+  number: number | null
+  position: string | null
+  grid: string | null
+  player_id: number | null
+  sfa_points: number | null
+}
+
+export interface WcTeamLineup {
+  team: WcTeam
+  formation: string | null
+  coach_name: string | null
+  coach_photo: string | null
+  start_xi: WcLineupPlayer[]
+  substitutes: WcLineupPlayer[]
+}
+
+export interface WcStatistic {
+  label: string
+  home_value: string | null
+  away_value: string | null
+  home_numeric: number | null
+  away_numeric: number | null
+}
+
+export interface WcFixtureDetailResponse {
+  fixture: WcFixture
+  venue: WcVenue
+  referee: string | null
+  lineups: WcTeamLineup[]
+  statistics: WcStatistic[]
 }
 
 export interface PlayerCompetitionAchievement {

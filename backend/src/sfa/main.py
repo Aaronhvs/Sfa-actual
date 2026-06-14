@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from sfa.api.v1.achievements_router import router as achievements_router
@@ -66,11 +67,20 @@ app = FastAPI(
     title="SFA — Stadistic Football Award API",
     description="API REST para consultar rankings, jugadores, eventos y competiciones del sistema SFA.",
     version=settings.APP_VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
     openapi_tags=tags_metadata,
     lifespan=lifespan,
+)
+
+_cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
 )
 
 app.include_router(health_router, prefix="/api/v1", tags=["health"])

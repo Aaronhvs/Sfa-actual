@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Header, HTTPException, status
+import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.infrastructure.database import get_db
@@ -21,6 +22,7 @@ from sfa.infrastructure.repositories import (
     StandingRepository,
     SystemRepository,
     TeamStrengthRepository,
+    WorldCupRepository,
 )
 
 # ─── Repositorios ────────────────────────────────────────────────────
@@ -124,6 +126,12 @@ from sfa.application.use_cases.get_ranking import GetRankingUseCase
 from sfa.application.use_cases.get_seasons import GetSeasonsUseCase
 from sfa.application.use_cases.get_standings import GetStandingsUseCase
 from sfa.application.use_cases.get_status import GetStatusUseCase
+from sfa.application.use_cases.get_world_cup import (
+    GetWorldCupFixtureDetailUseCase,
+    GetWorldCupFixturesUseCase,
+    GetWorldCupLiveUseCase,
+    GetWorldCupStandingsUseCase,
+)
 from sfa.application.use_cases.list_competitions import ListCompetitionsUseCase
 from sfa.application.use_cases.manage_scoring_rules_version import (
     ActivateScoringRulesVersionUseCase,
@@ -202,6 +210,45 @@ async def get_status_use_case(
     system_repo: Annotated[SystemRepository, Depends(get_system_repository)],
 ) -> GetStatusUseCase:
     return GetStatusUseCase(system_repo)
+
+
+async def get_world_cup_repository(
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> WorldCupRepository:
+    from sfa.core.config import get_settings
+    from sfa.infrastructure.providers.api_football import APIFootballProvider
+
+    settings = get_settings()
+    provider = APIFootballProvider(
+        settings.API_FOOTBALL_KEY,
+        settings.API_FOOTBALL_BASE_URL,
+    )
+    return WorldCupRepository(provider=provider, redis=redis, session=db)
+
+
+async def get_world_cup_fixtures_use_case(
+    repository: Annotated[WorldCupRepository, Depends(get_world_cup_repository)],
+) -> GetWorldCupFixturesUseCase:
+    return GetWorldCupFixturesUseCase(repository)
+
+
+async def get_world_cup_fixture_detail_use_case(
+    repository: Annotated[WorldCupRepository, Depends(get_world_cup_repository)],
+) -> GetWorldCupFixtureDetailUseCase:
+    return GetWorldCupFixtureDetailUseCase(repository)
+
+
+async def get_world_cup_live_use_case(
+    repository: Annotated[WorldCupRepository, Depends(get_world_cup_repository)],
+) -> GetWorldCupLiveUseCase:
+    return GetWorldCupLiveUseCase(repository)
+
+
+async def get_world_cup_standings_use_case(
+    repository: Annotated[WorldCupRepository, Depends(get_world_cup_repository)],
+) -> GetWorldCupStandingsUseCase:
+    return GetWorldCupStandingsUseCase(repository)
 
 
 async def get_ingestion_status_use_case(
@@ -400,4 +447,32 @@ async def get_reingest_player_use_case(
     return ReingestPlayerUseCase(provider, ingestion_repo, rules_version_repo, scoring_uc)
 
 
-__all__ = ["get_db", "get_redis"]
+async def require_admin_key(
+    x_admin_key: Annotated[str | None, Header()] = None,
+) -> None:
+    """
+    Protects admin endpoints with a static API key.
+    - DEBUG=True + no key configured → allow (local dev, no .env config needed)
+    - DEBUG=False + no key configured → block (production fail-safe)
+    - Key configured → require X-Admin-Key header to match exactly
+    """
+    from sfa.core.config import get_settings
+    settings = get_settings()
+    configured_key = settings.ADMIN_API_KEY
+
+    if not configured_key:
+        if settings.DEBUG:
+            return  # dev mode, no key set → open
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Admin API not available",
+        )
+
+    if x_admin_key != configured_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-Admin-Key header",
+        )
+
+
+__all__ = ["get_db", "get_redis", "require_admin_key"]

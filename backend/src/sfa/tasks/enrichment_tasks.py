@@ -35,9 +35,13 @@ def recalculate_task(self, competition_id: int, season: str):
 
 
 @celery_app.task(name="enrich_player_positions_task", bind=True, max_retries=0)
-def enrich_player_positions_task(self, batch_size: int = 500) -> dict:
+def enrich_player_positions_task(
+    self,
+    batch_size: int = 500,
+    season: str | None = None,
+) -> dict:
     """Enrich player positions from Transfermarkt. Rate-limited to 1 request per second."""
-    return asyncio.run(_run_enrich_player_positions(batch_size))
+    return asyncio.run(_run_enrich_player_positions(batch_size, season))
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +87,10 @@ async def _run_recalculate_all(season: str) -> None:
         await _run_recalculate(league.id, season)
 
 
-async def _run_enrich_player_positions(batch_size: int) -> dict:
+async def _run_enrich_player_positions(
+    batch_size: int,
+    season: str | None = None,
+) -> dict:
     from sfa.application.use_cases.enrich_player_positions import EnrichPlayerPositionsUseCase
     from sfa.infrastructure.database import AsyncSessionLocal
     from sfa.infrastructure.providers.transfermarkt_scraper import TransfermarktScraper
@@ -96,7 +103,7 @@ async def _run_enrich_player_positions(batch_size: int) -> dict:
             tm_id_repo=PlayerTmIdRepository(session),
             enrich_repo=EnrichPositionRepository(session),
         )
-        result = await use_case.execute(batch_size=batch_size)
+        result = await use_case.execute(batch_size=batch_size, season=season)
         await session.commit()
         return {
             "total_processed": result.total_processed,

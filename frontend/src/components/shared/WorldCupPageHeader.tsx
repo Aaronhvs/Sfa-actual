@@ -12,7 +12,7 @@ export default function WorldCupPageHeader({ totalPlayers }: Props) {
         <div className="wc-page-header__copy">
           <span className="wc-page-header__eyebrow">SFA · Edición Global</span>
           <h1 className="wc-page-header__title">
-            <span className="wc-page-header__title-main">Mundial</span>
+            <span className="wc-page-header__title-main">Ranking Mundial</span>
             <span className="wc-page-header__title-year">2026</span>
           </h1>
           <p className="wc-page-header__subtitle">

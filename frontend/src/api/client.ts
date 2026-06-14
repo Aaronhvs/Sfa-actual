@@ -1,6 +1,6 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingResponse, SeasonsResponse, WcFixturesResponse, WcLiveResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse } from '../types'
 
-const BASE = '/api/v1'
+const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
 const TTL_MS = 60_000
 const _cache = new Map<string, { data: unknown; ts: number }>()
@@ -125,10 +125,12 @@ export async function fetchPlayerSeasonStats(
   }
 }
 
-export async function fetchWcFixtures(): Promise<WcFixturesResponse> {
+export async function fetchWcFixtures(fresh = false): Promise<WcFixturesResponse> {
   const key = 'wc:fixtures'
-  const cached = getCached<WcFixturesResponse>(key)
-  if (cached) return cached
+  if (!fresh) {
+    const cached = getCached<WcFixturesResponse>(key)
+    if (cached) return cached
+  }
   const data = await get<WcFixturesResponse>('/wc/fixtures')
   setCache(key, data)
   return data
@@ -136,6 +138,29 @@ export async function fetchWcFixtures(): Promise<WcFixturesResponse> {
 
 export async function fetchWcLive(): Promise<WcLiveResponse> {
   return get<WcLiveResponse>('/wc/live')
+}
+
+export async function fetchWcStandings(): Promise<WcStandingsResponse> {
+  const key = 'wc:standings'
+  const cached = getCached<WcStandingsResponse>(key)
+  if (cached) return cached
+  const data = await get<WcStandingsResponse>('/wc/standings')
+  setCache(key, data)
+  return data
+}
+
+export async function fetchWcFixtureDetail(
+  fixtureId: number,
+  fresh = false,
+): Promise<WcFixtureDetailResponse> {
+  const key = `wc:fixture-detail:${fixtureId}`
+  if (!fresh) {
+    const cached = getCached<WcFixtureDetailResponse>(key)
+    if (cached) return cached
+  }
+  const data = await get<WcFixtureDetailResponse>(`/wc/fixtures/${fixtureId}`)
+  setCache(key, data)
+  return data
 }
 
 export async function fetchPlayerAchievements(

@@ -1,4 +1,5 @@
 import type { PlayerDetail } from '../../types'
+import { worldCupTeamFlag, worldCupTeamNameFromString } from '../../utils/worldCupTeams'
 
 const POSITION_LABELS: Record<string, string> = {
   DEL: 'Delantero',
@@ -11,6 +12,7 @@ const POSITION_LABELS: Record<string, string> = {
 
 interface Props {
   player: PlayerDetail
+  isWorldCup?: boolean
 }
 
 function initials(name: string): string {
@@ -21,11 +23,12 @@ function formatPts(pts: number): string {
   return pts.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-export default function PlayerHeader({ player }: Props) {
+export default function PlayerHeader({ player, isWorldCup = false }: Props) {
   const posLabel = POSITION_LABELS[player.position] ?? player.position
+  const teamName = isWorldCup ? worldCupTeamNameFromString(player.team) : player.team
 
   return (
-    <div className="card player-header">
+    <div className={`card player-header${isWorldCup ? ' player-header--wc' : ''}`}>
       <div className="player-header__photo-wrap">
         {player.photo_url ? (
           <img
@@ -47,9 +50,13 @@ export default function PlayerHeader({ player }: Props) {
         </div>
         <div className="player-header__meta">
           <span className="pos-badge">{player.position}</span>
-          <span>{player.team}</span>
-          <span className="player-header__meta-sep">&middot;</span>
-          <span>{player.competition}</span>
+          {!isWorldCup && (
+            <>
+              <span>{player.team}</span>
+              <span className="player-header__meta-sep">&middot;</span>
+            </>
+          )}
+          <span>{isWorldCup ? 'Mundial' : player.competition}</span>
         </div>
         <div className="player-header__meta player-header__meta--sub">
           <span>{posLabel}</span>
@@ -62,6 +69,15 @@ export default function PlayerHeader({ player }: Props) {
           <span className="sfa-badge__label">SFA pts</span>
         </div>
       </div>
+
+      {isWorldCup && (
+        <div className="player-header__national-team" aria-label={`Selección: ${teamName}`}>
+          <span className="player-header__national-flag" aria-hidden="true">
+            {worldCupTeamFlag(player.team)}
+          </span>
+          <span className="player-header__national-name">{teamName}</span>
+        </div>
+      )}
     </div>
   )
 }

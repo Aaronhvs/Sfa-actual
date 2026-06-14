@@ -21,6 +21,6 @@ POST http://localhost:8000/api/v1/admin/players/enrich-positions?batch_size=500
 Content-Type: application/json
 
 {
-  "season": "2024",
+  "season": "2026",
   "dry_run": false
 }

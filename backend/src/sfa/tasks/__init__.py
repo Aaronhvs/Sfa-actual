@@ -11,6 +11,7 @@ from .enrichment_tasks import (
     recalculate_task,
 )
 from .ingestion_tasks import ingest_all_competitions_task, ingest_competition_task
+from .ingest_today_task import ingest_today_task
 from .reingest_player_task import reingest_player_task
 from .run_full_recalculation_task import run_full_recalculation_task
 
@@ -26,6 +27,7 @@ __all__ = [
     "run_full_recalculation_task",
     "ingest_competition_task",
     "ingest_all_competitions_task",
+    "ingest_today_task",
     "backfill_fixture_stats_task",
     "enrich_all_task",
     "enrich_player_positions_task",

@@ -1,6 +1,11 @@
 from sfa.domain.transfermarkt_ports import TM_POSITION_MAP
 from sfa.infrastructure.models.enums import Position
-from sfa.infrastructure.providers.transfermarkt_scraper import _POSITION_PATTERN
+import pytest
+
+from sfa.infrastructure.providers.transfermarkt_scraper import (
+    TransfermarktScraper,
+    _POSITION_PATTERN,
+)
 
 MOCK_PROFILE_CENTRAL_MF = """
 <html><body>
@@ -69,3 +74,58 @@ class TestTmPositionMap:
     def test_all_map_values_are_valid_position_enum(self):
         for key, value in TM_POSITION_MAP.items():
             assert isinstance(value, Position), f"Invalid Position for key {key!r}: {value!r}"
+
+
+class StubTransfermarktScraper(TransfermarktScraper):
+    def __init__(self, html: str | list[str]) -> None:
+        self._html = html if isinstance(html, list) else [html]
+        self.calls = 0
+
+    async def _get_html(self, url: str) -> str | None:
+        index = min(self.calls, len(self._html) - 1)
+        self.calls += 1
+        return self._html[index]
+
+
+class TestTransfermarktSearch:
+    @pytest.mark.anyio
+    async def test_unique_name_fallback_accepts_national_team_context(self):
+        html = """
+        <a href="/hwang-in-beom/profil/spieler/2901">Hwang In-beom</a>
+        <a href="/hwang-in-beom/profil/spieler/2901">Profile</a>
+        """
+
+        result = await StubTransfermarktScraper(html).search_player(
+            "Hwang In-beom",
+            "South Korea",
+        )
+
+        assert result is not None
+        assert result.tm_id == 2901
+
+    @pytest.mark.anyio
+    async def test_name_fallback_rejects_ambiguous_results(self):
+        html = """
+        <a href="/alex-silva/profil/spieler/100">Alex Silva</a>
+        <a href="/alex-silva/profil/spieler/200">Alex Silva</a>
+        """
+
+        result = await StubTransfermarktScraper(html).search_player(
+            "Alex Silva",
+            "Brazil",
+        )
+
+        assert result is None
+
+    @pytest.mark.anyio
+    async def test_retries_two_part_name_in_reverse_order(self):
+        scraper = StubTransfermarktScraper([
+            "<html></html>",
+            '<a href="/in-beom-hwang/profil/spieler/365394">In-beom Hwang</a>',
+        ])
+
+        result = await scraper.search_player("Hwang In-beom", "South Korea")
+
+        assert result is not None
+        assert result.tm_id == 365394
+        assert scraper.calls == 2

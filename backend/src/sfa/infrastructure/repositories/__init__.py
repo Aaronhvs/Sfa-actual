@@ -13,6 +13,7 @@ from .scoring_rules_version_repository import ScoringRulesVersionRepository
 from .season_repository import SeasonRepository
 from .sfa_score_repository import SFAScoreRepository
 from .standing_repository import StandingRepository
+from .world_cup_repository import WorldCupRepository
 from .system_repository import SystemRepository
 from .team_strength_repository import TeamStrengthRepository
 
@@ -32,6 +33,7 @@ __all__ = [
     "SeasonRepository",
     "SFAScoreRepository",
     "StandingRepository",
+    "WorldCupRepository",
     "SystemRepository",
     "TeamStrengthRepository",
 ]

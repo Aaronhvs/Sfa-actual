@@ -47,10 +47,13 @@ su contexto: rival, competición, momento y dificultad.
 
 ## Logo
 
-- Logo blanco: public/logo.png
+- Monograma oficial SFA: public/logo.png
 - Logo negro: public/logo-negro.png
 - Altura en navbar: 36-44px
 - Nunca reemplazar con texto
+- `public/logo.png` es la fuente canónica para interfaces sobre fondo oscuro
+- Mantener siempre la proporción original, el símbolo TM y el área transparente
+- No redibujar el monograma con tipografía ni aplicar recoloreados, deformaciones o recortes permanentes
 
 ---
 

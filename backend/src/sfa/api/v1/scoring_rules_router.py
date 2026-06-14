@@ -25,10 +25,11 @@ from sfa.core.dependencies import (
     get_activate_scoring_rules_version_use_case,
     get_create_scoring_rules_version_use_case,
     get_list_scoring_rules_versions_use_case,
+    require_admin_key,
 )
 from sfa.infrastructure.database import get_db
 
-router = APIRouter(prefix="/scoring", tags=["scoring"])
+router = APIRouter(prefix="/scoring", tags=["scoring"], dependencies=[Depends(require_admin_key)])
 
 
 @router.get("/rules-versions", response_model=list[ScoringRulesVersionResponseSchema])

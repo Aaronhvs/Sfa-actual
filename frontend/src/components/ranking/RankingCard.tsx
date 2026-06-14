@@ -19,7 +19,6 @@ function initials(name: string): string {
 }
 
 export default function RankingCard({ player, index = 0, season, isWorldCup = false }: Props) {
-  const goalContributions = player.goals + player.assists
   const animatedRank = useCountUp(player.rank, 620)
   const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
 
@@ -50,9 +49,6 @@ export default function RankingCard({ player, index = 0, season, isWorldCup = fa
         <div className="rc-name-row">
           <div className="rc-name">{player.name}</div>
         </div>
-        {isWorldCup && (
-          <div className="rc-national-team">{player.team}</div>
-        )}
         <div className="rc-divider" />
         <div className="rc-stats">
           <div className="rc-stat-main">
@@ -60,13 +56,13 @@ export default function RankingCard({ player, index = 0, season, isWorldCup = fa
             <div className="rc-stat-lbl">PTS SFA</div>
           </div>
           <div className="rc-stats-secondary">
-            <div>
-              <div className="rc-stat-side-val">{player.matches}</div>
-              <div className="rc-stat-lbl">PJ</div>
+            <div className="rc-stat-compact">
+              <div className="rc-stat-side-val">{player.goals}</div>
+              <div className="rc-stat-lbl">G</div>
             </div>
-            <div>
-              <div className="rc-stat-side-val">{goalContributions}</div>
-              <div className="rc-stat-lbl">G + A</div>
+            <div className="rc-stat-compact">
+              <div className="rc-stat-side-val">{player.assists}</div>
+              <div className="rc-stat-lbl">A</div>
             </div>
           </div>
         </div>

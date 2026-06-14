@@ -14,7 +14,15 @@ class EnrichPositionRepository(EnrichPositionRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_players_without_tm_source(self, limit: int) -> list[PlayerForEnrichDTO]:
+    async def get_players_without_tm_source(
+        self,
+        limit: int,
+        season: str | None = None,
+    ) -> list[PlayerForEnrichDTO]:
+        appearance_filters = [PlayerStats.team_id.is_not(None)]
+        if season is not None:
+            appearance_filters.append(PlayerStats.season == season)
+
         latest_team = (
             select(
                 PlayerStats.player_id,
@@ -24,7 +32,7 @@ class EnrichPositionRepository(EnrichPositionRepositoryPort):
                     order_by=PlayerStats.fixture_id.desc(),
                 ).label("rn"),
             )
-            .where(PlayerStats.team_id.is_not(None))
+            .where(*appearance_filters)
             .subquery()
         )
         stmt = (
@@ -40,6 +48,7 @@ class EnrichPositionRepository(EnrichPositionRepositoryPort):
             )
             .join(Team, latest_team.c.team_id == Team.id)
             .where(Player.position_source != "transfermarkt")
+            .order_by(Player.id)
             .limit(limit)
         )
         rows = (await self._session.execute(stmt)).mappings().all()

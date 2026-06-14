@@ -32,6 +32,12 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
     ) -> list[PlayerEventDTO]:
         home_alias = Team.__table__.alias("ht")
         away_alias = Team.__table__.alias("at")
+        active_version_subq = (
+            select(ScoringRulesVersion.id)
+            .where(ScoringRulesVersion.is_active.is_(True))
+            .limit(1)
+            .scalar_subquery()
+        )
 
         stmt = (
             select(
@@ -46,17 +52,24 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
                 PlayerEvent.event_type,
                 PlayerEvent.score_before,
                 PlayerEvent.score_diff,
-                PlayerEvent.m1,
-                PlayerEvent.m2,
-                PlayerEvent.m3,
-                PlayerEvent.m4,
-                PlayerEvent.mvisit,
-                PlayerEvent.pts,
+                func.coalesce(PlayerEventScore.m1, PlayerEvent.m1).label("m1"),
+                func.coalesce(PlayerEventScore.m2, PlayerEvent.m2).label("m2"),
+                func.coalesce(PlayerEventScore.m3, PlayerEvent.m3).label("m3"),
+                func.coalesce(PlayerEventScore.m4, PlayerEvent.m4).label("m4"),
+                func.coalesce(PlayerEventScore.mvisit, PlayerEvent.mvisit).label("mvisit"),
+                func.coalesce(PlayerEventScore.final_points, PlayerEvent.pts).label("pts"),
             )
             .join(Fixture, PlayerEvent.fixture_id == Fixture.id)
             .join(Competition, Fixture.competition_id == Competition.id)
             .join(home_alias, Fixture.home_team_id == home_alias.c.id)
             .join(away_alias, Fixture.away_team_id == away_alias.c.id)
+            .outerjoin(
+                PlayerEventScore,
+                and_(
+                    PlayerEventScore.event_id == PlayerEvent.id,
+                    PlayerEventScore.rules_version_id == active_version_subq,
+                ),
+            )
             .where(PlayerEvent.player_id == player_id)
             .order_by(Fixture.played_at.desc(), PlayerEvent.minute.asc())
         )

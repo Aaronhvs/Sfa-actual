@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, SeasonItem } from '../types'
 import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerFixtures, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
 import PlayerHeader from '../components/player/PlayerHeader'
@@ -13,9 +13,12 @@ import PerformanceChart from '../components/player/PerformanceChart'
 import CompetitionJourney from '../components/player/CompetitionJourney'
 
 export default function PlayerPage() {
+  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const seasonFromUrl = searchParams.get('season') ?? ''
+
+  useEffect(() => { window.scrollTo(0, 0) }, [id])
 
   const [player, setPlayer] = useState<PlayerDetail | null>(null)
   const [season, setSeason] = useState<string>('')
@@ -33,6 +36,17 @@ export default function PlayerPage() {
     const metadata = seasonItems.find((seasonItem) => seasonItem.season === item)
     return metadata ?? { season: item, is_latest: false }
   })
+
+  function goBackToRanking() {
+    const historyIndex = window.history.state?.idx
+    if (typeof historyIndex === 'number' && historyIndex > 0) {
+      navigate(-1)
+      return
+    }
+
+    const fallbackSeason = season || seasonFromUrl
+    navigate(fallbackSeason ? `/ranking?season=${fallbackSeason}` : '/ranking')
+  }
 
   useEffect(() => {
     fetchSeasons()
@@ -136,7 +150,10 @@ export default function PlayerPage() {
   if (error || !player) {
     return (
       <div className="page-container">
-        <Link to="/ranking" className="back-link">← Volver al ranking</Link>
+        <button type="button" className="back-link" onClick={goBackToRanking}>
+          <span aria-hidden="true">←</span>
+          Volver al ranking
+        </button>
         <div className="empty-state">{error ?? 'Jugador no encontrado.'}</div>
       </div>
     )
@@ -144,16 +161,12 @@ export default function PlayerPage() {
 
   return (
     <div className={`page-container${isWcSeason ? ' player-page--wc' : ''}`}>
-      <Link to="/ranking" className="back-link">← Volver al ranking</Link>
+      <button type="button" className="back-link" onClick={goBackToRanking}>
+        <span aria-hidden="true">←</span>
+        Volver al ranking
+      </button>
 
-      <PlayerHeader player={player} />
-
-      {isWcSeason && player.team && (
-        <div className="pp-national-badge">
-          <span className="pp-national-badge__label">Selección</span>
-          <span className="pp-national-badge__team">{player.team}</span>
-        </div>
-      )}
+      <PlayerHeader player={player} isWorldCup={isWcSeason} />
 
       {player.available_seasons && player.available_seasons.length > 1 && (
         <div className="pp-season-bar">

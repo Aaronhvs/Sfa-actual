@@ -34,8 +34,15 @@ class EnrichPlayerPositionsUseCase:
         self._enrich_repo = enrich_repo
         self._rate_limit_seconds = rate_limit_seconds
 
-    async def execute(self, batch_size: int = 500) -> EnrichPositionsResult:
-        players = await self._enrich_repo.get_players_without_tm_source(batch_size)
+    async def execute(
+        self,
+        batch_size: int = 500,
+        season: str | None = None,
+    ) -> EnrichPositionsResult:
+        players = await self._enrich_repo.get_players_without_tm_source(
+            batch_size,
+            season=season,
+        )
         matched = 0
         position_updated = 0
         unmatched = 0

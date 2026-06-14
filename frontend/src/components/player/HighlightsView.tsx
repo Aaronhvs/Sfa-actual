@@ -50,8 +50,37 @@ function assistCount(f: PlayerFixture): number {
   return f.breakdown?.['assist']?.count ?? 0
 }
 
+const TEAM_NAMES_ES: Record<string, string> = {
+  Morocco: 'Marruecos',
+  'Korea Republic': 'Corea del Sur',
+  USA: 'Estados Unidos',
+  Qatar: 'Catar',
+  Czechia: 'Chequia',
+}
+
+function competitionLabel(value: string): string {
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'world cup' || normalized === 'fifa world cup') return 'Mundial'
+  return value
+}
+
+function stageLabel(value: string): string {
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'group' || normalized === 'group stage') return 'Fase de grupos'
+  if (normalized === 'round of 32') return 'Dieciseisavos'
+  if (normalized === 'round of 16') return 'Octavos'
+  if (normalized === 'quarter-finals' || normalized === 'quarterfinals') return 'Cuartos'
+  if (normalized === 'semi-finals' || normalized === 'semifinals') return 'Semifinales'
+  if (normalized === 'final') return 'Final'
+  return value
+}
+
+function teamLabel(value: string): string {
+  return TEAM_NAMES_ES[value] ?? value
+}
+
 function matchup(f: PlayerFixture): string {
-  return `${f.home_team} vs ${f.away_team}`
+  return `${teamLabel(f.home_team)} vs ${teamLabel(f.away_team)}`
 }
 
 export default function HighlightsView({ fixtures, events }: Props) {
@@ -80,8 +109,8 @@ export default function HighlightsView({ fixtures, events }: Props) {
       if (bmAssists > 0) parts.push(`${bmAssists}A`)
       bmChips.push(parts.join(' · '))
     }
-    bmChips.push(bestMatch.competition)
-    if (bestMatch.stage) bmChips.push(bestMatch.stage)
+    bmChips.push(competitionLabel(bestMatch.competition))
+    if (bestMatch.stage) bmChips.push(stageLabel(bestMatch.stage))
     result.push({
       id: 'best',
       fixture: bestMatch,
@@ -462,7 +491,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
                 )}
                 <div className="hl-card__context">
                   {card.id === 'best' ? card.context : card.fixture
-                    ? `${card.fixture.home_team} vs ${card.fixture.away_team}`
+                    ? matchup(card.fixture)
                     : card.context}
                 </div>
                 {isClickable && <span className="hl-card__cta">Ver todos</span>}

@@ -1,0 +1,22 @@
+### Todos los partidos del Mundial 2026
+GET http://localhost:8000/api/v1/wc/fixtures
+
+###
+
+### Partidos con estado en vivo informado por API-Football
+GET http://localhost:8000/api/v1/wc/live
+
+###
+
+### Clasificacion de los grupos del Mundial 2026
+GET http://localhost:8000/api/v1/wc/standings
+
+###
+
+### Detalle de un partido
+GET http://localhost:8000/api/v1/wc/fixtures/1489371
+
+###
+
+### Partido inexistente
+GET http://localhost:8000/api/v1/wc/fixtures/999999999

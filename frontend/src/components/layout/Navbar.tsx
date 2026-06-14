@@ -24,7 +24,14 @@ export default function Navbar() {
   return (
     <>
       <nav className={`navbar${scrolled ? ' navbar--scrolled' : ''}`}>
-<div className="navbar__pill">
+        <Link to="/ranking" className="navbar__logo-link" aria-label="SFA, ir al ranking">
+          <img
+            src="/logo.png"
+            alt="SFA"
+            className="navbar__logo-img"
+          />
+        </Link>
+        <div className="navbar__pill">
           <div className="navbar__nav">
             {LINKS.map(({ to, label, wc }) => (
               <NavLink
