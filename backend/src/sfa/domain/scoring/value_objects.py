@@ -219,7 +219,9 @@ class M3MinuteScore:
         elif is_penalty:
             v = 0.6
         elif 80 <= minute <= 90:
-            if score_diff <= 0:
+            if score_diff <= -2:
+                v = 0.7
+            elif score_diff <= 0:
                 v = 2.5
             elif score_diff == 1:
                 v = 1.4
@@ -228,12 +230,16 @@ class M3MinuteScore:
         elif 70 <= minute <= 79:
             if score_diff == 0:
                 v = 1.8
-            elif score_diff < 0:
+            elif score_diff == -1:
                 v = 1.6
+            elif score_diff <= -2:
+                v = 0.75
             else:
                 v = 1.0
         elif 45 <= minute <= 69:
-            if score_diff < 0:
+            if score_diff <= -2:
+                v = 0.9
+            elif score_diff == -1:
                 v = 1.3
             elif score_diff == 0:
                 v = 1.2

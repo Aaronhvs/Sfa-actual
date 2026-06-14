@@ -423,7 +423,7 @@ class APIFootballProvider:
     async def fetch_fixture_events(self, fixture_id: int) -> list[FixtureEventRawDTO]:
         data = await self._get("fixtures/events", {"fixture": fixture_id})
         result: list[FixtureEventRawDTO] = []
-        for e in data.get("response", []):
+        for source_sequence, e in enumerate(data.get("response", [])):
             try:
                 result.append(
                     FixtureEventRawDTO(
@@ -434,6 +434,7 @@ class APIFootballProvider:
                         team_external_id=e["team"]["id"],
                         minute=e["time"]["elapsed"] or 0,
                         extra_minute=e["time"]["extra"] or 0,
+                        source_sequence=source_sequence,
                     )
                 )
             except (KeyError, TypeError) as exc:
@@ -604,33 +605,6 @@ class APIFootballProvider:
             if pattern in key:
                 return stage
         return "regular"
-
-    def get_score_at_minute(
-        self,
-        events: list[FixtureEventRawDTO],
-        minute: int,
-        home_team_id: int,
-    ) -> tuple[int, int]:
-        """Return (home_goals, away_goals) scored strictly before the given minute."""
-        home_goals = 0
-        away_goals = 0
-        for e in events:
-            event_minute = e.minute + e.extra_minute
-            if event_minute >= minute:
-                continue
-            if e.type != "Goal" or e.detail == "Missed Penalty":
-                continue
-            if e.detail == "Own Goal":
-                if e.team_external_id == home_team_id:
-                    away_goals += 1
-                else:
-                    home_goals += 1
-            else:
-                if e.team_external_id == home_team_id:
-                    home_goals += 1
-                else:
-                    away_goals += 1
-        return home_goals, away_goals
 
     @property
     def requests_used(self) -> int:

@@ -17,6 +17,21 @@ FINISHED_STATUSES = {"FT", "AET", "PEN"}
 # How long after a match starts we still consider it worth re-ingesting
 RECENT_WINDOW = timedelta(hours=4)
 
+# ─── Whitelist de competiciones activas ──────────────────────────────────────
+# Solo estas combinaciones (league_id, season) serán ingresadas automáticamente.
+# Actualizar manualmente cuando empiece una nueva temporada o competición.
+#
+# Ejemplos:
+#   (1,   2026)  → World Cup 2026
+#   (140, 2026)  → La Liga 2026/27  (agregar en agosto 2026)
+#   (39,  2026)  → Premier League 2026/27
+#   (78,  2026)  → Bundesliga 2026/27
+#   (2,   2026)  → Champions League 2026/27
+#
+ACTIVE_COMPETITIONS: frozenset[tuple[int, int]] = frozenset({
+    (1, 2026),   # World Cup 2026
+})
+
 
 def _fixture_is_relevant(fixture: dict) -> bool:
     """Return True if this fixture has live or recently finished data worth ingesting."""
@@ -62,13 +77,16 @@ async def _run_ingest_today() -> dict:
 
     league_map = {league.id: league for league in LEAGUES}
 
-    # Collect (league_id, season) pairs that have relevant fixtures right now
+    # Collect (league_id, season) pairs that have relevant fixtures right now,
+    # but ONLY if they are in the ACTIVE_COMPETITIONS whitelist.
     to_ingest: dict[int, int] = {}  # league_id → season
     for fixture in fixtures_today:
         if not _fixture_is_relevant(fixture):
             continue
         league_id = fixture["league"]["id"]
         season = fixture["league"]["season"]
+        if (league_id, season) not in ACTIVE_COMPETITIONS:
+            continue
         if league_id in league_map and league_id not in to_ingest:
             to_ingest[league_id] = season
 

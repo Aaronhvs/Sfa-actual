@@ -16,6 +16,27 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
+def _score_before_minute(events, minute: int, home_ext_id: int) -> tuple[int, int]:
+    """Returns (home_goals, away_goals) scored strictly before the given minute."""
+    home, away = 0, 0
+    for e in events:
+        if e.minute + e.extra_minute >= minute:
+            continue
+        if e.type != "Goal" or e.detail == "Missed Penalty":
+            continue
+        if e.detail == "Own Goal":
+            if e.team_external_id == home_ext_id:
+                away += 1
+            else:
+                home += 1
+        else:
+            if e.team_external_id == home_ext_id:
+                home += 1
+            else:
+                away += 1
+    return home, away
+
+
 async def _ingest_fixture(
     fixture_ext_id: int,
     provider,
@@ -133,7 +154,7 @@ async def _ingest_fixture(
                 clamped = max(1, min(90, minute))
                 is_penalty = goal_evt.detail == "Penalty"
                 is_shootout = is_penalty and minute > 120
-                home_b, away_b = provider.get_score_at_minute(events, minute, home_ext_id)
+                home_b, away_b = _score_before_minute(events, minute, home_ext_id)
                 score_diff = (away_b - home_b) if is_away else (home_b - away_b)
                 psxg = 0.75 if is_shootout else 0.32
                 event_type = (
@@ -163,7 +184,7 @@ async def _ingest_fixture(
                 minute = assist_evt.minute + assist_evt.extra_minute
                 db_minute = max(1, min(120, minute))
                 is_corner = "corner" in assist_evt.detail.lower()
-                home_b, away_b = provider.get_score_at_minute(events, minute, home_ext_id)
+                home_b, away_b = _score_before_minute(events, minute, home_ext_id)
                 score_diff = (away_b - home_b) if is_away else (home_b - away_b)
                 event_type = EventType.CORNER_ASSIST if is_corner else EventType.ASSIST
                 await repo.upsert_player_event(

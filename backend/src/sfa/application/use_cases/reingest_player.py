@@ -9,6 +9,7 @@ from sfa.domain.ingestion_ports import (
     IngestionRepositoryPort,
 )
 from sfa.domain.name_matching import name_matches
+from sfa.domain.scoring.services import ScoreTimeline
 from sfa.domain.scoring_ports import ScoringRulesVersionRepositoryPort
 from sfa.infrastructure.models.enums import EventType
 
@@ -24,33 +25,6 @@ class ReingestPlayerResult:
     scores_recalculated: int
     status: str
     error: str | None
-
-
-def _get_score_at_minute(
-    events: list[FixtureEventRawDTO],
-    minute: int,
-    home_team_id: int,
-) -> tuple[int, int]:
-    """Return (home_goals, away_goals) scored strictly before the given minute."""
-    home_goals = 0
-    away_goals = 0
-    for e in events:
-        event_minute = e.minute + e.extra_minute
-        if event_minute >= minute:
-            continue
-        if e.type != "Goal" or e.detail == "Missed Penalty":
-            continue
-        if e.detail == "Own Goal":
-            if e.team_external_id == home_team_id:
-                away_goals += 1
-            else:
-                home_goals += 1
-        else:
-            if e.team_external_id == home_team_id:
-                home_goals += 1
-            else:
-                away_goals += 1
-    return home_goals, away_goals
 
 
 def _map_event_type(type_str: str, detail_str: str) -> EventType | None:
@@ -144,11 +118,23 @@ class ReingestPlayerUseCase:
         for row in fixtures:
             is_away = row.player_team_id == row.away_team_id
 
-            await self._ingestion_repo.delete_player_events_for_fixture(
-                player_id, row.fixture_id
-            )
-
             raw_events = await self._provider.fetch_fixture_events(row.fixture_external_id)
+            if (
+                row.home_team_external_id is None
+                or row.away_team_external_id is None
+                or row.player_team_external_id
+                not in (row.home_team_external_id, row.away_team_external_id)
+            ):
+                raise ValueError(
+                    "Missing or invalid external team IDs for fixture "
+                    f"{row.fixture_external_id}"
+                )
+            score_timeline = ScoreTimeline.build(
+                row.home_team_external_id,
+                row.away_team_external_id,
+                raw_events,
+            )
+            pending_events: list[tuple[FixtureEventRawDTO, bool, bool]] = []
 
             for evt in raw_events:
                 is_goal_for_player = (
@@ -165,13 +151,20 @@ class ReingestPlayerUseCase:
 
                 if not is_goal_for_player and not is_assist_for_player:
                     continue
+                pending_events.append(
+                    (evt, is_goal_for_player, is_assist_for_player)
+                )
 
+            await self._ingestion_repo.delete_player_events_for_fixture(
+                player_id, row.fixture_id
+            )
+
+            for evt, is_goal_for_player, is_assist_for_player in pending_events:
                 minute = evt.minute + evt.extra_minute
                 db_minute = max(1, min(120, minute))
 
-                home_b, away_b = _get_score_at_minute(
-                    raw_events, minute, row.home_team_id
-                )
+                transition = score_timeline.transition_for(evt)
+                home_b, away_b = transition.home_before, transition.away_before
                 score_diff = (away_b - home_b) if is_away else (home_b - away_b)
                 score_before_str = f"{home_b}:{away_b}"
 
@@ -180,13 +173,13 @@ class ReingestPlayerUseCase:
                     is_shootout = is_penalty and minute > 120
                     if is_shootout:
                         event_type = EventType.GOAL_SHOOTOUT
-                        psxg: float | None = 0.75
+                        psxg: float | None = None
                     elif is_penalty:
                         event_type = EventType.GOAL_PENALTY
-                        psxg = 0.32
+                        psxg = None
                     else:
                         event_type = EventType.GOAL
-                        psxg = 0.32
+                        psxg = None
                 else:
                     is_corner = "corner" in evt.detail.lower()
                     event_type = EventType.CORNER_ASSIST if is_corner else EventType.ASSIST

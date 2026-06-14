@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from sfa.domain.ingestion_ports import FixtureEventRawDTO
+
 from .value_objects import (
     ActionType,
     CombinedMultiplier,
@@ -10,8 +14,8 @@ from .value_objects import (
     MratingFactor,
     MvisitFactor,
     PositionGroup,
-    SFAScore,
     ScoringConfig,
+    SFAScore,
 )
 
 # ---------------------------------------------------------------------------
@@ -161,6 +165,91 @@ _GOAL_OR_ASSIST_ACTIONS = {
     ActionType.ASSIST,
     ActionType.CORNER_ASSIST,
 }
+
+
+@dataclass(frozen=True)
+class ScoreTransition:
+    home_before: int
+    away_before: int
+    home_after: int
+    away_after: int
+
+    def score_diff_before(
+        self,
+        team_external_id: int,
+        home_team_external_id: int,
+    ) -> int:
+        if team_external_id == home_team_external_id:
+            return self.home_before - self.away_before
+        return self.away_before - self.home_before
+
+
+class ScoreTimeline:
+    """Canonical regulation-score reconstruction for one fixture."""
+
+    def __init__(self, transitions: dict[int, ScoreTransition]) -> None:
+        self._transitions = transitions
+
+    @classmethod
+    def build(
+        cls,
+        home_team_external_id: int,
+        away_team_external_id: int,
+        events: list[FixtureEventRawDTO],
+    ) -> ScoreTimeline:
+        if home_team_external_id == away_team_external_id:
+            raise ValueError("Fixture teams must be different")
+
+        indexed_events = list(enumerate(events))
+        indexed_events.sort(
+            key=lambda item: (
+                item[1].minute,
+                item[1].extra_minute,
+                item[1].source_sequence
+                if item[1].source_sequence is not None
+                else item[0],
+            )
+        )
+
+        home_goals = 0
+        away_goals = 0
+        transitions: dict[int, ScoreTransition] = {}
+        for _, event in indexed_events:
+            if event.type != "Goal" or event.detail == "Missed Penalty":
+                continue
+            if event.detail == "Penalty" and event.minute + event.extra_minute > 120:
+                continue
+            if event.team_external_id not in (
+                home_team_external_id,
+                away_team_external_id,
+            ):
+                raise ValueError(
+                    "Goal beneficiary team does not belong to fixture: "
+                    f"team_external_id={event.team_external_id}"
+                )
+
+            home_before = home_goals
+            away_before = away_goals
+            if event.team_external_id == home_team_external_id:
+                home_goals += 1
+            else:
+                away_goals += 1
+            transitions[id(event)] = ScoreTransition(
+                home_before=home_before,
+                away_before=away_before,
+                home_after=home_goals,
+                away_after=away_goals,
+            )
+
+        return cls(transitions)
+
+    def transition_for(self, event: FixtureEventRawDTO) -> ScoreTransition:
+        try:
+            return self._transitions[id(event)]
+        except KeyError as exc:
+            raise ValueError(
+                "Event is not a scored regulation goal in this timeline"
+            ) from exc
 
 
 class SFAScoringService:

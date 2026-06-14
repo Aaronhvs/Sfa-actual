@@ -439,6 +439,9 @@ class IngestionRepository(IngestionRepositoryPort):
         season: str,
         competition_id: int | None = None,
     ) -> list[PlayerFixtureInfoRow]:
+        home_team = Team.__table__.alias("home_team")
+        away_team = Team.__table__.alias("away_team")
+        player_team = Team.__table__.alias("player_team")
         stmt = (
             select(
                 Fixture.id.label("fixture_id"),
@@ -451,9 +454,15 @@ class IngestionRepository(IngestionRepositoryPort):
                 Player.external_id.label("player_external_id"),
                 Player.name.label("player_name"),
                 Fixture.stage,
+                home_team.c.external_id.label("home_team_external_id"),
+                away_team.c.external_id.label("away_team_external_id"),
+                player_team.c.external_id.label("player_team_external_id"),
             )
             .join(PlayerStats, PlayerStats.fixture_id == Fixture.id)
             .join(Player, Player.id == PlayerStats.player_id)
+            .join(home_team, home_team.c.id == Fixture.home_team_id)
+            .join(away_team, away_team.c.id == Fixture.away_team_id)
+            .join(player_team, player_team.c.id == PlayerStats.team_id)
             .where(PlayerStats.player_id == player_id)
             .where(PlayerStats.team_id.is_not(None))
             .where(Fixture.season == season)
@@ -475,6 +484,9 @@ class IngestionRepository(IngestionRepositoryPort):
                 player_external_id=row["player_external_id"],
                 player_name=row["player_name"],
                 stage=row["stage"],
+                home_team_external_id=row["home_team_external_id"],
+                away_team_external_id=row["away_team_external_id"],
+                player_team_external_id=row["player_team_external_id"],
             )
             for row in rows
         ]

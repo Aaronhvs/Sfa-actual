@@ -215,7 +215,7 @@ function FixtureContextBar({ fixture, events }: { fixture: PlayerFixture; events
   const items: { label: string; value: string }[] = []
 
   if (fixture.minutes > 0) {
-    items.push({ label: 'Jugó', value: `${fixture.minutes}'` })
+    items.push({ label: 'Jugó', value: `${fixture.minutes} min` })
   }
 
   if (avgM1 !== null) {
@@ -308,7 +308,7 @@ export default function FixtureRow({ fixture, events }: Props) {
         <div className="fixture-row__score-col">
           <div>
             {fixture.minutes > 0 && (
-              <span className="fixture-row__mins">{fixture.minutes}'</span>
+              <span className="fixture-row__mins">{fixture.minutes} min</span>
             )}
             <span className="fixture-row__pts">{fmt(fixture.sfa_pts)}</span>
             <span className="fixture-row__pts-label">pts</span>

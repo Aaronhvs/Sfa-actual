@@ -39,6 +39,7 @@ class FixtureEventRawDTO:
     team_external_id: int
     minute: int
     extra_minute: int
+    source_sequence: int | None = None
 
 
 @dataclass(frozen=True)
@@ -92,6 +93,9 @@ class PlayerFixtureInfoRow:
     player_external_id: int
     player_name: str
     stage: str
+    home_team_external_id: int | None = None
+    away_team_external_id: int | None = None
+    player_team_external_id: int | None = None
 
 
 @dataclass(frozen=True)

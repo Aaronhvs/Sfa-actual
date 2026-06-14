@@ -11,6 +11,7 @@ from sfa.domain.ingestion_ports import (
 )
 from sfa.domain.name_matching import name_matches as _name_matches
 from sfa.domain.position_mapping import KNOWN_POSITIONS, map_position
+from sfa.domain.scoring.services import ScoreTimeline
 from sfa.domain.scoring.value_objects import position_to_group
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 
@@ -194,6 +195,11 @@ class IngestCompetitionUseCase:
 
                     # --- Phase 3: Events and players ---
                     events = await self._provider.fetch_fixture_events(fixture.external_id)
+                    score_timeline = ScoreTimeline.build(
+                        fixture.home_team_external_id,
+                        fixture.away_team_external_id,
+                        events,
+                    )
 
                     for proc_team_ext_id in (
                         fixture.home_team_external_id,
@@ -298,7 +304,7 @@ class IngestCompetitionUseCase:
                             for goal_evt in player_goals:
                                 await self._process_event(
                                     evt=goal_evt,
-                                    all_events=events,
+                                    score_timeline=score_timeline,
                                     player_db_id=player_db_id,
                                     fixture_db_id=fixture_db_id,
                                     team_id=proc_team_db_id,
@@ -307,7 +313,6 @@ class IngestCompetitionUseCase:
                                     rival_pos=rival_pos,
                                     stage_factor=stage_factor,
                                     is_away=is_away,
-                                    home_team_ext_id=fixture.home_team_external_id,
                                     is_assist=False,
                                 )
 
@@ -323,7 +328,7 @@ class IngestCompetitionUseCase:
                             for assist_evt in player_assists:
                                 await self._process_event(
                                     evt=assist_evt,
-                                    all_events=events,
+                                    score_timeline=score_timeline,
                                     player_db_id=player_db_id,
                                     fixture_db_id=fixture_db_id,
                                     team_id=proc_team_db_id,
@@ -332,7 +337,6 @@ class IngestCompetitionUseCase:
                                     rival_pos=rival_pos,
                                     stage_factor=stage_factor,
                                     is_away=is_away,
-                                    home_team_ext_id=fixture.home_team_external_id,
                                     is_assist=True,
                                 )
 
@@ -397,7 +401,7 @@ class IngestCompetitionUseCase:
         self,
         *,
         evt: FixtureEventRawDTO,
-        all_events: list[FixtureEventRawDTO],
+        score_timeline: ScoreTimeline,
         player_db_id: int,
         fixture_db_id: int,
         team_id: int,
@@ -406,7 +410,6 @@ class IngestCompetitionUseCase:
         rival_pos: int,
         stage_factor: float,
         is_away: bool,
-        home_team_ext_id: int,
         is_assist: bool,
     ) -> None:
         minute = evt.minute + evt.extra_minute
@@ -416,9 +419,8 @@ class IngestCompetitionUseCase:
         # Tanda de penales: eventos reportados después del minuto 120
         is_shootout = is_penalty and minute > 120
 
-        home_b, away_b = self._provider.get_score_at_minute(
-            all_events, minute, home_team_ext_id
-        )
+        transition = score_timeline.transition_for(evt)
+        home_b, away_b = transition.home_before, transition.away_before
         score_diff = (away_b - home_b) if is_away else (home_b - away_b)
         score_before_str = f"{home_b}:{away_b}"
 
@@ -427,10 +429,10 @@ class IngestCompetitionUseCase:
             psxg: float | None = None
             event_type = EventType.CORNER_ASSIST if is_corner else EventType.ASSIST
         elif is_shootout:
-            psxg = 0.75
+            psxg = None
             event_type = EventType.GOAL_SHOOTOUT
         else:
-            psxg = 0.32
+            psxg = None
             event_type = EventType.GOAL_PENALTY if is_penalty else EventType.GOAL
 
         # Store raw event; pts calculated by scoring pipeline v2
