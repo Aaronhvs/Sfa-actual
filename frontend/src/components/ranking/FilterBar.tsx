@@ -4,28 +4,19 @@ const POSITIONS: { value: string; label: string }[] = [
   { value: 'DEL', label: 'Delantero' },
   { value: 'EXT', label: 'Extremo' },
   { value: 'MCO', label: 'MC Ofensivo' },
-  { value: 'MC',  label: 'Mediocampista' },
-  { value: 'DC',  label: 'Def. Central' },
+  { value: 'MC', label: 'Mediocampista' },
+  { value: 'DC', label: 'Def. Central' },
   { value: 'LAT', label: 'Lateral' },
 ]
 
-const COMP_LOGO_URL: Record<number, string> = {
-  10: 'https://media.api-sports.io/football/leagues/2.png',
-  1: 'https://media.api-sports.io/football/leagues/140.png',
-  3: 'https://media.api-sports.io/football/leagues/39.png',
-  6: 'https://media.api-sports.io/football/leagues/78.png',
-  7: 'https://media.api-sports.io/football/leagues/135.png',
-  9: 'https://media.api-sports.io/football/leagues/61.png',
-}
-
 interface Props {
   position: string
-  onPosition: (p: string) => void
+  onPosition: (position: string) => void
   competition: number | undefined
   onCompetition: (id: number | undefined) => void
   competitions: Competition[]
   search: string
-  onSearch: (s: string) => void
+  onSearch: (search: string) => void
 }
 
 export default function FilterBar({
@@ -38,69 +29,57 @@ export default function FilterBar({
   onSearch,
 }: Props) {
   return (
-    <div className="filter-bar">
-      <div className="filter-bar__group">
-        <button
-          className={`filter-btn${position === '' ? ' filter-btn--active' : ''}`}
-          onClick={() => onPosition('')}
+    <div className="filter-bar" aria-label="Filtros del ranking">
+      <label className="filter-select">
+        <span className="filter-select__label">Posición</span>
+        <select
+          value={position}
+          onChange={(event) => onPosition(event.target.value)}
+          aria-label="Filtrar por posición"
         >
-          Todos
-        </button>
-        {POSITIONS.map((p) => (
-          <button
-            key={p.value}
-            className={`filter-btn${position === p.value ? ' filter-btn--active' : ''}`}
-            onClick={() => onPosition(p.value)}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+          <option value="">Todas las posiciones</option>
+          {POSITIONS.map((item) => (
+            <option key={item.value} value={item.value}>{item.label}</option>
+          ))}
+        </select>
+      </label>
 
-      <div className="filter-bar__group filter-bar__group--comp">
-        <button
-          className={`filter-btn filter-btn--comp${competition == null ? ' filter-btn--active' : ''}`}
-          onClick={() => onCompetition(undefined)}
+      <label className="filter-select">
+        <span className="filter-select__label">Competición</span>
+        <select
+          value={competition ?? ''}
+          onChange={(event) => {
+            onCompetition(event.target.value ? Number(event.target.value) : undefined)
+          }}
+          aria-label="Filtrar por competición"
         >
-          Global
-        </button>
-        {competitions.map((c) => {
-          const logoUrl = COMP_LOGO_URL[c.id]
-          return (
-            <button
-              key={c.id}
-              className={`filter-btn filter-btn--comp filter-btn--logo${competition === c.id ? ' filter-btn--active' : ''}`}
-              onClick={() => onCompetition(c.id)}
-              title={c.name}
-            >
-              {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt=""
-                  className="filter-btn__logo"
-                  onError={(e) => { e.currentTarget.style.display = 'none' }}
-                />
-              )}
-              <span className="filter-btn__label">{c.name}</span>
-            </button>
-          )
-        })}
-      </div>
+          <option value="">Todas las competiciones</option>
+          {competitions.map((item) => (
+            <option key={item.id} value={item.id}>{item.name}</option>
+          ))}
+        </select>
+      </label>
 
-      <div className="filter-bar__search">
+      <label className="filter-bar__search">
+        <span className="sr-only">Buscar jugador o equipo</span>
         <input
-          type="text"
+          type="search"
           placeholder="Buscar jugador o equipo..."
           value={search}
-          onChange={(e) => onSearch(e.target.value)}
+          onChange={(event) => onSearch(event.target.value)}
           className="filter-search-input"
         />
         {search && (
-          <button className="filter-search-clear" onClick={() => onSearch('')}>
+          <button
+            type="button"
+            className="filter-search-clear"
+            onClick={() => onSearch('')}
+            aria-label="Limpiar búsqueda"
+          >
             ×
           </button>
         )}
-      </div>
+      </label>
     </div>
   )
 }

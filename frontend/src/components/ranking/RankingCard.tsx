@@ -18,9 +18,16 @@ function initials(name: string): string {
   return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 }
 
-export default function RankingCard({ player, index = 0, season, isWorldCup = false }: Props) {
+export default function RankingCard({
+  player,
+  index = 0,
+  competitionName,
+  season,
+  isWorldCup = false,
+}: Props) {
   const animatedRank = useCountUp(player.rank, 620)
   const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
+  const displayedRank = String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')
 
   return (
     <Link
@@ -28,20 +35,58 @@ export default function RankingCard({ player, index = 0, season, isWorldCup = fa
       className={`ranking-card${isWorldCup ? ' ranking-card--wc' : ''}`}
       style={{ animationDelay: `${index * 45}ms` }}
     >
+      <div className="rc-mobile-row">
+        <span className="rc-mobile-row__rank">{displayedRank}</span>
+        <div className="rc-mobile-row__photo">
+          {player.photo_url ? (
+            <img
+              src={player.photo_url}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <span>{initials(player.name)}</span>
+          )}
+        </div>
+        <div className="rc-mobile-row__identity">
+          <strong>{player.name}</strong>
+          <span>{player.team}{competitionName ? ` · ${competitionName}` : ''}</span>
+        </div>
+        <div className="rc-mobile-row__score">
+          <strong>{formatPts(player.sfa_pts)}</strong>
+          <span>PTS</span>
+          <small>{player.goals} G&nbsp;&nbsp;{player.assists} A</small>
+        </div>
+      </div>
+
       {player.photo_url ? (
-        <img src={player.photo_url} alt="" className="rc-photo" />
+        <img
+          src={player.photo_url}
+          alt=""
+          className="rc-photo"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <div className="rc-photo-placeholder">{initials(player.name)}</div>
       )}
 
       <div className="rc-rank-wm" aria-hidden="true">
-        {String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')}
+        {displayedRank}
       </div>
 
       <div className="rc-top-meta">
         <span className="rc-pos-badge">{player.position}</span>
         {player.team_logo_url && (
-          <img src={player.team_logo_url} alt="" className="rc-team-logo" aria-hidden="true" />
+          <img
+            src={player.team_logo_url}
+            alt=""
+            className="rc-team-logo"
+            loading="lazy"
+            decoding="async"
+            aria-hidden="true"
+          />
         )}
       </div>
 

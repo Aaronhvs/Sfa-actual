@@ -28,20 +28,47 @@ function cardClass(rank: number, isWorldCup: boolean): string {
 export default function ShowcaseCard({ player, season, isWorldCup = false }: Props) {
   const animatedRank = useCountUp(player.rank, 620)
   const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
+  const displayedRank = String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')
 
   return (
     <Link
       to={playerLink}
       className={cardClass(player.rank, isWorldCup)}
     >
+      <div className="psc-mobile-podium">
+        <div className="psc-mobile-podium__portrait">
+          {player.photo_url ? (
+            <img
+              src={player.photo_url}
+              alt=""
+              loading={player.rank === 1 ? 'eager' : 'lazy'}
+              decoding="async"
+            />
+          ) : (
+            <span>{initials(player.name)}</span>
+          )}
+          <b>{displayedRank}</b>
+        </div>
+        <div className="psc-mobile-podium__bar">
+          <strong>{player.name}</strong>
+          <span>{formatPts(player.sfa_pts)} pts</span>
+          <small>{player.goals} G&nbsp;&nbsp;{player.assists} A</small>
+        </div>
+      </div>
+
       {player.photo_url ? (
-        <img src={player.photo_url} alt={player.name} />
+        <img
+          src={player.photo_url}
+          alt={player.name}
+          loading={player.rank === 1 ? 'eager' : 'lazy'}
+          decoding="async"
+        />
       ) : (
         <div className="psc-photo-placeholder">{initials(player.name)}</div>
       )}
 
       <div className="psc-rank-watermark" aria-label={`Posición ${player.rank}`}>
-        {String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')}
+        {displayedRank}
       </div>
 
       <div className="psc-top-right">
@@ -51,6 +78,8 @@ export default function ShowcaseCard({ player, season, isWorldCup = false }: Pro
             className="psc-team-crest"
             src={player.team_logo_url}
             alt={player.team}
+            loading="lazy"
+            decoding="async"
           />
         )}
       </div>

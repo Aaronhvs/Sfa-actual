@@ -58,7 +58,14 @@ function TeamIdentity({ team }: { team: WcTeam }) {
   const logo = TEAM_LOGO(team.external_id)
   return (
     <div className="wmd-team">
-      {logo && <img src={logo} alt="" className="wmd-team__logo" />}
+      {logo && (
+        <img
+          src={logo}
+          alt=""
+          className="wmd-team__logo"
+          decoding="async"
+        />
+      )}
       <strong>{worldCupTeamName(team)}</strong>
     </div>
   )
@@ -159,6 +166,8 @@ function PitchPlayer({
           <img
             src={photo}
             alt=""
+            loading="lazy"
+            decoding="async"
             onError={(event) => {
               event.currentTarget.style.display = 'none'
             }}
@@ -385,7 +394,7 @@ export default function MundialMatchPage() {
         </div>
       </header>
 
-      <nav className="wmd-tabs" aria-label="Detalle del partido">
+      <nav className="wmd-tabs" aria-label="Detalle del partido" role="tablist">
         {([
           ['lineups', 'Alineaciones'],
           ['statistics', 'Estadísticas'],
@@ -393,15 +402,24 @@ export default function MundialMatchPage() {
           <button
             type="button"
             key={id}
+            id={`wmd-tab-${id}`}
             className={`wmd-tab${tab === id ? ' wmd-tab--active' : ''}`}
             onClick={() => setTab(id)}
+            role="tab"
+            aria-selected={tab === id}
+            aria-controls={`wmd-panel-${id}`}
           >
             {label}
           </button>
         ))}
       </nav>
 
-      <main className="wmd-content">
+      <main
+        id={`wmd-panel-${tab}`}
+        className="wmd-content"
+        role="tabpanel"
+        aria-labelledby={`wmd-tab-${tab}`}
+      >
         {tab === 'lineups' && (
           detail.lineups.length > 0 ? (
             <>

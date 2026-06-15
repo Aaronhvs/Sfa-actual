@@ -225,7 +225,6 @@ export default function MundialPage() {
     <div className="mundial-page">
       <header className="wm-hero">
         <div className="wm-hero__pattern" aria-hidden="true" />
-        <div className="wm-hero__spectrum" aria-hidden="true" />
         <div className="wm-hero__content">
           <div>
             <button type="button" className="wm-hero__back" onClick={goBack}>
@@ -245,11 +244,6 @@ export default function MundialPage() {
               </Link>
               <span>Ranking independiente · Todos comienzan en cero</span>
             </div>
-          </div>
-          <div className="wm-hero__summary">
-            <span>{fixtures.length}</span>
-            <strong>Partidos disponibles</strong>
-            <small>Actualización cada 60 segundos</small>
           </div>
         </div>
       </header>

@@ -86,6 +86,8 @@ const WORLD_CUP_IDENTITIES: Record<string, { name: string; code: string }> = {
   qatar: { name: 'Catar', code: 'QA' },
   scotland: { name: 'Escocia', code: 'GB' },
   senegal: { name: 'Senegal', code: 'SN' },
+  'south korea': { name: 'Corea del Sur', code: 'KR' },
+  'korea republic': { name: 'Corea del Sur', code: 'KR' },
   spain: { name: 'España', code: 'ES' },
   switzerland: { name: 'Suiza', code: 'CH' },
   tunisia: { name: 'Túnez', code: 'TN' },
@@ -111,4 +113,9 @@ export function worldCupTeamNameFromString(teamName: string): string {
 export function worldCupTeamFlag(teamName: string): string {
   const identity = WORLD_CUP_IDENTITIES[identityKey(teamName)]
   return identity ? flagEmoji(identity.code) : ''
+}
+
+export function worldCupTeamFlagUrl(teamName: string): string | null {
+  const identity = WORLD_CUP_IDENTITIES[identityKey(teamName)]
+  return identity ? `https://flagcdn.com/w80/${identity.code.toLowerCase()}.png` : null
 }

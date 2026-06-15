@@ -193,20 +193,23 @@ export default function RankingPage() {
     <div className="ranking-page">
       {isWcSeason ? (
         <>
-          <WorldCupPageHeader totalPlayers={totalPlayers} />
+          <WorldCupPageHeader />
           {seasonItems.length > 0 && (
             <div className="rp-tournament-season-bar">
               <WcLiveChip />
-              <SeasonDropdown
-                items={seasonItems}
-                value={season}
-                onChange={(nextSeason) => {
-                  setSeason(nextSeason)
-                  setPage(0)
-                  setPageDir('next')
-                }}
-                includeAll={true}
-              />
+              <div className="rp-season-picker">
+                <span className="rp-season-picker__hint">Elige la temporada</span>
+                <SeasonDropdown
+                  items={seasonItems}
+                  value={season}
+                  onChange={(nextSeason) => {
+                    setSeason(nextSeason)
+                    setPage(0)
+                    setPageDir('next')
+                  }}
+                  includeAll={true}
+                />
+              </div>
             </div>
           )}
         </>
@@ -219,26 +222,20 @@ export default function RankingPage() {
               : 'Stats Football Award · Clasificación SFA'}
           </span>
           <h1 className="rp-header__title">Ranking de jugadores</h1>
-          <p className="rp-header__sub">
-            SFA mide el impacto real de cada futbolista. Una acción cambia de valor
-            según el rival, el momento del partido y la competición.
-          </p>
+          <p className="rp-header__sub">No todos los goles valen igual.</p>
         </div>
         <div className="rp-header__right">
-          <dl className="rp-header__summary" aria-label="Resumen del ranking">
-            <div>
-              <dt>Jugadores contabilizados</dt>
-              <dd>{totalPlayers > 0 ? animatedTotal.toLocaleString('es-ES') : '—'}</dd>
-            </div>
-          </dl>
           <WcLiveChip />
           {seasonItems.length > 0 && (
-            <SeasonDropdown
-              items={seasonItems}
-              value={season}
-              onChange={(s) => { setSeason(s); setPage(0); setPageDir('next') }}
-              includeAll={true}
-            />
+            <div className="rp-season-picker">
+              <span className="rp-season-picker__hint">Elige la temporada</span>
+              <SeasonDropdown
+                items={seasonItems}
+                value={season}
+                onChange={(s) => { setSeason(s); setPage(0); setPageDir('next') }}
+                includeAll={true}
+              />
+            </div>
           )}
         </div>
       </header>
@@ -263,7 +260,7 @@ export default function RankingPage() {
           de cada gol, asistencia y acción defensiva.
         </p>
         <Link to="/metodologia" className="rp-intro__link">
-          Ver metodología
+          Cómo funciona SFA
           <span aria-hidden="true">→</span>
         </Link>
       </section>
@@ -464,6 +461,10 @@ export default function RankingPage() {
                     </button>
                   </nav>
                 )}
+                <div className="rp-ranking-total" aria-label="Jugadores contabilizados">
+                  <span>{totalPlayers > 0 ? animatedTotal.toLocaleString('es-ES') : '—'}</span>
+                  <small>Jugadores contabilizados</small>
+                </div>
               </>
             )}
           </div>

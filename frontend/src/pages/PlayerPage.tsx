@@ -4,7 +4,7 @@ import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFix
 import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerFixtures, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
 import PlayerHeader from '../components/player/PlayerHeader'
 import StatBar from '../components/player/StatBar'
-import SeasonSelector from '../components/shared/SeasonSelector'
+import SeasonDropdown from '../components/shared/SeasonDropdown'
 import { isWorldCupSeason } from '../utils/season'
 
 import PointsBreakdown from '../components/player/PointsBreakdown'
@@ -171,7 +171,7 @@ export default function PlayerPage() {
       {player.available_seasons && player.available_seasons.length > 1 && (
         <div className="pp-season-bar">
           <span className="pp-season-bar__label">Temporada</span>
-          <SeasonSelector
+          <SeasonDropdown
             items={playerSeasonItems}
             value={season}
             onChange={setSeason}

@@ -4,6 +4,7 @@ import { fetchPlayer, fetchPlayerEvents, fetchPlayerFixtures, fetchRanking } fro
 
 const SEASON = '2024'
 const SEARCH_DEBOUNCE_MS = 300
+const COMPARE_ENABLED = false
 
 /* ── Formatters ─────────────────────────────────────────────────────── */
 function fmt(n: number) { return Math.round(n).toLocaleString('es-ES') }
@@ -815,6 +816,21 @@ export default function ComparePage() {
     () => (dataB ? deriveCmpStats(dataB.detail, dataB.events, dataB.fixtures) : null),
     [dataB],
   )
+
+  if (!COMPARE_ENABLED) {
+    return (
+      <div className="page-container">
+        <div className="coming-soon coming-soon--compare">
+          <span className="coming-soon__eyebrow">Stats Football Award</span>
+          <h1 className="coming-soon__title">Comparar jugadores</h1>
+          <p className="coming-soon__sub">En construcción</p>
+          <span className="coming-soon__note">
+            Estamos preparando una comparación SFA más clara y completa.
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="compare-page">
