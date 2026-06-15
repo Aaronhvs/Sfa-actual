@@ -40,6 +40,9 @@ Thumbs.db
 
 # ── Images / builds grandes ──────────────────────────────────────────────────
 *.png
+!frontend/public/logo.png
+!frontend/public/blanco.png
+!frontend/public/negro.png
 *.jpg
 *.jpeg
 *.gif
