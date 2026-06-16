@@ -11,6 +11,7 @@ import { fetchWcFixtures, fetchWcLive, fetchWcStandings } from '../api/client'
 import { worldCupTeamName } from '../utils/worldCupTeams'
 
 type MundialView = 'matches' | 'standings' | 'bracket'
+type MatchTone = 'live' | 'result' | 'upcoming'
 
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN'])
 const KNOCKOUT_MARKERS = [
@@ -39,6 +40,29 @@ function formatTime(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function dateKey(iso: string): string {
+  const date = new Date(iso)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function compactDateLabel(key: string): string {
+  return new Date(`${key}T12:00:00`).toLocaleDateString('es-ES', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
+function uniqueDateOptions(fixtures: WcFixture[], direction: 'asc' | 'desc') {
+  const keys = Array.from(new Set(fixtures.map((fixture) => dateKey(fixture.played_at))))
+  return keys
+    .sort((a, b) => direction === 'asc' ? a.localeCompare(b) : b.localeCompare(a))
+    .map((key) => ({ key, label: compactDateLabel(key) }))
 }
 
 function isKnockout(fixture: WcFixture): boolean {
@@ -128,6 +152,96 @@ function FixtureCard({ fixture, compact = false }: {
   )
 }
 
+function DateRail({
+  label,
+  dates,
+  value,
+  onChange,
+}: {
+  label: string
+  dates: Array<{ key: string; label: string }>
+  value: string
+  onChange: (key: string) => void
+}) {
+  if (dates.length === 0) return null
+
+  return (
+    <div className="wm-date-rail" aria-label={label}>
+      {dates.map((date) => (
+        <button
+          type="button"
+          key={date.key}
+          className={`wm-date-rail__button${date.key === value ? ' wm-date-rail__button--active' : ''}`}
+          onClick={() => onChange(date.key)}
+          aria-pressed={date.key === value}
+        >
+          {date.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function ScorePill({ fixture, tone }: { fixture: WcFixture; tone: MatchTone }) {
+  const finished = FINISHED_STATUSES.has(fixture.status)
+  const hasScore = fixture.home_goals != null && fixture.away_goals != null
+  const homeName = worldCupTeamName(fixture.home_team)
+  const awayName = worldCupTeamName(fixture.away_team)
+  const statusLabel = tone === 'live'
+    ? fixture.status === 'HT' ? 'Descanso' : `${fixture.elapsed ?? ''}'`
+    : finished
+      ? 'Final'
+      : formatTime(fixture.played_at)
+
+  return (
+    <Link
+      to={`/mundial/partido/${fixture.external_id}`}
+      className={`wm-score-pill wm-score-pill--${tone}`}
+      aria-label={`Ver ${homeName} contra ${awayName}`}
+    >
+      <span className="wm-score-pill__stage">
+        {fixture.stage.replace('Group Stage', 'Fase de grupos')}
+      </span>
+      <span className="wm-score-pill__line">
+        <span className="wm-score-pill__team">
+          <TeamLogo team={fixture.home_team} className="wm-score-pill__flag" />
+          <strong>{homeName}</strong>
+        </span>
+        <span className="wm-score-pill__score">
+          {hasScore ? `${fixture.home_goals} - ${fixture.away_goals}` : 'vs'}
+        </span>
+        <span className="wm-score-pill__team wm-score-pill__team--away">
+          <TeamLogo team={fixture.away_team} className="wm-score-pill__flag" />
+          <strong>{awayName}</strong>
+        </span>
+      </span>
+      <span className="wm-score-pill__meta">
+        <i aria-hidden="true" />
+        {statusLabel}
+      </span>
+    </Link>
+  )
+}
+
+function SpotlightMatch({ fixture }: { fixture: WcFixture }) {
+  const tone: MatchTone = fixture.is_live
+    ? 'live'
+    : FINISHED_STATUSES.has(fixture.status)
+      ? 'result'
+      : 'upcoming'
+  const title = tone === 'live' ? 'Partido en vivo' : tone === 'result' ? 'Último resultado' : 'Próximo partido'
+
+  return (
+    <section className={`wm-now-strip wm-now-strip--${tone}`} aria-label={title}>
+      <div className="wm-now-strip__label">
+        <i aria-hidden="true" />
+        <span>{title}</span>
+      </div>
+      <ScorePill fixture={fixture} tone={tone} />
+    </section>
+  )
+}
+
 function StandingsGroup({ group, rows }: { group: string; rows: WcStanding[] }) {
   return (
     <section className="wm-group">
@@ -142,14 +256,18 @@ function StandingsGroup({ group, rows }: { group: string; rows: WcStanding[] }) 
         <span>Pts</span>
       </div>
       {rows.map((row) => (
-        <div className="wm-standing-row" key={row.team.external_id}>
+        <Link
+          to={row.team.external_id != null ? `/mundial/seleccion/${row.team.external_id}` : '#'}
+          className="wm-standing-row wm-standing-row--link"
+          key={row.team.external_id}
+        >
           <span className="wm-standing-row__position">{row.position}</span>
           <TeamLogo team={row.team} className="wm-standing-row__logo" />
           <strong>{worldCupTeamName(row.team)}</strong>
           <span>{row.played}</span>
           <span>{row.goal_difference > 0 ? '+' : ''}{row.goal_difference}</span>
           <b>{row.points}</b>
-        </div>
+        </Link>
       ))}
     </section>
   )
@@ -160,6 +278,8 @@ export default function MundialPage() {
   const [fixturesData, setFixturesData] = useState<WcFixturesResponse | null>(null)
   const [standingsData, setStandingsData] = useState<WcStandingsResponse | null>(null)
   const [view, setView] = useState<MundialView>('matches')
+  const [resultDate, setResultDate] = useState<string | null>(null)
+  const [upcomingDate, setUpcomingDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -191,14 +311,23 @@ export default function MundialPage() {
 
   const fixtures = fixturesData?.fixtures ?? []
   const live = fixtures.filter((fixture) => fixture.is_live)
-  const results = fixtures
+  const allResults = fixtures
     .filter((fixture) => FINISHED_STATUSES.has(fixture.status))
     .sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime())
-    .slice(0, 8)
-  const upcoming = fixtures
+  const allUpcoming = fixtures
     .filter((fixture) => !fixture.is_live && !FINISHED_STATUSES.has(fixture.status))
     .sort((a, b) => new Date(a.played_at).getTime() - new Date(b.played_at).getTime())
-    .slice(0, 8)
+  const resultDates = uniqueDateOptions(allResults, 'desc')
+  const upcomingDates = uniqueDateOptions(allUpcoming, 'asc')
+  const selectedResultDate = resultDate ?? resultDates[0]?.key ?? ''
+  const selectedUpcomingDate = upcomingDate ?? upcomingDates[0]?.key ?? ''
+  const results = allResults
+    .filter((fixture) => dateKey(fixture.played_at) === selectedResultDate)
+    .slice(0, 10)
+  const upcoming = allUpcoming
+    .filter((fixture) => dateKey(fixture.played_at) === selectedUpcomingDate)
+    .slice(0, 10)
+  const spotlightFixture = live[0] ?? allUpcoming[0] ?? allResults[0] ?? null
   const knockoutFixtures = fixtures.filter(isKnockout)
 
   const standingsByGroup = useMemo(() => {
@@ -279,48 +408,55 @@ export default function MundialPage() {
 
         {!loading && !error && view === 'matches' && (
           <>
-            {live.length > 0 && (
-              <section className="wm-section wm-section--live">
-                <header className="wm-section__header">
-                  <div>
-                    <span className="wm-section__eyebrow">Ahora</span>
-                    <h2>En vivo</h2>
-                  </div>
-                  <span className="wm-section__live-count">{live.length} en juego</span>
-                </header>
-                <div className="wm-live-grid">
-                  {live.map((fixture) => <FixtureCard fixture={fixture} key={fixture.id} />)}
-                </div>
-              </section>
-            )}
+            {spotlightFixture && <SpotlightMatch fixture={spotlightFixture} />}
 
-            <div className="wm-match-columns">
-              <section className="wm-section">
+            <div className="wm-scoreboard-layout">
+              <section className="wm-section wm-scoreboard-panel">
                 <header className="wm-section__header">
                   <div>
                     <span className="wm-section__eyebrow">Marcadores</span>
                     <h2>Resultados</h2>
                   </div>
                 </header>
-                <div className="wm-match-list">
-                  {results.map((fixture) => (
-                    <FixtureCard fixture={fixture} compact key={fixture.id} />
-                  ))}
-                </div>
+                <DateRail
+                  label="Elegir fecha de resultados"
+                  dates={resultDates}
+                  value={selectedResultDate}
+                  onChange={setResultDate}
+                />
+                {results.length > 0 ? (
+                  <div className="wm-score-stack">
+                    {results.map((fixture) => (
+                      <ScorePill fixture={fixture} tone="result" key={fixture.id} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="wm-score-empty">No hay resultados para esta fecha.</div>
+                )}
               </section>
 
-              <section className="wm-section">
+              <section className="wm-section wm-scoreboard-panel">
                 <header className="wm-section__header">
                   <div>
                     <span className="wm-section__eyebrow">Calendario</span>
                     <h2>Próximos partidos</h2>
                   </div>
                 </header>
-                <div className="wm-match-list">
-                  {upcoming.map((fixture) => (
-                    <FixtureCard fixture={fixture} compact key={fixture.id} />
-                  ))}
-                </div>
+                <DateRail
+                  label="Elegir fecha de próximos partidos"
+                  dates={upcomingDates}
+                  value={selectedUpcomingDate}
+                  onChange={setUpcomingDate}
+                />
+                {upcoming.length > 0 ? (
+                  <div className="wm-score-stack">
+                    {upcoming.map((fixture) => (
+                      <ScorePill fixture={fixture} tone="upcoming" key={fixture.id} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="wm-score-empty">No hay partidos programados para esta fecha.</div>
+                )}
               </section>
             </div>
           </>

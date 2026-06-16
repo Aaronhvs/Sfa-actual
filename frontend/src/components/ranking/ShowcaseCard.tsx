@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCountUp } from '../../hooks/useCountUp'
 import type { RankedPlayer, PlayerDetail } from '../../types'
+import { worldCupTeamFlagUrl } from '../../utils/worldCupTeams'
 
 interface Props {
   player: RankedPlayer
@@ -11,11 +12,23 @@ interface Props {
 }
 
 function initials(name: string): string {
-  return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+  return name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase()
 }
 
 function formatPts(pts: number): string {
   return Math.round(pts).toLocaleString('es-ES')
+}
+
+function compactName(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (name.length <= 16 || parts.length === 1) return name
+
+  const lastName = parts[parts.length - 1]
+  const initials = parts.slice(0, -1).map((part) => `${part[0]}.`).join(' ')
+  const compact = `${initials} ${lastName}`
+
+  if (compact.length <= 18) return compact
+  return lastName.length <= 18 ? lastName : `${lastName.slice(0, 16)}…`
 }
 
 function cardClass(rank: number, isWorldCup: boolean): string {
@@ -29,12 +42,11 @@ export default function ShowcaseCard({ player, season, isWorldCup = false }: Pro
   const animatedRank = useCountUp(player.rank, 620)
   const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
   const displayedRank = String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')
+  const flagUrl = isWorldCup ? worldCupTeamFlagUrl(player.team) : null
+  const mobileName = compactName(player.name)
 
   return (
-    <Link
-      to={playerLink}
-      className={cardClass(player.rank, isWorldCup)}
-    >
+    <Link to={playerLink} className={cardClass(player.rank, isWorldCup)}>
       <div className="psc-mobile-podium">
         <div className="psc-mobile-podium__portrait">
           {player.photo_url ? (
@@ -50,9 +62,15 @@ export default function ShowcaseCard({ player, season, isWorldCup = false }: Pro
           <b>{displayedRank}</b>
         </div>
         <div className="psc-mobile-podium__bar">
-          <strong>{player.name}</strong>
+          {flagUrl && <img src={flagUrl} alt={player.team} className="psc-mobile-podium__flag" />}
+          <strong title={player.name} aria-label={player.name}>{mobileName}</strong>
           <span>{formatPts(player.sfa_pts)} pts</span>
-          <small>{player.goals} G&nbsp;&nbsp;{player.assists} A</small>
+          <div
+            className="psc-mobile-podium__ga"
+            aria-label={`${player.goals} goles y ${player.assists} asistencias`}
+          >
+            <b>{player.goals + player.assists}<i>G+A</i></b>
+          </div>
         </div>
       </div>
 

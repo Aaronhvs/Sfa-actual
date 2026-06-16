@@ -11,6 +11,7 @@ const ComparePage = lazy(() => import('./pages/ComparePage'))
 const MetodologiaPage = lazy(() => import('./pages/MetodologiaPage'))
 const MundialPage = lazy(() => import('./pages/MundialPage'))
 const MundialMatchPage = lazy(() => import('./pages/MundialMatchPage'))
+const MundialTeamPage = lazy(() => import('./pages/MundialTeamPage'))
 const LegalPage = lazy(() => import('./pages/LegalPage'))
 
 function RouteFallback() {
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/metodologia" element={<MetodologiaPage />} />
             <Route path="/mundial" element={<MundialPage />} />
             <Route path="/mundial/partido/:fixtureId" element={<MundialMatchPage />} />
+            <Route path="/mundial/seleccion/:teamId" element={<MundialTeamPage />} />
             <Route path="/legal" element={<LegalPage />} />
           </Routes>
         </Suspense>

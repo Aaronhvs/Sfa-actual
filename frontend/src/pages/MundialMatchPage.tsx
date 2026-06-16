@@ -11,7 +11,7 @@ import type {
 } from '../types'
 import { worldCupTeamName } from '../utils/worldCupTeams'
 
-type DetailTab = 'lineups' | 'statistics'
+type DetailTab = 'lineups' | 'statistics' | 'performance'
 
 const TEAM_LOGO = (externalId: number | null) =>
   externalId ? `https://media.api-sports.io/football/teams/${externalId}.png` : null
@@ -54,10 +54,10 @@ function formatTime(iso: string): string {
   })
 }
 
-function TeamIdentity({ team }: { team: WcTeam }) {
+function TeamIdentity({ team, asLink = false }: { team: WcTeam; asLink?: boolean }) {
   const logo = TEAM_LOGO(team.external_id)
-  return (
-    <div className="wmd-team">
+  const content = (
+    <>
       {logo && (
         <img
           src={logo}
@@ -67,6 +67,20 @@ function TeamIdentity({ team }: { team: WcTeam }) {
         />
       )}
       <strong>{worldCupTeamName(team)}</strong>
+    </>
+  )
+
+  if (asLink && team.external_id != null) {
+    return (
+      <Link className="wmd-team wmd-team--link" to={`/mundial/seleccion/${team.external_id}`}>
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <div className="wmd-team">
+      {content}
     </div>
   )
 }
@@ -258,7 +272,7 @@ function LineupColumn({ lineup }: { lineup: WcTeamLineup }) {
   return (
     <section className="wmd-lineup">
       <header className="wmd-lineup__header">
-        <TeamIdentity team={lineup.team} />
+        <TeamIdentity team={lineup.team} asLink />
         <div>
           <span>{lineup.formation ?? 'Formación pendiente'}</span>
           <small>{lineup.coach_name ? `DT · ${lineup.coach_name}` : 'Entrenador pendiente'}</small>
@@ -301,6 +315,82 @@ function StatisticRow({ statistic }: { statistic: WcStatistic }) {
         <i style={{ width: `${homeWidth}%` }} />
       </div>
     </div>
+  )
+}
+
+function PlayerPerformancePanel({ lineups }: { lineups: WcTeamLineup[] }) {
+  const players = lineups
+    .flatMap((lineup) => (
+      [...lineup.start_xi, ...lineup.substitutes].map((player) => ({
+        player,
+        team: lineup.team,
+        isStarter: lineup.start_xi.includes(player),
+      }))
+    ))
+    .sort((a, b) => (b.player.sfa_points ?? -1) - (a.player.sfa_points ?? -1))
+
+  if (players.length === 0) {
+    return <div className="empty-state">TodavÃ­a no hay rendimiento individual disponible.</div>
+  }
+
+  return (
+    <section className="wmd-panel wmd-performance">
+      <header className="wmd-performance__header">
+        <div>
+          <span>Rendimiento SFA</span>
+          <h2>Jugadores del partido</h2>
+        </div>
+        <small>Puntos calculados por impacto real</small>
+      </header>
+      <div className="wmd-performance__list">
+        {players.map(({ player, team, isStarter }, index) => {
+          const photo = PLAYER_PHOTO(player.external_id)
+          const teamLogo = TEAM_LOGO(team.external_id)
+          const content = (
+            <>
+              <span className="wmd-performance__rank">{String(index + 1).padStart(2, '0')}</span>
+              <span className="wmd-performance__photo">
+                {photo && (
+                  <img
+                    src={photo}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none'
+                    }}
+                  />
+                )}
+              </span>
+              <span className="wmd-performance__identity">
+                <strong>{player.name}</strong>
+                <small>
+                  {teamLogo && <img src={teamLogo} alt="" loading="lazy" decoding="async" />}
+                  {worldCupTeamName(team)}
+                  {player.position ? ` Â· ${player.position}` : ''}
+                  {isStarter ? '' : ' Â· Suplente'}
+                </small>
+              </span>
+              <b>{player.sfa_points != null ? Math.round(player.sfa_points).toLocaleString('es-ES') : 'â€”'} pts</b>
+            </>
+          )
+
+          return player.player_id != null ? (
+            <Link
+              to={`/player/${player.player_id}?season=2026`}
+              className="wmd-performance__row"
+              key={`${player.external_id ?? player.name}-${index}`}
+            >
+              {content}
+            </Link>
+          ) : (
+            <div className="wmd-performance__row" key={`${player.external_id ?? player.name}-${index}`}>
+              {content}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -379,14 +469,14 @@ export default function MundialMatchPage() {
         <div className="wmd-scoreboard__spectrum" />
         <span className="wmd-scoreboard__stage">{fixture.stage.replace('Group Stage', 'Fase de grupos')}</span>
         <div className="wmd-scoreboard__match">
-          <TeamIdentity team={fixture.home_team} />
+          <TeamIdentity team={fixture.home_team} asLink />
           <div className="wmd-scoreboard__score">
             <strong>
               {fixture.home_goals ?? '—'} <span>:</span> {fixture.away_goals ?? '—'}
             </strong>
             <small className={fixture.is_live ? 'wmd-scoreboard__live' : ''}>{matchStatus(fixture)}</small>
           </div>
-          <TeamIdentity team={fixture.away_team} />
+          <TeamIdentity team={fixture.away_team} asLink />
         </div>
         <div className="wmd-scoreboard__meta">
           <span>{venueText || 'Estadio por confirmar'}</span>
@@ -397,6 +487,7 @@ export default function MundialMatchPage() {
       <nav className="wmd-tabs" aria-label="Detalle del partido" role="tablist">
         {([
           ['lineups', 'Alineaciones'],
+          ['performance', 'Rendimiento SFA'],
           ['statistics', 'Estadísticas'],
         ] as const).map(([id, label]) => (
           <button
@@ -451,6 +542,9 @@ export default function MundialMatchPage() {
               ))}
             </section>
           ) : <div className="empty-state">Las estadísticas estarán disponibles cuando comience el partido.</div>
+        )}
+        {tab === 'performance' && (
+          <PlayerPerformancePanel lineups={detail.lineups} />
         )}
       </main>
     </div>

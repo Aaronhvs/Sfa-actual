@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCountUp } from '../../hooks/useCountUp'
 import type { RankedPlayer } from '../../types'
+import { worldCupTeamFlagUrl } from '../../utils/worldCupTeams'
 
 interface Props {
   player: RankedPlayer
@@ -15,7 +16,7 @@ function formatPts(pts: number): string {
 }
 
 function initials(name: string): string {
-  return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+  return name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase()
 }
 
 export default function RankingCard({
@@ -28,6 +29,7 @@ export default function RankingCard({
   const animatedRank = useCountUp(player.rank, 620)
   const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
   const displayedRank = String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')
+  const flagUrl = isWorldCup ? worldCupTeamFlagUrl(player.team) : null
 
   return (
     <Link
@@ -39,24 +41,32 @@ export default function RankingCard({
         <span className="rc-mobile-row__rank">{displayedRank}</span>
         <div className="rc-mobile-row__photo">
           {player.photo_url ? (
-            <img
-              src={player.photo_url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
+            <img src={player.photo_url} alt="" loading="lazy" decoding="async" />
           ) : (
             <span>{initials(player.name)}</span>
           )}
         </div>
         <div className="rc-mobile-row__identity">
           <strong>{player.name}</strong>
-          <span>{player.team}{competitionName ? ` · ${competitionName}` : ''}</span>
+          <span>
+            {flagUrl ? (
+              <img src={flagUrl} alt={player.team} className="rc-mobile-row__flag" />
+            ) : (
+              player.team
+            )}
+            {!isWorldCup && competitionName ? ` · ${competitionName}` : ''}
+          </span>
         </div>
         <div className="rc-mobile-row__score">
           <strong>{formatPts(player.sfa_pts)}</strong>
           <span>PTS</span>
-          <small>{player.goals} G&nbsp;&nbsp;{player.assists} A</small>
+          <div
+            className="rc-mobile-row__ga"
+            aria-label={`${player.goals} goles y ${player.assists} asistencias`}
+          >
+            <b>{player.goals}<i>G</i></b>
+            <b>{player.assists}<i>A</i></b>
+          </div>
         </div>
       </div>
 

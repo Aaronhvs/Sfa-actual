@@ -165,6 +165,21 @@ export default function RankingPage() {
   const contextLabel = contextParts.length > 0 ? contextParts.join(' · ') : null
 
   const animatedTotal = useCountUp(totalPlayers)
+  const seasonPicker = seasonItems.length > 0 ? (
+    <div className="rp-season-picker">
+      <span className="rp-season-picker__hint">Elige la temporada</span>
+      <SeasonDropdown
+        items={seasonItems}
+        value={season}
+        onChange={(nextSeason) => {
+          setSeason(nextSeason)
+          setPage(0)
+          setPageDir('next')
+        }}
+        includeAll={true}
+      />
+    </div>
+  ) : null
 
   function goNext() {
     setPageDir('next')
@@ -192,27 +207,7 @@ export default function RankingPage() {
   return (
     <div className="ranking-page">
       {isWcSeason ? (
-        <>
-          <WorldCupPageHeader />
-          {seasonItems.length > 0 && (
-            <div className="rp-tournament-season-bar">
-              <WcLiveChip />
-              <div className="rp-season-picker">
-                <span className="rp-season-picker__hint">Elige la temporada</span>
-                <SeasonDropdown
-                  items={seasonItems}
-                  value={season}
-                  onChange={(nextSeason) => {
-                    setSeason(nextSeason)
-                    setPage(0)
-                    setPageDir('next')
-                  }}
-                  includeAll={true}
-                />
-              </div>
-            </div>
-          )}
-        </>
+        <WorldCupPageHeader />
       ) : (
       <header className="rp-header">
         <div className="rp-header__copy">
@@ -224,22 +219,23 @@ export default function RankingPage() {
           <h1 className="rp-header__title">Ranking de jugadores</h1>
           <p className="rp-header__sub">No todos los goles valen igual.</p>
         </div>
-        <div className="rp-header__right">
-          <WcLiveChip />
-          {seasonItems.length > 0 && (
-            <div className="rp-season-picker">
-              <span className="rp-season-picker__hint">Elige la temporada</span>
-              <SeasonDropdown
-                items={seasonItems}
-                value={season}
-                onChange={(s) => { setSeason(s); setPage(0); setPageDir('next') }}
-                includeAll={true}
-              />
-            </div>
-          )}
-        </div>
       </header>
       )}
+
+      <section
+        className={`rp-control-deck${isWcSeason ? ' rp-control-deck--wc' : ''}`}
+        aria-label={isWcSeason ? 'Controles del ranking mundial' : 'Controles del ranking'}
+      >
+        <WcLiveChip />
+        {seasonPicker}
+        <Link to="/metodologia" className="rp-control-deck__method">
+          <span>
+            <strong>Cómo funciona SFA</strong>
+            <small>No todos los goles valen igual</small>
+          </span>
+          <i aria-hidden="true">→</i>
+        </Link>
+      </section>
 
       <section
         className={`rp-intro${isWcSeason ? ' rp-intro--wc' : ''}`}
@@ -264,6 +260,12 @@ export default function RankingPage() {
           <span aria-hidden="true">→</span>
         </Link>
       </section>
+
+      {isWcSeason && (
+        <div className="rp-world-cup-match-preview">
+          <WcLiveChip />
+        </div>
+      )}
 
       {showWcBanner && !isWcSeason && (
         <div className="rp-wc-banner-wrap">
