@@ -72,7 +72,7 @@ export default function Navbar() {
   return (
     <>
       <nav className={`navbar${scrolled ? ' navbar--scrolled' : ''}`}>
-        <Link to="/ranking" className="navbar__logo-link" aria-label="SFA, ir al ranking">
+        <Link to="/ranking" className="navbar__logo-link navbar__logo-link--desktop" aria-label="SFA, ir al ranking">
           <img
             src="/logo.png"
             alt="SFA"
@@ -109,6 +109,14 @@ export default function Navbar() {
           </button>
         </div>
       </nav>
+
+      <Link to="/ranking" className="navbar__mobile-logo-link" aria-label="SFA, ir al ranking">
+        <img
+          src="/logo.png"
+          alt="SFA"
+          className="navbar__mobile-logo-img"
+        />
+      </Link>
 
       <div
         className={`navbar__overlay${menuOpen ? ' navbar__overlay--open' : ''}`}

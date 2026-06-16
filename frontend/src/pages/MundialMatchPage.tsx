@@ -94,8 +94,22 @@ function matchStatus(fixture: WcFixture): string {
 }
 
 function PlayerRow({ player }: { player: WcLineupPlayer }) {
+  const photo = PLAYER_PHOTO(player.external_id)
   const content = (
     <>
+      <span className="wmd-player__avatar">
+        {photo && (
+          <img
+            src={photo}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={(event) => {
+              event.currentTarget.style.display = 'none'
+            }}
+          />
+        )}
+      </span>
       <span className="wmd-player__number">{player.number ?? '-'}</span>
       <span className="wmd-player__name">{player.name}</span>
       {player.sfa_points != null ? (

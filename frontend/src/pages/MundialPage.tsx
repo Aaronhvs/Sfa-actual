@@ -317,7 +317,7 @@ export default function MundialPage() {
   const allUpcoming = fixtures
     .filter((fixture) => !fixture.is_live && !FINISHED_STATUSES.has(fixture.status))
     .sort((a, b) => new Date(a.played_at).getTime() - new Date(b.played_at).getTime())
-  const resultDates = uniqueDateOptions(allResults, 'asc')
+  const resultDates = uniqueDateOptions(allResults, 'desc')
   const upcomingDates = uniqueDateOptions(allUpcoming, 'asc')
   const selectedResultDate = resultDate ?? resultDates[0]?.key ?? ''
   const selectedUpcomingDate = upcomingDate ?? upcomingDates[0]?.key ?? ''
