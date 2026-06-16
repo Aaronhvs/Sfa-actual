@@ -106,22 +106,23 @@ class APIFootballProvider:
     async def fetch_standings(self, league_id: int, season: int) -> list[StandingRawDTO]:
         data = await self._get("standings", {"league": league_id, "season": season})
         try:
-            standings_raw = data["response"][0]["league"]["standings"][0]
+            all_groups = data["response"][0]["league"]["standings"]
         except (IndexError, KeyError, TypeError):
             logger.warning("No standings data for league %d season %d", league_id, season)
             return []
 
         result: list[StandingRawDTO] = []
-        for entry in standings_raw:
-            result.append(
-                StandingRawDTO(
-                    team_external_id=entry["team"]["id"],
-                    team_name=entry["team"]["name"],
-                    position=entry["rank"],
-                    points=entry["points"],
-                    played=entry["all"]["played"],
+        for group in all_groups:
+            for entry in group:
+                result.append(
+                    StandingRawDTO(
+                        team_external_id=entry["team"]["id"],
+                        team_name=entry["team"]["name"],
+                        position=entry["rank"],
+                        points=entry["points"],
+                        played=entry["all"]["played"],
+                    )
                 )
-            )
         return result
 
     async def fetch_world_cup_fixtures(
