@@ -96,13 +96,15 @@ function matchStatus(fixture: WcFixture): string {
 function PlayerRow({ player }: { player: WcLineupPlayer }) {
   const content = (
     <>
-      <span className="wmd-player__number">{player.number ?? '—'}</span>
+      <span className="wmd-player__number">{player.number ?? '-'}</span>
       <span className="wmd-player__name">{player.name}</span>
       {player.sfa_points != null ? (
         <strong className="wmd-player__points">
           {Math.round(player.sfa_points).toLocaleString('es-ES')} pts
         </strong>
-      ) : player.position ? <small>{player.position}</small> : null}
+      ) : (
+        <strong className="wmd-player__points">Pend.</strong>
+      )}
     </>
   )
 
@@ -330,7 +332,7 @@ function PlayerPerformancePanel({ lineups }: { lineups: WcTeamLineup[] }) {
     .sort((a, b) => (b.player.sfa_points ?? -1) - (a.player.sfa_points ?? -1))
 
   if (players.length === 0) {
-    return <div className="empty-state">TodavÃ­a no hay rendimiento individual disponible.</div>
+    return <div className="empty-state">Todavia no hay rendimiento individual disponible.</div>
   }
 
   return (
@@ -367,11 +369,11 @@ function PlayerPerformancePanel({ lineups }: { lineups: WcTeamLineup[] }) {
                 <small>
                   {teamLogo && <img src={teamLogo} alt="" loading="lazy" decoding="async" />}
                   {worldCupTeamName(team)}
-                  {player.position ? ` Â· ${player.position}` : ''}
-                  {isStarter ? '' : ' Â· Suplente'}
+                  {player.position ? ` - ${player.position}` : ''}
+                  {isStarter ? '' : ' - Suplente'}
                 </small>
               </span>
-              <b>{player.sfa_points != null ? Math.round(player.sfa_points).toLocaleString('es-ES') : 'â€”'} pts</b>
+              <b>{player.sfa_points != null ? `${Math.round(player.sfa_points).toLocaleString('es-ES')} pts` : 'Pend.'}</b>
             </>
           )
 

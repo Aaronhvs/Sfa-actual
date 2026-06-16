@@ -11668,6 +11668,132 @@ body.mode-tournament .main-content {
   }
 }
 
+@media (max-width: 760px) {
+  .wmd-combined-tactical {
+    padding: 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.035), transparent 38%),
+      color-mix(in srgb, var(--tm-blue) 9%, var(--tm-surface));
+  }
+
+  .wmd-pitch.wmd-pitch--combined {
+    aspect-ratio: 2.08;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        rgba(255,255,255,0.025) 0 12.5%,
+        rgba(0,0,0,0.16) 12.5% 25%
+      ),
+      linear-gradient(180deg, #18201f, #101716);
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: inset 0 0 34px rgba(0,0,0,0.36);
+  }
+
+  .wmd-pitch--combined .wmd-pitch__halfway,
+  .wmd-pitch--combined .wmd-pitch__circle,
+  .wmd-pitch--combined .wmd-pitch__box {
+    border-color: rgba(255,255,255,0.24);
+  }
+
+  .wmd-pitch--combined .wmd-pitch-player {
+    width: 43px;
+  }
+
+  .wmd-pitch-player__portrait {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .wmd-pitch-player__portrait img {
+    inset: -5px -3px 0;
+    width: 30px;
+    height: 30px;
+  }
+
+  .wmd-pitch-player__portrait b {
+    min-width: 14px;
+    height: 14px;
+    font-size: 0.45rem;
+  }
+
+  .wmd-pitch--combined .wmd-pitch-player > small {
+    max-width: 43px;
+    margin-top: 2px;
+    padding: 2px 3px;
+    font-size: 0.38rem;
+  }
+
+  .wmd-pitch-player > strong {
+    padding: 1px 4px;
+    font-size: 0.38rem;
+  }
+
+  .wmd-lineup {
+    padding: 0 14px 16px;
+  }
+
+  .wmd-lineup__header {
+    margin: 0 -14px 14px;
+    padding: 14px;
+  }
+
+  .wmd-lineup h3 {
+    margin: 13px 0 7px;
+  }
+
+  .wmd-player-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .wmd-player {
+    min-height: 36px;
+    padding: 6px 7px;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .wmd-player__number {
+    font-size: 0.85rem;
+  }
+
+  .wmd-player__name {
+    font-size: 0.62rem;
+  }
+
+  .wmd-player__points {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: -2px;
+    font-size: 0.46rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .wmd-pitch.wmd-pitch--combined {
+    aspect-ratio: 1.98;
+  }
+
+  .wmd-pitch--combined .wmd-pitch-player {
+    width: 38px;
+  }
+
+  .wmd-pitch-player__portrait {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .wmd-pitch-player__portrait img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .wmd-pitch--combined .wmd-pitch-player > small {
+    max-width: 38px;
+    font-size: 0.35rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .navbar__drawer,
   .navbar__drawer-link,
