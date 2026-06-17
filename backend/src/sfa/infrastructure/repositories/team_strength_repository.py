@@ -307,18 +307,24 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
             select(
                 Team.id.label("team_id"),
                 Team.name.label("team_name"),
-                Fixture.competition_id,
+                func.cast(competition_id, Fixture.competition_id.type).label("competition_id"),
             )
-            .join(
+            .outerjoin(
                 Fixture,
-                or_(
-                    Fixture.home_team_id == Team.id,
-                    Fixture.away_team_id == Team.id,
+                (
+                    (Fixture.competition_id == competition_id)
+                    & (Fixture.season == season)
+                    & or_(
+                        Fixture.home_team_id == Team.id,
+                        Fixture.away_team_id == Team.id,
+                    )
                 ),
             )
             .where(
-                Fixture.competition_id == competition_id,
-                Fixture.season == season,
+                or_(
+                    Team.competition_id == competition_id,
+                    Fixture.id.is_not(None),
+                ),
             )
             .distinct()
             .order_by(Team.name.asc())
@@ -340,16 +346,20 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
             select(
                 Team.id.label("team_id"),
                 Team.name.label("team_name"),
-                Fixture.competition_id,
+                func.cast(competition_id, Fixture.competition_id.type).label("competition_id"),
                 TeamStrength.strength,
                 TeamStrength.elo_raw,
                 TeamStrength.source,
             )
-            .join(
+            .outerjoin(
                 Fixture,
-                or_(
-                    Fixture.home_team_id == Team.id,
-                    Fixture.away_team_id == Team.id,
+                (
+                    (Fixture.competition_id == competition_id)
+                    & (Fixture.season == season)
+                    & or_(
+                        Fixture.home_team_id == Team.id,
+                        Fixture.away_team_id == Team.id,
+                    )
                 ),
             )
             .outerjoin(
@@ -359,8 +369,10 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 & (TeamStrength.competition_id == competition_id),
             )
             .where(
-                Fixture.competition_id == competition_id,
-                Fixture.season == season,
+                or_(
+                    Team.competition_id == competition_id,
+                    Fixture.id.is_not(None),
+                ),
             )
             .distinct()
             .order_by(Team.name.asc())
