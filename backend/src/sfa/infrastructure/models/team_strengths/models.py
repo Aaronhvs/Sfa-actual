@@ -20,7 +20,7 @@ class TeamStrength(Base):
         UniqueConstraint("team_id", "season", "competition_id", name="uq_team_strength"),
         CheckConstraint("strength BETWEEN 0 AND 100", name="ck_team_strength_range"),
         CheckConstraint(
-            "source IN ('calculated', 'default', 'override', 'clubelo_seed', 'elo_v1')",
+            "source IN ('calculated', 'default', 'override', 'clubelo_seed', 'elo_v1', 'national_elo_seed')",
             name="ck_team_strength_source",
         ),
     )

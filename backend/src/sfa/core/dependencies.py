@@ -117,6 +117,9 @@ from sfa.application.use_cases.compare_players import ComparePlayersUseCase
 from sfa.application.use_cases.enrich_player_positions import EnrichPlayerPositionsUseCase
 from sfa.application.use_cases.fix_player_positions import FixPlayerPositionsUseCase
 from sfa.application.use_cases.get_ingestion_status import GetIngestionStatusUseCase
+from sfa.application.use_cases.get_national_team_elo_coverage import (
+    GetNationalTeamEloCoverageUseCase,
+)
 from sfa.application.use_cases.get_player_detail import GetPlayerDetailUseCase
 from sfa.application.use_cases.get_player_events import GetPlayerEventsUseCase
 from sfa.application.use_cases.get_player_fixtures import GetPlayerFixturesUseCase
@@ -146,6 +149,7 @@ from sfa.application.use_cases.register_competition_achievement import (
     RegisterCompetitionAchievementUseCase,
 )
 from sfa.application.use_cases.seed_clubelo import SeedClubEloUseCase
+from sfa.application.use_cases.seed_national_team_elo import SeedNationalTeamEloUseCase
 
 
 async def get_player_detail_use_case(
@@ -399,6 +403,25 @@ async def get_seed_clubelo_use_case(
         provider=ClubEloProvider(),
         calculator=EloCalculatorService(),
     )
+
+
+async def get_seed_national_team_elo_use_case(
+    repo: Annotated[TeamStrengthRepository, Depends(get_team_strength_repository)],
+) -> SeedNationalTeamEloUseCase:
+    from sfa.infrastructure.providers.national_team_elo_provider import NationalTeamEloProvider
+    from sfa.infrastructure.services.elo_calculator import EloCalculatorService
+
+    return SeedNationalTeamEloUseCase(
+        repo=repo,
+        provider=NationalTeamEloProvider(),
+        calculator=EloCalculatorService(),
+    )
+
+
+async def get_national_team_elo_coverage_use_case(
+    repo: Annotated[TeamStrengthRepository, Depends(get_team_strength_repository)],
+) -> GetNationalTeamEloCoverageUseCase:
+    return GetNationalTeamEloCoverageUseCase(repo)
 
 
 async def get_calculate_elo_use_case(

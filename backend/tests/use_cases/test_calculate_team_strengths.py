@@ -3,7 +3,14 @@ from datetime import datetime, timezone
 import pytest
 
 from sfa.application.use_cases.calculate_team_strengths import CalculateTeamStrengthsUseCase
-from sfa.domain.scoring_ports import TeamStandingRow, TeamStrengthRepositoryPort
+from sfa.domain.scoring_ports import (
+    FixtureEloRow,
+    TeamCompetitionRow,
+    TeamEloRow,
+    TeamStandingRow,
+    TeamStrengthCoverageRow,
+    TeamStrengthRepositoryPort,
+)
 
 
 class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
@@ -26,6 +33,35 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         self, competition_id: int, season: str
     ) -> list[TeamStandingRow]:
         return self._standings.get((competition_id, season), [])
+
+    async def get_team_strength_with_elo(self, team_id, season, competition_id):
+        return None, None
+
+    async def upsert_team_elo(
+        self, team_id, season, elo_raw, strength_normalized, source, competition_ids
+    ) -> None:
+        pass
+
+    async def get_all_teams_with_elo(self, season) -> list[TeamEloRow]:
+        return []
+
+    async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
+        return []
+
+    async def get_team_name_id_map(self, season):
+        return {}
+
+    async def get_active_competition_ids_for_team(self, team_id, season):
+        return []
+
+    async def get_competition_id_by_name(self, name):
+        return None
+
+    async def get_teams_for_competition_season(self, competition_id, season) -> list[TeamCompetitionRow]:
+        return []
+
+    async def get_team_strength_coverage(self, competition_id, season) -> list[TeamStrengthCoverageRow]:
+        return []
 
 
 def _make_standings(competition_id: int, season: str, n_teams: int) -> list[TeamStandingRow]:

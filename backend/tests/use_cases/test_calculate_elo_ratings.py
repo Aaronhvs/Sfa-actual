@@ -5,8 +5,10 @@ import pytest
 from sfa.application.use_cases.calculate_elo_ratings import CalculateEloRatingsUseCase
 from sfa.domain.scoring_ports import (
     FixtureEloRow,
+    TeamCompetitionRow,
     TeamEloRow,
     TeamStandingRow,
+    TeamStrengthCoverageRow,
     TeamStrengthRepositoryPort,
 )
 from sfa.infrastructure.services.elo_calculator import ELO_DEFAULT, EloCalculatorService
@@ -54,6 +56,15 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
 
     async def get_active_competition_ids_for_team(self, team_id, season):
         return self.active_competitions.get(team_id, [1])
+
+    async def get_competition_id_by_name(self, name):
+        return None
+
+    async def get_teams_for_competition_season(self, competition_id, season) -> list[TeamCompetitionRow]:
+        return []
+
+    async def get_team_strength_coverage(self, competition_id, season) -> list[TeamStrengthCoverageRow]:
+        return []
 
 
 def _fixture(fixture_id, home, away, home_goals, away_goals, played_at, competition_id=1):

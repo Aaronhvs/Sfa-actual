@@ -16,6 +16,22 @@ def seed_clubelo_task(self, date_str: str, season: str):
         raise self.retry(exc=exc)
 
 
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=300)
+def seed_national_team_elo_task(
+    self,
+    season: str,
+    competition_id: int | None = None,
+    source_url: str | None = None,
+    min_coverage: float = 100.0,
+):
+    """Seed national-team ELO ratings into team_strengths."""
+    try:
+        asyncio.run(_run_national_team_seed(season, competition_id, source_url, min_coverage))
+    except Exception as exc:
+        logger.error("[seed_national_team_elo_task] Failed season=%s: %s", season, exc)
+        raise self.retry(exc=exc)
+
+
 @celery_app.task(bind=True, max_retries=2, default_retry_delay=60)
 def apply_elo_update_task(self, season: str, competition_ids: list[int]):
     """Recalculate ELO ratings after ingestion."""
@@ -50,6 +66,38 @@ async def _run_seed(date_str: str, season: str) -> None:
         else:
             await session.rollback()
             raise RuntimeError(result.error or "ClubElo seed failed")
+
+
+async def _run_national_team_seed(
+    season: str,
+    competition_id: int | None,
+    source_url: str | None,
+    min_coverage: float,
+) -> None:
+    from sfa.application.use_cases.seed_national_team_elo import SeedNationalTeamEloUseCase
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.providers.national_team_elo_provider import NationalTeamEloProvider
+    from sfa.infrastructure.repositories.team_strength_repository import TeamStrengthRepository
+    from sfa.infrastructure.services.elo_calculator import EloCalculatorService
+
+    async with AsyncSessionLocal() as session:
+        use_case = SeedNationalTeamEloUseCase(
+            repo=TeamStrengthRepository(session),
+            provider=NationalTeamEloProvider(),
+            calculator=EloCalculatorService(),
+        )
+        result = await use_case.execute(
+            season=season,
+            competition_id=competition_id,
+            source_url=source_url,
+            dry_run=False,
+            min_coverage=min_coverage,
+        )
+        if result.status == "completed":
+            await session.commit()
+        else:
+            await session.rollback()
+            raise RuntimeError(result.error or "National-team ELO seed failed")
 
 
 async def _run_elo_update(season: str, competition_ids: list[int]) -> None:

@@ -1,0 +1,40 @@
+### Dry-run national-team ELO seed for World Cup 2026
+POST http://localhost:8000/api/v1/admin/elo/national-teams/seed
+Content-Type: application/json
+X-Admin-Key: {{admin_key}}
+
+{
+  "season": "2026",
+  "dry_run": true,
+  "min_coverage": 100.0
+}
+
+### Seed national-team ELO for World Cup 2026
+POST http://localhost:8000/api/v1/admin/elo/national-teams/seed
+Content-Type: application/json
+X-Admin-Key: {{admin_key}}
+
+{
+  "season": "2026",
+  "dry_run": false,
+  "min_coverage": 100.0
+}
+
+### Audit national-team ELO coverage after seed
+GET http://localhost:8000/api/v1/admin/elo/national-teams/coverage?season=2026
+X-Admin-Key: {{admin_key}}
+
+### Manual fallback seed input
+POST http://localhost:8000/api/v1/admin/elo/national-teams/seed
+Content-Type: application/json
+X-Admin-Key: {{admin_key}}
+
+{
+  "season": "2026",
+  "dry_run": true,
+  "min_coverage": 100.0,
+  "manual_entries": [
+    {"country_name": "Brazil", "elo_raw": 2100, "rank": 1, "source_date": "manual"},
+    {"country_name": "Argentina", "elo_raw": 2080, "rank": 2, "source_date": "manual"}
+  ]
+}

@@ -9,10 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.scoring_ports import (
     FixtureEloRow,
+    TeamCompetitionRow,
     TeamEloRow,
     TeamStandingRow,
+    TeamStrengthCoverageRow,
     TeamStrengthRepositoryPort,
 )
+from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
@@ -287,3 +290,90 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
         )
         result = await self._session.execute(stmt)
         return [row[0] for row in result.all()]
+
+    async def get_competition_id_by_name(self, name: str) -> int | None:
+        stmt = (
+            select(Competition.id)
+            .where(func.lower(Competition.name) == name.lower())
+            .order_by(Competition.id.asc())
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_teams_for_competition_season(
+        self, competition_id: int, season: str
+    ) -> list[TeamCompetitionRow]:
+        stmt = (
+            select(
+                Team.id.label("team_id"),
+                Team.name.label("team_name"),
+                Fixture.competition_id,
+            )
+            .join(
+                Fixture,
+                or_(
+                    Fixture.home_team_id == Team.id,
+                    Fixture.away_team_id == Team.id,
+                ),
+            )
+            .where(
+                Fixture.competition_id == competition_id,
+                Fixture.season == season,
+            )
+            .distinct()
+            .order_by(Team.name.asc())
+        )
+        result = await self._session.execute(stmt)
+        return [
+            TeamCompetitionRow(
+                team_id=row.team_id,
+                team_name=row.team_name,
+                competition_id=row.competition_id,
+            )
+            for row in result.all()
+        ]
+
+    async def get_team_strength_coverage(
+        self, competition_id: int, season: str
+    ) -> list[TeamStrengthCoverageRow]:
+        stmt = (
+            select(
+                Team.id.label("team_id"),
+                Team.name.label("team_name"),
+                Fixture.competition_id,
+                TeamStrength.strength,
+                TeamStrength.elo_raw,
+                TeamStrength.source,
+            )
+            .join(
+                Fixture,
+                or_(
+                    Fixture.home_team_id == Team.id,
+                    Fixture.away_team_id == Team.id,
+                ),
+            )
+            .outerjoin(
+                TeamStrength,
+                (TeamStrength.team_id == Team.id)
+                & (TeamStrength.season == season)
+                & (TeamStrength.competition_id == competition_id),
+            )
+            .where(
+                Fixture.competition_id == competition_id,
+                Fixture.season == season,
+            )
+            .distinct()
+            .order_by(Team.name.asc())
+        )
+        result = await self._session.execute(stmt)
+        return [
+            TeamStrengthCoverageRow(
+                team_id=row.team_id,
+                team_name=row.team_name,
+                competition_id=row.competition_id,
+                strength=float(row.strength) if row.strength is not None else None,
+                elo_raw=float(row.elo_raw) if row.elo_raw is not None else None,
+                source=row.source,
+            )
+            for row in result.all()
+        ]

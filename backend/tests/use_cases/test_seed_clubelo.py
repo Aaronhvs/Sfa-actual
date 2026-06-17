@@ -3,8 +3,10 @@ import pytest
 from sfa.application.use_cases.seed_clubelo import SeedClubEloUseCase
 from sfa.domain.scoring_ports import (
     FixtureEloRow,
+    TeamCompetitionRow,
     TeamEloRow,
     TeamStandingRow,
+    TeamStrengthCoverageRow,
     TeamStrengthRepositoryPort,
 )
 from sfa.infrastructure.providers.clubelo_provider import ClubEloEntry
@@ -52,6 +54,15 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
 
     async def get_active_competition_ids_for_team(self, team_id, season):
         return self.active_competitions.get(team_id, [])
+
+    async def get_competition_id_by_name(self, name):
+        return None
+
+    async def get_teams_for_competition_season(self, competition_id, season) -> list[TeamCompetitionRow]:
+        return []
+
+    async def get_team_strength_coverage(self, competition_id, season) -> list[TeamStrengthCoverageRow]:
+        return []
 
 
 class FakeClubEloProvider:

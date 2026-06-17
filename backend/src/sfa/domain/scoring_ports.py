@@ -77,6 +77,31 @@ class TeamEloRow:
 
 
 @dataclass(frozen=True)
+class NationalTeamEloEntry:
+    country_name: str
+    elo_raw: float
+    rank: int | None
+    source_date: str | None
+
+
+@dataclass(frozen=True)
+class TeamCompetitionRow:
+    team_id: int
+    team_name: str
+    competition_id: int
+
+
+@dataclass(frozen=True)
+class TeamStrengthCoverageRow:
+    team_id: int
+    team_name: str
+    competition_id: int
+    strength: float | None
+    elo_raw: float | None
+    source: str | None
+
+
+@dataclass(frozen=True)
 class FixtureEloRow:
     fixture_id: int
     home_team_id: int
@@ -222,6 +247,16 @@ class TeamStrengthRepositoryPort(Protocol):
     async def get_active_competition_ids_for_team(
         self, team_id: int, season: str
     ) -> list[int]: ...
+
+    async def get_competition_id_by_name(self, name: str) -> int | None: ...
+
+    async def get_teams_for_competition_season(
+        self, competition_id: int, season: str
+    ) -> list[TeamCompetitionRow]: ...
+
+    async def get_team_strength_coverage(
+        self, competition_id: int, season: str
+    ) -> list[TeamStrengthCoverageRow]: ...
 
 
 @runtime_checkable
