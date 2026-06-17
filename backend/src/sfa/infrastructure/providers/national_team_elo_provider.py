@@ -5,6 +5,7 @@ import html
 import re
 import unicodedata
 from datetime import date
+from urllib.parse import urlparse
 
 import httpx
 
@@ -40,10 +41,18 @@ class NationalTeamEloProvider:
         if manual_entries is not None:
             return manual_entries
 
-        url = source_url or DEFAULT_NATIONAL_ELO_URL
+        url = _normalize_eloratings_source_url(source_url or DEFAULT_NATIONAL_ELO_URL)
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.get(url)
+            response = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
             response.raise_for_status()
+            if _is_eloratings_tsv_url(url):
+                teams_response = await client.get(
+                    _eloratings_teams_url(url),
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+                teams_response.raise_for_status()
+                source_date = response.headers.get("Last-Modified") or date.today().isoformat()
+                return parse_eloratings_tsv(response.text, teams_response.text, source_date)
         return parse_national_team_elo(response.text)
 
     def resolve_team_name(self, source_name: str, sfa_team_names: list[str]) -> str | None:
@@ -96,6 +105,34 @@ def parse_national_team_elo(raw: str) -> list[NationalTeamEloEntry]:
     return entries
 
 
+def parse_eloratings_tsv(
+    raw: str,
+    team_dictionary_raw: str,
+    source_date: str | None = None,
+) -> list[NationalTeamEloEntry]:
+    code_to_name = _parse_eloratings_team_dictionary(team_dictionary_raw)
+    entries: list[NationalTeamEloEntry] = []
+    seen: set[str] = set()
+    for line in raw.splitlines():
+        fields = line.split("\t")
+        if len(fields) < 4:
+            continue
+        rank, global_rank, code, elo_raw = fields[:4]
+        if not rank.isdigit() or not global_rank.isdigit() or not elo_raw.isdigit():
+            continue
+        name = code_to_name.get(code)
+        if name is None or name in seen:
+            continue
+        seen.add(name)
+        entries.append(NationalTeamEloEntry(
+            country_name=name,
+            elo_raw=float(elo_raw),
+            rank=int(global_rank),
+            source_date=source_date or date.today().isoformat(),
+        ))
+    return entries
+
+
 def _append_entry(
     entries: list[NationalTeamEloEntry],
     seen: set[str],
@@ -139,3 +176,35 @@ def _looks_like_team_name(name: str) -> bool:
     if name in rejected:
         return False
     return any(char.isalpha() for char in name) and len(name) <= 60
+
+
+def _parse_eloratings_team_dictionary(raw: str) -> dict[str, str]:
+    teams: dict[str, str] = {}
+    for line in raw.splitlines():
+        fields = line.split("\t")
+        if len(fields) < 2:
+            continue
+        code = fields[0]
+        if code.endswith("_loc"):
+            continue
+        teams[code] = fields[1]
+    return teams
+
+
+def _normalize_eloratings_source_url(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.netloc not in {"eloratings.net", "www.eloratings.net"}:
+        return url
+    if parsed.path in {"", "/"} or parsed.path.endswith(".tsv"):
+        return url
+    return f"{url.rstrip('/')}.tsv"
+
+
+def _is_eloratings_tsv_url(url: str) -> bool:
+    parsed = urlparse(url)
+    return parsed.netloc in {"eloratings.net", "www.eloratings.net"} and parsed.path.endswith(".tsv")
+
+
+def _eloratings_teams_url(url: str) -> str:
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.netloc}/en.teams.tsv"
