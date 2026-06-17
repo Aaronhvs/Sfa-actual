@@ -14,9 +14,9 @@ from sfa.domain.scoring_ports import NationalTeamEloEntry
 DEFAULT_NATIONAL_ELO_URL = "https://www.eloratings.net/"
 
 NATIONAL_TEAM_NAME_MAP: dict[str, str] = {
-    "Czechia": "Czech Republic",
+    "Cape Verde": "Cape Verde Islands",
+    "DR Congo": "Congo DR",
     "Iran": "IR Iran",
-    "Ivory Coast": "Cote d'Ivoire",
     "Korea Rep": "South Korea",
     "Korea Republic": "South Korea",
     "Korea DPR": "North Korea",

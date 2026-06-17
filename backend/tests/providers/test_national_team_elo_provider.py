@@ -58,6 +58,16 @@ def test_resolve_team_name_uses_explicit_mapping() -> None:
     assert resolved == "USA"
 
 
+def test_resolve_world_cup_aliases() -> None:
+    provider = NationalTeamEloProvider()
+    sfa_teams = ["Cape Verde Islands", "Congo DR", "Czechia", "Ivory Coast"]
+
+    assert provider.resolve_team_name("Cape Verde", sfa_teams) == "Cape Verde Islands"
+    assert provider.resolve_team_name("DR Congo", sfa_teams) == "Congo DR"
+    assert provider.resolve_team_name("Czechia", sfa_teams) == "Czechia"
+    assert provider.resolve_team_name("Ivory Coast", sfa_teams) == "Ivory Coast"
+
+
 def test_resolve_team_name_uses_fuzzy_fallback() -> None:
     provider = NationalTeamEloProvider()
 
