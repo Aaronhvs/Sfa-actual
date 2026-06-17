@@ -111,11 +111,16 @@ async def _run_ingest_competition(
         result = await use_case.execute(league, season)
         await session.commit()
 
-    from sfa.tasks.elo_tasks import apply_elo_update_task
-
     competition_id = await _get_competition_id_by_league(league)
-    if competition_id is not None:
+    if competition_id is not None and league.participant_kind != "national_team":
+        from sfa.tasks.elo_tasks import apply_elo_update_task
+
         apply_elo_update_task.delay(str(season), [competition_id])
+    elif competition_id is not None:
+        logger.info(
+            "[ingestion] Skipping club-style ELO update for national-team competition_id=%d",
+            competition_id,
+        )
 
     await _trigger_recalculation(season)
     return _serialize_result(result)
