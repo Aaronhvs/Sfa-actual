@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from sfa.celery_app import celery_app
 
@@ -67,13 +67,20 @@ async def _run_ingest_today() -> dict:
     from sfa.tasks.ingestion_tasks import _run_ingest_competition
 
     settings = get_settings()
-    today = date.today().strftime("%Y-%m-%d")
+    now_utc = datetime.now(timezone.utc)
+    dates_to_check = [
+        (now_utc - timedelta(days=1)).date().isoformat(),
+        now_utc.date().isoformat(),
+    ]
 
     provider = APIFootballProvider(settings.API_FOOTBALL_KEY, settings.API_FOOTBALL_BASE_URL)
 
-    # 1 API call: all fixtures for today
-    data = await provider._get("fixtures", {"date": today})
-    fixtures_today = data.get("response", [])
+    # Around UTC midnight, live American matches can still belong to yesterday's
+    # API-Football date, so check both yesterday and today.
+    fixtures_today = []
+    for fixture_date in dates_to_check:
+        data = await provider._get("fixtures", {"date": fixture_date})
+        fixtures_today.extend(data.get("response", []))
 
     league_map = {league.id: league for league in LEAGUES}
 
@@ -94,14 +101,14 @@ async def _run_ingest_today() -> dict:
         logger.info(
             "[ingest_today_task] Nothing to ingest for %s "
             "(checked %d fixtures, none live/recent in configured leagues)",
-            today,
+            dates_to_check,
             len(fixtures_today),
         )
-        return {"date": today, "ingested": [], "checked": len(fixtures_today)}
+        return {"dates": dates_to_check, "ingested": [], "checked": len(fixtures_today)}
 
     logger.info(
         "[ingest_today_task] Competitions to ingest today (%s): %s",
-        today,
+        dates_to_check,
         {league_map[lid].name: s for lid, s in to_ingest.items()},
     )
 
@@ -117,4 +124,4 @@ async def _run_ingest_today() -> dict:
         result = await _run_ingest_competition(league_id, season, force=True)
         results.append(result)
 
-    return {"date": today, "ingested": results}
+    return {"dates": dates_to_check, "ingested": results}
