@@ -126,6 +126,7 @@ class FakeIngestionRepository:
         self._fixture_ids: dict[int, int] = {}
         # player_events keyed by (player_id, fixture_id) → list of event dicts
         self.player_events: dict[tuple[int, int], list[dict]] = {}
+        self.fixture_events: dict[int, list[FixtureEventRawDTO]] = {}
         self.player_stats: dict[tuple[int, int], dict] = {}
         # latest upsert_season_score call per player_id
         self.season_scores: dict[int, dict] = {}
@@ -194,6 +195,13 @@ class FakeIngestionRepository:
             "team_id": team_id,
             "season": season,
         }
+
+    async def save_fixture_events(
+        self,
+        fixture_external_id: int,
+        events: list[FixtureEventRawDTO],
+    ) -> None:
+        self.fixture_events[fixture_external_id] = list(events)
 
     async def upsert_player_event(
         self,

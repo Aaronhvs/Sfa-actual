@@ -1,0 +1,35 @@
+### Fixture Match Timeline — HTTP cases (spec 0033)
+### Base URL: http://localhost:8000/api/v1
+
+@base = http://localhost:8000/api/v1
+@admin_key = {{ADMIN_API_KEY}}
+
+# ─── Backfill: ingestar eventos de un partido ya ingested ──────────────────
+# Útil para partidos anteriores al deploy de 0033 o para re-procesar.
+# Consume 1 request de API-Football quota.
+# Sin admin key configurada, no requiere header (DEBUG mode).
+
+### Backfill — fixture WC existente (Norway 4-2 Iraq)
+POST {{base}}/admin/fixtures/1539016/ingest-events
+X-Admin-Key: {{admin_key}}
+
+### Backfill — otro partido de grupo (sin key en dev)
+POST {{base}}/admin/fixtures/1489369/ingest-events
+
+# ─── Detalle de partido con events ─────────────────────────────────────────
+# GET /wc/fixtures/{fixture_external_id}
+# El campo "events" es lista vacía si no hay datos backfilled.
+# Orden: minute ASC, extra_minute ASC, source_sequence ASC NULLS LAST.
+
+### Detail con events (fixture ya backfilled)
+GET {{base}}/wc/fixtures/1539016
+
+### Detail sin events (fixture futuro / no backfilled)
+GET {{base}}/wc/fixtures/9999999
+
+# ─── Verificar tabla desde psql ───────────────────────────────────────────
+# docker compose exec db psql -U sfa -d sfa -c \
+#   "SELECT fixture_external_id, event_type, minute, player_name
+#    FROM fixture_events
+#    WHERE fixture_external_id = 1539016
+#    ORDER BY minute, extra_minute;"

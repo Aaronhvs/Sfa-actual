@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from sfa.api.v1.schemas.wc_schemas import (
     WcFixtureDetailResponseSchema,
+    WcFixtureEventSchema,
     WcFixtureSchema,
     WcFixturesResponseSchema,
     WcLineupPlayerSchema,
@@ -150,6 +151,10 @@ async def get_wc_fixture_detail(
         statistics=[
             WcStatisticSchema(**statistic.__dict__)
             for statistic in detail.statistics
+        ],
+        events=[
+            WcFixtureEventSchema(**event.__dict__)
+            for event in detail.events
         ],
     )
 

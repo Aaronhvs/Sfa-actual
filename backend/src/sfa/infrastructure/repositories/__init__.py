@@ -1,3 +1,4 @@
+from .birth_date_enrichment_repository import BirthDateEnrichmentRepository
 from .competition_achievement_repository import CompetitionAchievementRepository
 from .infer_achievements_repository import InferAchievementsRepository
 from .competition_repository import CompetitionRepository
@@ -18,6 +19,7 @@ from .system_repository import SystemRepository
 from .team_strength_repository import TeamStrengthRepository
 
 __all__ = [
+    "BirthDateEnrichmentRepository",
     "CompetitionAchievementRepository",
     "InferAchievementsRepository",
     "CompetitionRepository",

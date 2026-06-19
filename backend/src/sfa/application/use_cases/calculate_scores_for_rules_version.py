@@ -7,6 +7,7 @@ from sfa.domain.scoring.entities import PlayerEventScore
 from sfa.domain.scoring.services import SFAScoringService
 from sfa.domain.scoring.value_objects import (
     ActionType,
+    B1AgeExceptionalityBonus,
     M1RivalDifficulty,
     M2CompetitionStage,
     M3MinuteScore,
@@ -15,6 +16,7 @@ from sfa.domain.scoring.value_objects import (
     MvisitFactor,
     PositionGroup,
     ScoringConfig,
+    _age_at_date,
     position_to_group,
 )
 from sfa.domain.scoring_ports import (
@@ -36,6 +38,14 @@ _M1_DECISIVE_STATS_ACTIONS: frozenset = frozenset({ActionType.PENALTY_WON})
 
 _MC_BONUS_MIN_MINUTES = 60
 
+# B1: actions that count as "contributions" (goals + assists, excluding shootouts)
+_B1_ELIGIBLE_ACTIONS: frozenset[str] = frozenset({
+    ActionType.GOAL.value,
+    ActionType.GOAL_PENALTY.value,
+    ActionType.ASSIST.value,
+    ActionType.CORNER_ASSIST.value,
+})
+
 _MC_BONUS_CONTROL = 140      # CONTROL_MIDFIELD_BONUS base pts
 _MC_BONUS_TWO_WAY = 90       # TWO_WAY_MIDFIELD_BONUS base pts
 _MC_BONUS_CREATIVE = 70      # CREATIVE_CONTROL_BONUS base pts
@@ -52,6 +62,22 @@ _MC_CREATIVE_MIN_RATING = 7.7
 _MC_CREATIVE_MIN_PASSES = 55
 _MC_CREATIVE_MIN_PASSES_ACCURACY = 85.0
 _MC_CREATIVE_MIN_PASSES_KEY = 2
+
+
+def _build_b1_contributions_map(
+    events: list[PlayerEventRawContextDTO],
+) -> dict[tuple[int, int], int]:
+    """Count eligible goal+assist contributions per (player_id, fixture_id)."""
+    result: dict[tuple[int, int], int] = {}
+    for ev in events:
+        if ev.event_type in _B1_ELIGIBLE_ACTIONS:
+            key = (ev.player_id, ev.fixture_id)
+            result[key] = result.get(key, 0) + 1
+    return result
+
+
+def _b1_enabled_for_competition(config: ScoringConfig, competition_id: int) -> bool:
+    return config.b1_enabled and competition_id in config.b1_competition_ids
 
 
 @dataclass(frozen=True)
@@ -83,6 +109,7 @@ class CalculateScoresForRulesVersionUseCase:
         player_id: int | None = None,
         force_recalculate: bool = False,
     ) -> CalculateScoresForRulesVersionResult:
+        season = str(season)
         rules_version = await self._rules_version_repo.get_version_by_id(rules_version_id)
         if rules_version is None:
             return CalculateScoresForRulesVersionResult(
@@ -104,6 +131,11 @@ class CalculateScoresForRulesVersionUseCase:
         if rules_version.config.enable_midfield_control_bonuses:
             competition_name_map = await self._event_score_repo.get_competition_name_map()
 
+        # Preload B1 contributions map: (player_id, fixture_id) -> total goal+assist count
+        b1_contributions_map: dict[tuple[int, int], int] = {}
+        if rules_version.config.b1_enabled:
+            b1_contributions_map = _build_b1_contributions_map(events)
+
         events_calculated = 0
 
         for event in events:
@@ -111,7 +143,9 @@ class CalculateScoresForRulesVersionUseCase:
                 if await self._event_score_repo.event_score_exists(event.event_id, rules_version_id):
                     continue
 
-            score = self._score_event(event, service, rules_version_id, competition_name_map)
+            score = self._score_event(
+                event, service, rules_version_id, competition_name_map, b1_contributions_map,
+            )
             if score is None:
                 continue
 
@@ -145,6 +179,7 @@ class CalculateScoresForRulesVersionUseCase:
         service: SFAScoringService,
         rules_version_id: int,
         competition_name_map: dict[int, str] | None = None,
+        b1_contributions_map: dict[tuple[int, int], int] | None = None,
     ) -> PlayerEventScore | None:
         """Score a single raw event using the given SFAScoringService.
 
@@ -168,10 +203,14 @@ class CalculateScoresForRulesVersionUseCase:
                 competition_name_map or {},
             )
         else:
-            return self._score_individual_event(event, service, group, position, rules_version_id)
+            return self._score_individual_event(
+                event, service, group, position, rules_version_id,
+                b1_contributions_map or {},
+            )
 
     def _score_individual_event(
         self, event, service, group, position, rules_version_id,
+        b1_contributions_map: dict[tuple[int, int], int] | None = None,
     ) -> PlayerEventScore | None:
         try:
             action = ActionType(event.event_type)
@@ -219,6 +258,41 @@ class CalculateScoresForRulesVersionUseCase:
             return None
         final = round(base * combined, 2)
 
+        # B1 Age Exceptionality Bonus (spec 0034)
+        b1_audit: dict = {
+            "enabled": config.b1_enabled,
+            "applied": False,
+            "competition_allowed": event.competition_id in config.b1_competition_ids,
+        }
+        b1_per_event = 0.0
+        if (
+            _b1_enabled_for_competition(config, event.competition_id)
+            and event.event_type in _B1_ELIGIBLE_ACTIONS
+            and getattr(event, "player_birth_date", None) is not None
+            and getattr(event, "fixture_date", None) is not None
+        ):
+            key = (event.player_id, event.fixture_id)
+            total_contributions = (b1_contributions_map or {}).get(key, 0)
+            if total_contributions > 0:
+                b1_vo = B1AgeExceptionalityBonus(
+                    contributions=total_contributions,
+                    player_birth_date=event.player_birth_date,
+                    fixture_date=event.fixture_date,
+                    config=config,
+                )
+                if b1_vo.value > 0:
+                    b1_per_event = round(b1_vo.value / total_contributions, 2)
+                    final = round(final + b1_per_event, 2)
+                    b1_audit = {
+                        "enabled": True,
+                        "applied": True,
+                        "competition_allowed": True,
+                        "age_at_match": _age_at_date(event.player_birth_date, event.fixture_date),
+                        "total_contributions": total_contributions,
+                        "b1_total": b1_vo.value,
+                        "b1_per_event": b1_per_event,
+                    }
+
         strength_used = (
             getattr(event, "player_team_strength", None) is not None
             and getattr(event, "rival_team_strength", None) is not None
@@ -235,6 +309,7 @@ class CalculateScoresForRulesVersionUseCase:
             "Mrating": mrating_val,
             "combined_before_clamp": round(raw, 4),
             "combined_after_clamp": round(combined, 4),
+            "b1_bonus": b1_audit,
             "final_points": final,
             "strength_used": strength_used,
         }

@@ -7,12 +7,14 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.ingestion_ports import (
+    FixtureEventRawDTO,
     FixtureInfoRow,
     IngestionLogRow,
     IngestionRepositoryPort,
     PlayerFixtureInfoRow,
 )
 from sfa.infrastructure.models.competitions.models import Competition, CompetitionStage
+from sfa.infrastructure.models.fixture_events.models import FixtureEvent
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
@@ -22,6 +24,28 @@ from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 from sfa.infrastructure.models.standings.models import StandingSnapshot
 from sfa.infrastructure.models.teams.models import Team
+
+
+def _normalize_fixture_event_type(event_type: str, detail: str) -> str | None:
+    t = event_type.lower()
+    d = detail.lower()
+    if t == "goal":
+        if "own goal" in d:
+            return "own_goal"
+        if "missed penalty" in d:
+            return "missed_penalty"
+        if "penalty" in d:
+            return "penalty"
+        return "goal"
+    if t == "card":
+        if "yellow red" in d:
+            return "yellow_red_card"
+        if "red card" in d:
+            return "red_card"
+        return "yellow_card"
+    if t == "subst":
+        return "substitution"
+    return None
 
 
 class IngestionRepository(IngestionRepositoryPort):
@@ -490,3 +514,31 @@ class IngestionRepository(IngestionRepositoryPort):
             )
             for row in rows
         ]
+
+    async def save_fixture_events(
+        self, fixture_external_id: int, events: list[FixtureEventRawDTO],
+    ) -> None:
+        await self._session.execute(
+            delete(FixtureEvent).where(
+                FixtureEvent.fixture_external_id == fixture_external_id
+            )
+        )
+
+        rows = []
+        for dto in events:
+            event_type = _normalize_fixture_event_type(dto.type, dto.detail)
+            if event_type is None:
+                continue
+            rows.append(FixtureEvent(
+                fixture_external_id=fixture_external_id,
+                minute=dto.minute,
+                extra_minute=dto.extra_minute,
+                team_external_id=dto.team_external_id,
+                event_type=event_type,
+                player_name=dto.player_name or "",
+                assist_name=dto.assist_name,
+                source_sequence=dto.source_sequence,
+            ))
+
+        if rows:
+            self._session.add_all(rows)

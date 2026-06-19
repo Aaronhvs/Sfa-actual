@@ -87,9 +87,19 @@ class WcStatisticSchema(BaseModel):
     away_numeric: float | None
 
 
+class WcFixtureEventSchema(BaseModel):
+    minute: int
+    extra_minute: int
+    team_external_id: int
+    event_type: str
+    player_name: str
+    assist_name: str | None
+
+
 class WcFixtureDetailResponseSchema(BaseModel):
     fixture: WcFixtureSchema
     venue: WcVenueSchema
     referee: str | None
     lineups: list[WcTeamLineupSchema]
     statistics: list[WcStatisticSchema]
+    events: list[WcFixtureEventSchema] = []

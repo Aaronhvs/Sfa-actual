@@ -11,8 +11,10 @@ from sfa.application.use_cases.fix_player_positions import (
     FixPlayerPositionsUseCase,
 )
 from sfa.application.use_cases.get_ingestion_status import GetIngestionStatusUseCase
+from sfa.application.use_cases.enrich_player_birth_dates import EnrichPlayerBirthDatesUseCase
 from sfa.core.dependencies import (
     get_db,
+    get_enrich_player_birth_dates_use_case,
     get_fix_player_positions_use_case,
     get_ingestion_status_use_case,
     get_reingest_player_use_case,
@@ -199,5 +201,52 @@ async def trigger_player_reingest(
         "player_id": player_id,
         "season": season,
         "competition_id": competition_id,
+        "status": "queued",
+    }
+
+
+@router.post(
+    "/enrich-birth-dates",
+    status_code=status.HTTP_200_OK,
+)
+async def trigger_enrich_birth_dates(
+    use_case: Annotated[EnrichPlayerBirthDatesUseCase, Depends(get_enrich_player_birth_dates_use_case)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    season: str = Query(default=CURRENT_SEASON_STR),
+    force_update: bool = Query(default=False),
+) -> dict:
+    """Enrich players.birth_date from API-Football squad endpoint plus individual fallback.
+
+    Only processes teams where at least one player is missing birth_date (unless force_update=True).
+    """
+    result = await use_case.execute(season=season, force_update=force_update)
+    await db.commit()
+    return {
+        "teams_processed": result.teams_processed,
+        "players_updated": result.players_updated,
+        "players_skipped": result.players_skipped,
+        "status": result.status,
+    }
+
+
+@router.post(
+    "/fixtures/{fixture_external_id}/ingest-events",
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def trigger_fixture_events_ingest(
+    fixture_external_id: int,
+    _key: Annotated[None, Depends(require_admin_key)],
+) -> dict:
+    """Fetch and persist timeline events (goals, cards, subs) for a single fixture.
+
+    Use this to backfill events for already-ingested fixtures.
+    Costs 1 API-Football request.
+    """
+    from sfa.tasks.ingest_fixture_events_task import ingest_fixture_events_task
+
+    task = ingest_fixture_events_task.delay(fixture_external_id)
+    return {
+        "task_id": task.id,
+        "fixture_external_id": fixture_external_id,
         "status": "queued",
     }

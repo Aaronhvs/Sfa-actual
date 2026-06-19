@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from enum import Enum
 from typing import Any
 
@@ -374,6 +375,49 @@ class SFAScore:
 
 
 # ---------------------------------------------------------------------------
+# B1 Age Exceptionality Bonus (spec 0034)
+# ---------------------------------------------------------------------------
+
+def _age_at_date(birth_date: date, reference_date: date) -> int:
+    """Return exact age in completed years at reference_date."""
+    age = reference_date.year - birth_date.year
+    if (reference_date.month, reference_date.day) < (birth_date.month, birth_date.day):
+        age -= 1
+    return age
+
+
+@dataclass(frozen=True)
+class B1AgeExceptionalityBonus:
+    """Additive bonus for exceptional-age players (young 17-20 or veteran 35+).
+
+    Applied per fixture based on total goal+assist contributions.
+    value is the total B1 for the fixture; divide evenly across N events.
+    """
+
+    value: float
+
+    def __init__(
+        self,
+        contributions: int,
+        player_birth_date: date | None,
+        fixture_date: date,
+        config: ScoringConfig,
+    ) -> None:
+        if not config.b1_enabled or player_birth_date is None or contributions <= 0:
+            object.__setattr__(self, "value", 0.0)
+            return
+        age = _age_at_date(player_birth_date, fixture_date)
+        is_young = config.b1_young_min_age <= age <= config.b1_young_max_age
+        is_veteran = age >= config.b1_veteran_min_age
+        if not (is_young or is_veteran):
+            object.__setattr__(self, "value", 0.0)
+            return
+        capped = min(contributions, 3)
+        bonus = config.b1_bonus_table.get(capped, 0)
+        object.__setattr__(self, "value", float(bonus))
+
+
+# ---------------------------------------------------------------------------
 # ScoringConfig — versionable configuration for the scoring system
 # ---------------------------------------------------------------------------
 
@@ -516,6 +560,16 @@ class ScoringConfig:
     m1_stats_weight: float = 1.0
     m1_stats_clamp: tuple[float, float] = (0.85, 1.20)
     stats_m2_attenuation: float = 1.0
+    # ── B1 Age Exceptionality Bonus (spec 0034) ─────────────────────────────
+    b1_enabled: bool = False
+    b1_young_min_age: int = 17
+    b1_young_max_age: int = 20
+    b1_veteran_min_age: int = 35
+    b1_bonus_table: dict[int, int] = field(
+        default_factory=lambda: {1: 200, 2: 400, 3: 600}
+    )
+    # Beta gate: B1 is enabled only for these competition ids. World Cup = 350.
+    b1_competition_ids: tuple[int, ...] = (350,)
 
     def __post_init__(self) -> None:
         # Core clamp invariants
@@ -558,6 +612,17 @@ class ScoringConfig:
             raise ValueError(
                 f"stats_m2_attenuation must be in (0, 1], got {self.stats_m2_attenuation}"
             )
+        if self.b1_enabled:
+            if not (0 <= self.b1_young_min_age <= self.b1_young_max_age <= 99):
+                raise ValueError(
+                    f"b1_young age range invalid: [{self.b1_young_min_age}, {self.b1_young_max_age}]"
+                )
+            if self.b1_veteran_min_age <= 0:
+                raise ValueError(f"b1_veteran_min_age must be > 0, got {self.b1_veteran_min_age}")
+            if not self.b1_bonus_table:
+                raise ValueError("b1_bonus_table cannot be empty when b1_enabled=True")
+            if not self.b1_competition_ids:
+                raise ValueError("b1_competition_ids cannot be empty when b1_enabled=True")
 
     @classmethod
     def default(cls) -> ScoringConfig:
@@ -701,6 +766,17 @@ class ScoringConfig:
                 m1_stats_weight=float(d.get("m1_stats_weight", 1.0)),
                 m1_stats_clamp=tuple(d.get("m1_stats_clamp", [0.85, 1.20])),
                 stats_m2_attenuation=float(d.get("stats_m2_attenuation", 1.0)),
+                b1_enabled=bool(d.get("b1_enabled", False)),
+                b1_young_min_age=int(d.get("b1_young_min_age", 17)),
+                b1_young_max_age=int(d.get("b1_young_max_age", 20)),
+                b1_veteran_min_age=int(d.get("b1_veteran_min_age", 35)),
+                b1_bonus_table={
+                    int(k): int(v)
+                    for k, v in d.get("b1_bonus_table", {"1": 200, "2": 400, "3": 600}).items()
+                },
+                b1_competition_ids=tuple(
+                    int(v) for v in d.get("b1_competition_ids", [350])
+                ),
             )
         except (KeyError, ValueError, TypeError) as exc:
             raise ValueError(f"Invalid ScoringConfig dict: {exc}") from exc
@@ -748,4 +824,10 @@ class ScoringConfig:
             "m1_stats_weight": self.m1_stats_weight,
             "m1_stats_clamp": list(self.m1_stats_clamp),
             "stats_m2_attenuation": self.stats_m2_attenuation,
+            "b1_enabled": self.b1_enabled,
+            "b1_young_min_age": self.b1_young_min_age,
+            "b1_young_max_age": self.b1_young_max_age,
+            "b1_veteran_min_age": self.b1_veteran_min_age,
+            "b1_bonus_table": {str(k): v for k, v in self.b1_bonus_table.items()},
+            "b1_competition_ids": list(self.b1_competition_ids),
         }

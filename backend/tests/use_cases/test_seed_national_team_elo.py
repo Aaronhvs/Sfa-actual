@@ -24,7 +24,7 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         teams: list[TeamCompetitionRow] | None = None,
         competition_id: int | None = 1,
     ) -> None:
-        self.teams = teams or [
+        self.teams = teams if teams is not None else [
             TeamCompetitionRow(team_id=10, team_name="Brazil", competition_id=1),
             TeamCompetitionRow(team_id=20, team_name="Argentina", competition_id=1),
         ]

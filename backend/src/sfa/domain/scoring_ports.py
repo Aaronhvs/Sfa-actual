@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol, runtime_checkable
 
 from sfa.domain.scoring.entities import (
@@ -54,6 +54,9 @@ class PlayerEventRawContextDTO:
     minutes: int | None
     player_team_strength: float | None
     rival_team_strength: float | None
+    # B1 fields (spec 0034): populated when birth_date is available in DB
+    player_birth_date: date | None = None
+    fixture_date: date | None = None
 
 
 @dataclass(frozen=True)

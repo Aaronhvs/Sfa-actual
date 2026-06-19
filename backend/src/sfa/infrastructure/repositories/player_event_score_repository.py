@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import Date, cast, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -79,6 +79,8 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 Fixture.season,
                 func.coalesce(CompetitionStage.stage_factor, 1.0).label("stage_factor"),
                 Player.position,
+                Player.birth_date.label("player_birth_date"),
+                cast(Fixture.played_at, Date).label("fixture_date"),
                 ts_home.c.strength.label("home_team_strength"),
                 ts_away.c.strength.label("away_team_strength"),
             )
@@ -185,6 +187,8 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 minutes=stats.minutes if stats else None,
                 player_team_strength=player_team_strength,
                 rival_team_strength=rival_team_strength,
+                player_birth_date=row.player_birth_date,
+                fixture_date=row.fixture_date,
             ))
 
         return dtos

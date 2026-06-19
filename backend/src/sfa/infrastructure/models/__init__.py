@@ -17,6 +17,7 @@ from sfa.infrastructure.models.competition_achievements.models import (
     CompetitionAchievementModel,
     PlayerAchievementBonusModel,
 )
+from sfa.infrastructure.models.fixture_events.models import FixtureEvent
 
 __all__ = [
     "Base",
@@ -39,4 +40,5 @@ __all__ = [
     "PlayerTmId",
     "CompetitionAchievementModel",
     "PlayerAchievementBonusModel",
+    "FixtureEvent",
 ]

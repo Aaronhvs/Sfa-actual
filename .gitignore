@@ -25,6 +25,10 @@ frontend/.env
 frontend/.env.local
 frontend/*.local
 
+# ── Artifacts locales ────────────────────────────────────────────────────────
+*.zip
+wc-elo-fix-package/
+
 # ── Claude local ─────────────────────────────────────────────────────────────
 .claude/
 backend/.claude/

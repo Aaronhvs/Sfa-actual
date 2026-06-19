@@ -195,6 +195,7 @@ class IngestCompetitionUseCase:
 
                     # --- Phase 3: Events and players ---
                     events = await self._provider.fetch_fixture_events(fixture.external_id)
+                    await self._repo.save_fixture_events(fixture.external_id, events)
                     score_timeline = ScoreTimeline.build(
                         fixture.home_team_external_id,
                         fixture.away_team_external_id,

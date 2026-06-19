@@ -237,6 +237,10 @@ class IngestionRepositoryPort(Protocol):
         competition_id: int | None = None,
     ) -> list[PlayerFixtureInfoRow]: ...
 
+    async def save_fixture_events(
+        self, fixture_external_id: int, events: list[FixtureEventRawDTO],
+    ) -> None: ...
+
 
 @dataclass(frozen=True)
 class PlayerSeasonScoreRow:

@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from dataclasses import replace
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -125,6 +126,9 @@ def _make_goal_event(
     player_id: int = 10,
     fixture_id: int = 100,
     competition_id: int = 1,
+    event_type: str = "goal",
+    player_birth_date: date | None = None,
+    fixture_date: date | None = None,
 ) -> PlayerEventRawContextDTO:
     return PlayerEventRawContextDTO(
         event_id=event_id,
@@ -132,10 +136,10 @@ def _make_goal_event(
         fixture_id=fixture_id,
         competition_id=competition_id,
         season="2024",
-        event_type="goal",
+        event_type=event_type,
         minute=75,
         score_diff=0,
-        psxg=0.32,
+        psxg=0.32 if event_type in {"goal", "goal_penalty", "goal_shootout"} else None,
         player_team_pos=10,
         rival_team_pos=5,
         is_away=False,
@@ -151,6 +155,8 @@ def _make_goal_event(
         minutes=90,
         player_team_strength=None,
         rival_team_strength=None,
+        player_birth_date=player_birth_date,
+        fixture_date=fixture_date,
     )
 
 
@@ -351,3 +357,104 @@ class TestCalculateScoresForRulesVersionUseCase:
         assert abs(modified_pts - default_pts * 2) < 0.1, (
             f"Expected modified_pts ≈ {default_pts * 2}, got {modified_pts}"
         )
+
+
+@pytest.mark.anyio
+async def test_b1_bonus_is_added_and_split_across_goal_assist_contributions():
+    match_date = date(2024, 6, 24)
+    birth_date = date(1987, 6, 24)
+    events = [
+        _make_goal_event(
+            event_id=101,
+            player_id=10,
+            fixture_id=100,
+            competition_id=350,
+            event_type="goal",
+            player_birth_date=birth_date,
+            fixture_date=match_date,
+        ),
+        _make_goal_event(
+            event_id=102,
+            player_id=10,
+            fixture_id=100,
+            competition_id=350,
+            event_type="assist",
+            player_birth_date=birth_date,
+            fixture_date=match_date,
+        ),
+        _make_goal_event(
+            event_id=103,
+            player_id=10,
+            fixture_id=100,
+            competition_id=350,
+            event_type="corner_assist",
+            player_birth_date=birth_date,
+            fixture_date=match_date,
+        ),
+    ]
+
+    disabled_config = replace(ScoringConfig.default(), b1_enabled=False)
+    disabled_repo = FakePlayerEventScoreRepository(events=events)
+    disabled_use_case = CalculateScoresForRulesVersionUseCase(
+        FakeScoringRulesVersionRepository(_make_rules_version(1, disabled_config)),
+        disabled_repo,
+    )
+    await disabled_use_case.execute(rules_version_id=1, season="2024")
+
+    enabled_config = replace(ScoringConfig.default(), b1_enabled=True)
+    enabled_repo = FakePlayerEventScoreRepository(events=events)
+    enabled_use_case = CalculateScoresForRulesVersionUseCase(
+        FakeScoringRulesVersionRepository(_make_rules_version(2, enabled_config)),
+        enabled_repo,
+    )
+    await enabled_use_case.execute(rules_version_id=2, season="2024")
+
+    disabled_total = sum(score.final_points for score in disabled_repo.upserted)
+    enabled_total = sum(score.final_points for score in enabled_repo.upserted)
+
+    assert round(enabled_total - disabled_total, 2) == 600.0
+    assert [
+        score.calculation_details["b1_bonus"]["b1_per_event"]
+        for score in enabled_repo.upserted
+    ] == [200.0, 200.0, 200.0]
+    assert enabled_repo.upserted[0].calculation_details["b1_bonus"]["total_contributions"] == 3
+
+
+@pytest.mark.anyio
+async def test_b1_bonus_is_ignored_outside_world_cup_beta_competition():
+    match_date = date(2024, 6, 24)
+    birth_date = date(1987, 6, 24)
+    events = [
+        _make_goal_event(
+            event_id=201,
+            player_id=10,
+            fixture_id=200,
+            competition_id=39,
+            event_type="goal",
+            player_birth_date=birth_date,
+            fixture_date=match_date,
+        ),
+    ]
+
+    disabled_config = replace(ScoringConfig.default(), b1_enabled=False)
+    disabled_repo = FakePlayerEventScoreRepository(events=events)
+    disabled_use_case = CalculateScoresForRulesVersionUseCase(
+        FakeScoringRulesVersionRepository(_make_rules_version(1, disabled_config)),
+        disabled_repo,
+    )
+    await disabled_use_case.execute(rules_version_id=1, season="2024")
+
+    enabled_config = replace(ScoringConfig.default(), b1_enabled=True)
+    enabled_repo = FakePlayerEventScoreRepository(events=events)
+    enabled_use_case = CalculateScoresForRulesVersionUseCase(
+        FakeScoringRulesVersionRepository(_make_rules_version(2, enabled_config)),
+        enabled_repo,
+    )
+    await enabled_use_case.execute(rules_version_id=2, season="2024")
+
+    assert enabled_repo.upserted[0].final_points == disabled_repo.upserted[0].final_points
+    assert enabled_repo.upserted[0].calculation_details["b1_bonus"] == {
+        "enabled": True,
+        "applied": False,
+        "competition_allowed": False,
+    }

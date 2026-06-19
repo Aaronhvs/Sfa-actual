@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 import httpx
 
+from sfa.domain.enrichment.birth_date_ports import PlayerBirthDateRawDTO
 from sfa.domain.ingestion_ports import (
     FixtureEventRawDTO,
     FixtureRawDTO,
@@ -285,6 +286,7 @@ class APIFootballProvider:
             referee=fixture.get("referee"),
             lineups=lineups,
             statistics=statistics,
+            events=[],
         )
 
     @staticmethod
@@ -598,6 +600,52 @@ class APIFootballProvider:
                 except (KeyError, TypeError, IndexError) as exc:
                     logger.warning("[fetch_all_fixture_players] Skipping malformed player: %s", exc)
         return result
+
+    async def fetch_squad_birth_dates(
+        self,
+        team_id: int,
+        season: int,
+    ) -> list[PlayerBirthDateRawDTO]:
+        """Fetch birth dates for all players in a team squad (1 API request)."""
+        data = await self._get("players", {"team": team_id, "season": season})
+        result: list[PlayerBirthDateRawDTO] = []
+        for entry in data.get("response", []):
+            dto = self._parse_player_birth_date(entry)
+            if dto is not None:
+                result.append(dto)
+        return result
+
+    async def fetch_player_birth_date(
+        self,
+        player_id: int,
+        season: int,
+    ) -> PlayerBirthDateRawDTO | None:
+        """Fetch birth date for one player when squad lookup did not include them."""
+        data = await self._get("players", {"id": player_id, "season": season})
+        for entry in data.get("response", []):
+            dto = self._parse_player_birth_date(entry)
+            if dto is not None:
+                return dto
+        return None
+
+    def _parse_player_birth_date(self, entry: dict) -> PlayerBirthDateRawDTO | None:
+        player = entry.get("player") or {}
+        external_id = player.get("id")
+        if not isinstance(external_id, int) or external_id <= 0:
+            return None
+
+        raw_date = (player.get("birth") or {}).get("date")
+        birth_date: date | None = None
+        if raw_date:
+            try:
+                birth_date = date.fromisoformat(raw_date)
+            except (ValueError, TypeError):
+                logger.warning(
+                    "[APIFootballProvider] Invalid birth.date=%r for player_id=%d",
+                    raw_date,
+                    external_id,
+                )
+        return PlayerBirthDateRawDTO(external_id=external_id, birth_date=birth_date)
 
     def get_stage(self, round_str: str, league_name: str) -> str:
         """Map API-Football round string → SFA stage."""

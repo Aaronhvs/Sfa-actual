@@ -1,4 +1,6 @@
-from sqlalchemy import Enum, ForeignKey, Integer, String, Text
+from datetime import date
+
+from sqlalchemy import Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from sfa.infrastructure.database import Base
@@ -24,8 +26,10 @@ class Player(Base):
     position_source: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="apifootball"
     )
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # Migration:
     # ALTER TABLE players ADD COLUMN fbref_id VARCHAR(150) UNIQUE;
     # ALTER TABLE players ADD COLUMN understat_id INTEGER UNIQUE;
     # ALTER TABLE players ADD COLUMN IF NOT EXISTS position_source VARCHAR(20) NOT NULL DEFAULT 'apifootball';
+    # ALTER TABLE players ADD COLUMN IF NOT EXISTS birth_date DATE NULL;  -- 0034

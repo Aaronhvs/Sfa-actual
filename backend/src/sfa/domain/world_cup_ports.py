@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
@@ -77,12 +77,23 @@ class WorldCupStatisticDTO:
 
 
 @dataclass(frozen=True)
+class WorldCupFixtureEventDTO:
+    minute: int
+    extra_minute: int
+    team_external_id: int
+    event_type: str
+    player_name: str
+    assist_name: str | None
+
+
+@dataclass(frozen=True)
 class WorldCupFixtureDetailDTO:
     fixture: WorldCupFixtureDTO
     venue: WorldCupVenueDTO
     referee: str | None
     lineups: list[WorldCupTeamLineupDTO]
     statistics: list[WorldCupStatisticDTO]
+    events: list[WorldCupFixtureEventDTO] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -113,3 +124,7 @@ class WorldCupRepositoryProtocol(Protocol):
         self,
         fixture_id: int,
     ) -> WorldCupFixtureDetailDTO | None: ...
+
+    async def get_fixture_events(
+        self, fixture_external_id: int,
+    ) -> list[WorldCupFixtureEventDTO]: ...

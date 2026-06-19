@@ -11,6 +11,7 @@ from sfa.application.use_cases.get_world_cup import (
 from sfa.domain.world_cup_ports import (
     WorldCupFixtureDetailDTO,
     WorldCupFixtureDTO,
+    WorldCupFixtureEventDTO,
     WorldCupStandingDTO,
     WorldCupTeamDTO,
     WorldCupVenueDTO,
@@ -39,6 +40,11 @@ class FakeWorldCupRepository:
         fixture_id: int,
     ) -> WorldCupFixtureDetailDTO | None:
         return self.detail
+
+    async def get_fixture_events(
+        self, fixture_external_id: int,
+    ) -> list[WorldCupFixtureEventDTO]:
+        return []
 
 
 def make_fixture(status: str) -> WorldCupFixtureDTO:

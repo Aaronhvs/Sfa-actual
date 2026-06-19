@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from sfa.domain.world_cup_ports import (
     WorldCupFixtureDetailDTO,
     WorldCupFixturesResultDTO,
@@ -55,4 +57,5 @@ class GetWorldCupFixtureDetailUseCase:
         detail = await self._repository.get_fixture_detail(fixture_id)
         if detail is None:
             raise ValueError(f"World Cup fixture {fixture_id} not found")
-        return detail
+        events = await self._repository.get_fixture_events(fixture_id)
+        return replace(detail, events=events)

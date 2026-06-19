@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sfa.infrastructure.database import get_db
 from sfa.infrastructure.redis_client import get_redis
 from sfa.infrastructure.repositories import (
+    BirthDateEnrichmentRepository,
     CompetitionAchievementRepository,
     CompetitionRepository,
     EnrichPositionRepository,
@@ -148,6 +149,7 @@ from sfa.application.use_cases.infer_competition_achievements import (
 from sfa.application.use_cases.register_competition_achievement import (
     RegisterCompetitionAchievementUseCase,
 )
+from sfa.application.use_cases.enrich_player_birth_dates import EnrichPlayerBirthDatesUseCase
 from sfa.application.use_cases.seed_clubelo import SeedClubEloUseCase
 from sfa.application.use_cases.seed_national_team_elo import SeedNationalTeamEloUseCase
 
@@ -166,6 +168,24 @@ async def get_ranking_use_case(
 ) -> GetRankingUseCase:
     active = await ver_repo.get_active_version()
     return GetRankingUseCase(score_repo, default_rules_version_id=active.id if active else None)
+
+
+async def get_birth_date_enrichment_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> BirthDateEnrichmentRepository:
+    return BirthDateEnrichmentRepository(db)
+
+
+async def get_enrich_player_birth_dates_use_case(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> EnrichPlayerBirthDatesUseCase:
+    from sfa.core.config import get_settings
+    from sfa.infrastructure.providers.api_football import APIFootballProvider
+
+    settings = get_settings()
+    provider = APIFootballProvider(settings.API_FOOTBALL_KEY, settings.API_FOOTBALL_BASE_URL)
+    repo = BirthDateEnrichmentRepository(db)
+    return EnrichPlayerBirthDatesUseCase(provider=provider, repo=repo)
 
 
 async def get_seasons_use_case(

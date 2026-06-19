@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sfa.domain.world_cup_ports import (
     WorldCupFixtureDetailDTO,
     WorldCupFixtureDTO,
+    WorldCupFixtureEventDTO,
     WorldCupLineupPlayerDTO,
     WorldCupRepositoryProtocol,
     WorldCupStandingDTO,
@@ -21,6 +22,7 @@ from sfa.domain.world_cup_ports import (
     WorldCupVenueDTO,
 )
 from sfa.infrastructure.providers.api_football import APIFootballProvider
+from sfa.infrastructure.models.fixture_events.models import FixtureEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
 from sfa.infrastructure.models.players.models import Player
@@ -282,4 +284,32 @@ class WorldCupRepository(WorldCupRepositoryProtocol):
                 WorldCupStatisticDTO(**statistic)
                 for statistic in data.get("statistics", [])
             ],
+            events=[],
         )
+
+    async def get_fixture_events(
+        self, fixture_external_id: int,
+    ) -> list[WorldCupFixtureEventDTO]:
+        rows = (
+            await self._session.execute(
+                select(FixtureEvent)
+                .where(FixtureEvent.fixture_external_id == fixture_external_id)
+                .order_by(
+                    FixtureEvent.minute,
+                    FixtureEvent.extra_minute,
+                    FixtureEvent.source_sequence.nulls_last(),
+                )
+            )
+        ).scalars().all()
+
+        return [
+            WorldCupFixtureEventDTO(
+                minute=row.minute,
+                extra_minute=row.extra_minute,
+                team_external_id=row.team_external_id,
+                event_type=row.event_type,
+                player_name=row.player_name,
+                assist_name=row.assist_name,
+            )
+            for row in rows
+        ]

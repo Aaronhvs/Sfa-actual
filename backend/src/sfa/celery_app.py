@@ -11,16 +11,18 @@ celery_app.autodiscover_tasks(["sfa.tasks"])
 
 celery_app.conf.timezone = "UTC"
 
-# Runs every 30 minutes.
+ingest_interval_minutes = max(1, settings.INGEST_INTERVAL_MINUTES)
+
+# Runs every INGEST_INTERVAL_MINUTES.
 # Checks API-Football for today's fixtures (1 API call).
 # Only ingests competitions with live or recently finished matches (within 4 hours).
 # If nothing is active, exits immediately at zero extra cost.
 celery_app.conf.beat_schedule = {
-    # Checks every 30 min if there are live or recently finished matches to ingest.
+    # Checks if there are live or recently finished matches to ingest.
     # Only ingests competitions listed in ACTIVE_COMPETITIONS (ingest_today_task.py).
     "ingest-today-competitions": {
         "task": "sfa.tasks.ingest_today_task.ingest_today_task",
-        "schedule": timedelta(minutes=30),
+        "schedule": timedelta(minutes=ingest_interval_minutes),
     },
     # Runs once a day at 3 AM UTC to fix player positions via Transfermarkt.
     # Important during active competitions where new players appear daily.
