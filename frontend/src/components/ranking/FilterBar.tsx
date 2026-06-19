@@ -62,6 +62,10 @@ export default function FilterBar({
 
       <label className="filter-bar__search">
         <span className="sr-only">Buscar jugador o equipo</span>
+        <svg className="filter-bar__search-icon" viewBox="0 0 16 16" fill="none" width="14" height="14" aria-hidden="true">
+          <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
         <input
           type="search"
           placeholder="Buscar jugador o equipo..."

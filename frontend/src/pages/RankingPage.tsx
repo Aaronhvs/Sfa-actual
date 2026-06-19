@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { Competition, RankedPlayer, PlayerDetail, SeasonItem } from '../types'
 import { fetchRanking, fetchPlayer, fetchCompetitions, fetchSeasons } from '../api/client'
 import FilterBar from '../components/ranking/FilterBar'
@@ -18,8 +18,9 @@ const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
 const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
 
 export default function RankingPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
-  const [season, setSeason] = useState<string>('')
+  const [season, setSeason] = useState<string>(searchParams.get('season') ?? '')
   const [position, setPosition] = useState('')
   const [competition, setCompetition] = useState<number | undefined>(undefined)
   const [competitions, setCompetitions] = useState<Competition[]>([])
@@ -44,9 +45,16 @@ export default function RankingPage() {
     fetchSeasons()
       .then((data) => {
         setSeasonItems(data.seasons)
-        const current = data.seasons.find((item) => item.is_latest)?.season
-          ?? data.seasons[0]?.season
-        if (current) setSeason(current)
+        const fromUrl = searchParams.get('season')
+        if (!fromUrl) {
+          // No URL param: initialize from API and stamp the URL so back-navigation works
+          const fallback = data.seasons.find((item) => item.is_latest)?.season
+            ?? data.seasons[0]?.season
+          if (fallback) {
+            setSeason(fallback)
+            setSearchParams({ season: fallback }, { replace: true })
+          }
+        }
       })
       .catch(() => {})
   }, [])
@@ -86,7 +94,7 @@ export default function RankingPage() {
         })
       : players
 
-    if (!search || search.length < 2 || localHits.length > 0) {
+    if (!search || search.length < 2 || (!isWcSeason && localHits.length > 0)) {
       setSearchResults(null)
       return
     }
@@ -102,7 +110,7 @@ export default function RankingPage() {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
-  }, [search, players, season, position])
+  }, [search, players, season, position, isWcSeason])
 
   useEffect(() => {
     if (!season) return
@@ -150,7 +158,7 @@ export default function RankingPage() {
       })
     : restPlayers
 
-  const isServerSearch = search.length >= 2 && localFiltered.length === 0
+  const isServerSearch = search.length >= 2 && (isWcSeason || localFiltered.length === 0)
   const filteredPlayers = isServerSearch ? (searchResults ?? []) : localFiltered
 
   const showHero = !search && players.length >= 3
@@ -174,6 +182,7 @@ export default function RankingPage() {
         value={season}
         onChange={(nextSeason) => {
           setSeason(nextSeason)
+          setSearchParams({ season: nextSeason }, { replace: true })
           setPage(0)
           setPageDir('next')
         }}
@@ -271,7 +280,7 @@ export default function RankingPage() {
       {showWcBanner && !isWcSeason && (
         <div className="rp-wc-banner-wrap">
           <WorldCupBanner
-            onViewWorldCup={wcSeason ? () => setSeason(wcSeason) : undefined}
+            onViewWorldCup={wcSeason ? () => { setSeason(wcSeason); setSearchParams({ season: wcSeason }, { replace: true }) } : undefined}
           />
         </div>
       )}
@@ -330,11 +339,12 @@ export default function RankingPage() {
               {isWcSeason && (
                 <div className="wc-ranking-tools">
                   <label className="wc-position-filter">
-                    <span>Posicion</span>
+                    <span>Posición</span>
+                    <strong aria-hidden="true">{position || 'Todas'}</strong>
                     <select
                       value={position}
                       onChange={(event) => setPosition(event.target.value)}
-                      aria-label="Filtrar ranking mundial por posicion"
+                      aria-label="Filtrar ranking mundial por posición"
                     >
                       <option value="">Todas</option>
                       {WORLD_CUP_POSITION_OPTIONS.map((option) => (

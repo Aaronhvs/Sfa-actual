@@ -6,9 +6,11 @@ from dataclasses import replace
 from datetime import datetime
 
 import redis.asyncio as aioredis
-from sqlalchemy import func, select
+from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sfa.domain.ports import RankedPlayerDTO
+from sfa.domain.player_position_overrides import position_for_context
 from sfa.domain.world_cup_ports import (
     WorldCupFixtureDetailDTO,
     WorldCupFixtureDTO,
@@ -20,6 +22,8 @@ from sfa.domain.world_cup_ports import (
     WorldCupTeamDTO,
     WorldCupTeamLineupDTO,
     WorldCupVenueDTO,
+    WcTeamProfileDTO,
+    WcTeamSFARankingDTO,
 )
 from sfa.infrastructure.providers.api_football import APIFootballProvider
 from sfa.infrastructure.models.fixture_events.models import FixtureEvent
@@ -27,9 +31,13 @@ from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scoring_rules.models import ScoringRulesVersion
+from sfa.infrastructure.models.scores.models import SFASeasonScore
+from sfa.infrastructure.models.teams.models import Team
+from sfa.infrastructure.repositories.ingestion_repository import _normalize_fixture_event_type
 
 logger = logging.getLogger(__name__)
 
+_WC_COMPETITION_ID = 350
 _FIXTURES_TTL_SECONDS = 30
 _STANDINGS_TTL_SECONDS = 300
 _DETAIL_LIVE_TTL_SECONDS = 60
@@ -302,7 +310,7 @@ class WorldCupRepository(WorldCupRepositoryProtocol):
             )
         ).scalars().all()
 
-        return [
+        stored_events = [
             WorldCupFixtureEventDTO(
                 minute=row.minute,
                 extra_minute=row.extra_minute,
@@ -313,3 +321,175 @@ class WorldCupRepository(WorldCupRepositoryProtocol):
             )
             for row in rows
         ]
+
+        if stored_events:
+            return stored_events
+
+        raw_events = await self._provider.fetch_fixture_events(fixture_external_id)
+        live_events: list[WorldCupFixtureEventDTO] = []
+        for raw in raw_events:
+            event_type = _normalize_fixture_event_type(raw.type, raw.detail)
+            if event_type is None:
+                continue
+            live_events.append(
+                WorldCupFixtureEventDTO(
+                    minute=raw.minute,
+                    extra_minute=raw.extra_minute,
+                    team_external_id=raw.team_external_id,
+                    event_type=event_type,
+                    player_name=raw.player_name,
+                    assist_name=raw.assist_name,
+                )
+            )
+
+        return live_events
+
+    async def get_wc_team_sfa_ranking(
+        self, season: str, rules_version_id: int | None,
+    ) -> list[WcTeamSFARankingDTO]:
+        rv_filter = (
+            SFASeasonScore.rules_version_id == rules_version_id
+            if rules_version_id is not None
+            else SFASeasonScore.rules_version_id.is_(None)
+        )
+
+        def _jint(key: str) -> object:
+            return func.coalesce(cast(SFASeasonScore.breakdown[key]["count"].astext, Integer), 0)
+
+        total_goals_expr = func.sum(_jint("goal") + _jint("goal_penalty"))
+
+        stmt = (
+            select(
+                Team.external_id.label("team_external_id"),
+                Team.name.label("team_name"),
+                func.sum(SFASeasonScore.total_pts + SFASeasonScore.achievement_bonus_pts).label("total_sfa_pts"),
+                func.count(SFASeasonScore.player_id.distinct()).label("player_count"),
+                total_goals_expr.label("total_goals"),
+            )
+            .join(Team, SFASeasonScore.team_id == Team.id)
+            .where(
+                SFASeasonScore.competition_id == _WC_COMPETITION_ID,
+                SFASeasonScore.season == season,
+                rv_filter,
+            )
+            .group_by(Team.external_id, Team.name)
+            .order_by(func.sum(SFASeasonScore.total_pts + SFASeasonScore.achievement_bonus_pts).desc())
+        )
+
+        rows = (await self._session.execute(stmt)).mappings().all()
+        return [
+            WcTeamSFARankingDTO(
+                rank=idx + 1,
+                team_external_id=row["team_external_id"],
+                team_name=row["team_name"],
+                total_sfa_pts=round(float(row["total_sfa_pts"]), 2),
+                total_goals=int(row["total_goals"]),
+                player_count=int(row["player_count"]),
+            )
+            for idx, row in enumerate(rows)
+        ]
+
+    async def get_wc_team_profile(
+        self, team_external_id: int, season: str, rules_version_id: int | None,
+    ) -> WcTeamProfileDTO | None:
+        rv_filter = (
+            SFASeasonScore.rules_version_id == rules_version_id
+            if rules_version_id is not None
+            else SFASeasonScore.rules_version_id.is_(None)
+        )
+
+        team_row = (
+            await self._session.execute(
+                select(Team.id.label("team_id"), Team.name.label("team_name"))
+                .where(Team.external_id == team_external_id)
+                .limit(1)
+            )
+        ).mappings().first()
+
+        if team_row is None:
+            return None
+
+        team_id = team_row["team_id"]
+        team_name = team_row["team_name"]
+
+        def _jint(key: str) -> object:
+            return func.coalesce(cast(SFASeasonScore.breakdown[key]["count"].astext, Integer), 0)
+
+        summary = (
+            await self._session.execute(
+                select(
+                    func.coalesce(
+                        func.sum(SFASeasonScore.total_pts + SFASeasonScore.achievement_bonus_pts),
+                        0,
+                    ).label("total_sfa_pts"),
+                    func.coalesce(
+                        func.sum(_jint("goal") + _jint("goal_penalty")),
+                        0,
+                    ).label("total_goals"),
+                )
+                .where(
+                    SFASeasonScore.competition_id == _WC_COMPETITION_ID,
+                    SFASeasonScore.season == season,
+                    SFASeasonScore.team_id == team_id,
+                    rv_filter,
+                )
+            )
+        ).mappings().first()
+
+        if summary is None or summary["total_sfa_pts"] == 0:
+            return None
+
+        top_rows = (
+            await self._session.execute(
+                select(
+                    Player.id.label("player_id"),
+                    Player.name.label("player_name"),
+                    Player.position,
+                    Player.photo_url,
+                    (SFASeasonScore.total_pts + SFASeasonScore.achievement_bonus_pts).label("total_pts"),
+                    SFASeasonScore.matches_played,
+                    (_jint("goal") + _jint("goal_penalty")).label("goals"),
+                    (_jint("assist") + _jint("corner_assist")).label("assists"),
+                )
+                .join(Player, SFASeasonScore.player_id == Player.id)
+                .where(
+                    SFASeasonScore.competition_id == _WC_COMPETITION_ID,
+                    SFASeasonScore.season == season,
+                    SFASeasonScore.team_id == team_id,
+                    rv_filter,
+                )
+                .order_by((SFASeasonScore.total_pts + SFASeasonScore.achievement_bonus_pts).desc())
+                .limit(5)
+            )
+        ).mappings().all()
+
+        top_players = [
+            RankedPlayerDTO(
+                rank=idx + 1,
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                team_name=team_name,
+                team_logo_url=f"https://media.api-sports.io/football/teams/{team_external_id}.png",
+                position=position_for_context(
+                    row["position"].value if hasattr(row["position"], "value") else str(row["position"]),
+                    player_name=row["player_name"],
+                    team_name=team_name,
+                    competition_id=_WC_COMPETITION_ID,
+                ) or "",
+                competition_name="FIFA World Cup 2026",
+                total_pts=float(row["total_pts"]),
+                matches_played=row["matches_played"],
+                photo_url=row["photo_url"],
+                goals=int(row["goals"] or 0),
+                assists=int(row["assists"] or 0),
+            )
+            for idx, row in enumerate(top_rows)
+        ]
+
+        return WcTeamProfileDTO(
+            team_external_id=team_external_id,
+            team_name=team_name,
+            total_sfa_pts=round(float(summary["total_sfa_pts"]), 2),
+            total_goals=int(summary["total_goals"] or 0),
+            top_players=top_players,
+        )

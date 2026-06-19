@@ -19,6 +19,17 @@ function initials(name: string): string {
   return name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase()
 }
 
+function B1Badge({ player }: { player: RankedPlayer }) {
+  if (!player.b1_bonus_label) return null
+
+  const tone = player.b1_bonus_label === 'Veterano' ? 'veteran' : 'prospect'
+  return (
+    <span className={`b1-player-badge b1-player-badge--${tone}`}>
+      <b>{player.b1_bonus_label}</b>
+    </span>
+  )
+}
+
 export default function RankingCard({
   player,
   index = 0,
@@ -48,6 +59,7 @@ export default function RankingCard({
         </div>
         <div className="rc-mobile-row__identity">
           <strong>{player.name}</strong>
+          <B1Badge player={player} />
           <span>
             {flagUrl ? (
               <img src={flagUrl} alt={player.team} className="rc-mobile-row__flag" />
@@ -103,6 +115,7 @@ export default function RankingCard({
       <div className="rc-content">
         <div className="rc-name-row">
           <div className="rc-name">{player.name}</div>
+          <B1Badge player={player} />
         </div>
         <div className="rc-divider" />
         <div className="rc-stats">

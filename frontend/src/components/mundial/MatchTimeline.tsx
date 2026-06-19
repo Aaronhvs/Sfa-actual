@@ -8,24 +8,40 @@ function minuteLabel(event: WcFixtureEvent): string {
     : `${event.minute}'`
 }
 
-function GoalIcon() {
+function SoccerBallPattern({ ring }: { ring: string }) {
   return (
     <svg className="wmd-tl-icon" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <circle cx="9" cy="9" r="8.5" fill="#C9A84C" />
-      <circle cx="9" cy="9" r="4" fill="rgba(0,0,0,0.22)" />
-      <circle cx="9" cy="9" r="1.8" fill="rgba(255,255,255,0.15)" />
+      {/* Colored outer ring */}
+      <circle cx="9" cy="9" r="8.5" fill={ring} />
+      {/* White ball surface */}
+      <circle cx="9" cy="9" r="7.2" fill="#f2f2f2" />
+      {/* Soccer ball pentagon pattern — 1 center + 5 outer (truncated icosahedron projection) */}
+      <g fill="#1c1c1c">
+        {/* Center pentagon (circumradius 2.6, pointing up) */}
+        <path d="M9,6.4 L11.5,8.2 L10.5,11.1 L7.5,11.1 L6.5,8.2 Z" />
+        {/* Pentagon A — upper-right (center at 306°, r=5) */}
+        <path d="M10.6,6.8 L9.8,4.2 L11.9,2.7 L14.1,4.2 L13.3,6.8 Z" />
+        {/* Pentagon B — right (center at 18°, r=5) */}
+        <path d="M11.6,9.8 L13.8,8.3 L16.0,9.8 L15.1,12.4 L12.4,12.4 Z" />
+        {/* Pentagon C — bottom (center at 90°, r=5) */}
+        <path d="M9,11.7 L11.2,13.3 L10.4,15.9 L7.6,15.9 L6.8,13.3 Z" />
+        {/* Pentagon D — left (center at 162°, r=5) */}
+        <path d="M6.4,9.8 L5.6,12.4 L2.9,12.4 L2.0,9.8 L4.2,8.3 Z" />
+        {/* Pentagon E — upper-left (center at 234°, r=5) */}
+        <path d="M7.4,6.8 L4.7,6.8 L3.9,4.2 L6.1,2.7 L8.2,4.2 Z" />
+      </g>
+      {/* Specular highlight */}
+      <circle cx="7" cy="6.5" r="2.2" fill="white" opacity="0.18" />
     </svg>
   )
 }
 
+function GoalIcon() {
+  return <SoccerBallPattern ring="#C9A84C" />
+}
+
 function OwnGoalIcon() {
-  return (
-    <svg className="wmd-tl-icon" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <circle cx="9" cy="9" r="8.5" fill="#d33f49" />
-      <circle cx="9" cy="9" r="4" fill="rgba(0,0,0,0.22)" />
-      <circle cx="9" cy="9" r="1.8" fill="rgba(255,255,255,0.15)" />
-    </svg>
-  )
+  return <SoccerBallPattern ring="#d33f49" />
 }
 
 function MissedPenaltyIcon() {

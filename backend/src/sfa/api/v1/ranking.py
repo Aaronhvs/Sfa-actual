@@ -48,6 +48,8 @@ async def get_ranking(
                 assists=r.assists,
                 dribbles_won=r.dribbles_won,
                 duels_won=r.duels_won,
+                b1_bonus_pts=r.b1_bonus_pts,
+                b1_bonus_label=r.b1_bonus_label,
             )
             for r in result.ranking
         ],

@@ -103,3 +103,39 @@ class WcFixtureDetailResponseSchema(BaseModel):
     lineups: list[WcTeamLineupSchema]
     statistics: list[WcStatisticSchema]
     events: list[WcFixtureEventSchema] = []
+
+
+class WcTeamSFARankingItemSchema(BaseModel):
+    rank: int
+    team_external_id: int
+    team_name: str
+    total_sfa_pts: float
+    total_goals: int
+    player_count: int
+
+
+class WcTeamSFARankingResponseSchema(BaseModel):
+    season: str
+    rankings: list[WcTeamSFARankingItemSchema]
+
+
+class WcTopPlayerSchema(BaseModel):
+    rank: int
+    player_id: int
+    player_name: str
+    team_name: str
+    team_logo_url: str | None
+    position: str
+    total_pts: float
+    matches_played: int
+    photo_url: str | None
+    goals: int
+    assists: int
+
+
+class WcTeamProfileResponseSchema(BaseModel):
+    team_external_id: int
+    team_name: str
+    total_sfa_pts: float
+    total_goals: int
+    top_players: list[WcTopPlayerSchema]

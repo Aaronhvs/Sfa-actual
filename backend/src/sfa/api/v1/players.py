@@ -66,6 +66,8 @@ async def get_player(
         } if result.breakdown else None,
         competitions=result.competitions,
         available_seasons=result.available_seasons,
+        b1_bonus_pts=result.b1_bonus_pts,
+        b1_bonus_label=result.b1_bonus_label,
     )
 
 
@@ -140,11 +142,16 @@ async def get_player_fixtures(
             stage=f.stage,
             home_team=f.home_team,
             away_team=f.away_team,
+            player_team=f.player_team,
             played_at=f.played_at,
             sfa_pts=f.sfa_pts,
             events_count=f.events_count,
             minutes=f.minutes,
+            shots_total=f.shots_total,
             shots_on=f.shots_on,
+            passes_total=f.passes_total,
+            passes_accurate=f.passes_accurate,
+            passes_key=f.passes_key,
             dribbles_won=f.dribbles_won,
             duels_won=f.duels_won,
             tackles_won=f.tackles_won,
@@ -153,7 +160,10 @@ async def get_player_fixtures(
             fouls_drawn=f.fouls_drawn,
             home_team_logo=f.home_team_logo,
             away_team_logo=f.away_team_logo,
+            player_team_logo=f.player_team_logo,
             rating=f.rating,
+            fixture_external_id=f.fixture_external_id,
+            competition_id=f.competition_id,
             breakdown={
                 k: BreakdownEntrySchema(count=v.count, pts=v.pts, pct=None)
                 for k, v in f.breakdown.items()

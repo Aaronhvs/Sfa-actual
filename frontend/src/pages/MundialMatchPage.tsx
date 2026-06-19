@@ -156,9 +156,12 @@ function playerGridPosition(
   const rowPlayers = parsed.filter(([row]) => row === current[0])
   const maxColumn = Math.max(...rowPlayers.map(([, column]) => column), 1)
   const progress = (current[0] - 1) / Math.max(maxRow - 1, 1)
+  const rawTop = current[1] / (maxColumn + 1)
+  // Away team plays right-to-left: invert vertical (column) axis so flanks mirror correctly
+  const top = side === 'away' ? 1 - rawTop : rawTop
   return {
     left: `${side === 'home' ? 7 + progress * 39 : 93 - progress * 39}%`,
-    top: `${(current[1] / (maxColumn + 1)) * 100}%`,
+    top: `${top * 100}%`,
   }
 }
 

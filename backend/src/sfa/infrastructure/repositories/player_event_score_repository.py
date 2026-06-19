@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.scoring.entities import PlayerEventScore
 from sfa.domain.scoring_ports import PlayerEventRawContextDTO, PlayerEventScoreRepositoryPort
+from sfa.domain.player_position_overrides import position_for_context
 from sfa.infrastructure.models.competitions.models import CompetitionStage
 from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
@@ -79,6 +80,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 Fixture.season,
                 func.coalesce(CompetitionStage.stage_factor, 1.0).label("stage_factor"),
                 Player.position,
+                Player.name.label("player_name"),
                 Player.birth_date.label("player_birth_date"),
                 cast(Fixture.played_at, Date).label("fixture_date"),
                 ts_home.c.strength.label("home_team_strength"),
@@ -183,7 +185,11 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 penalty_won=stats.penalty_won if stats else None,
                 dribbles_past=stats.dribbles_past if stats else None,
                 rating=float(stats.rating) if stats and stats.rating is not None else None,
-                player_position=row.position.value if hasattr(row.position, "value") else str(row.position),
+                player_position=position_for_context(
+                    row.position.value if hasattr(row.position, "value") else str(row.position),
+                    player_name=row.player_name,
+                    competition_id=row.competition_id,
+                ) or "",
                 minutes=stats.minutes if stats else None,
                 player_team_strength=player_team_strength,
                 rival_team_strength=rival_team_strength,
@@ -222,6 +228,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 constraint="uq_pes_event_version",
                 set_={
                     "base_points": score.base_points,
+                    "position": score.position,
                     "m1": score.m1,
                     "m2": score.m2,
                     "m3": score.m3,

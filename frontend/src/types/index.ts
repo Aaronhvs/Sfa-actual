@@ -35,6 +35,8 @@ export interface RankedPlayer {
   assists: number
   dribbles_won: number
   duels_won: number
+  b1_bonus_pts: number
+  b1_bonus_label: string | null
 }
 
 export interface RankingResponse {
@@ -64,6 +66,8 @@ export interface PlayerDetail {
   breakdown: Record<string, BreakdownEntry> | null
   competitions: string[]
   available_seasons: string[]
+  b1_bonus_pts: number
+  b1_bonus_label: string | null
 }
 
 export interface PlayerEvent {
@@ -97,11 +101,16 @@ export interface PlayerFixture {
   stage: string
   home_team: string
   away_team: string
+  player_team: string | null
   played_at: string
   sfa_pts: number
   events_count: number
   minutes: number
+  shots_total: number
   shots_on: number
+  passes_total: number
+  passes_accurate: number
+  passes_key: number
   dribbles_won: number
   duels_won: number
   tackles_won: number
@@ -111,8 +120,11 @@ export interface PlayerFixture {
   clearances: number
   home_team_logo: string | null
   away_team_logo: string | null
+  player_team_logo: string | null
   breakdown: Record<string, FixtureBreakdownEntry> | null
   rating: number | null
+  fixture_external_id: number | null
+  competition_id: number | null
 }
 
 export interface CompareResponse {
@@ -253,6 +265,42 @@ export interface WcFixtureDetailResponse {
   lineups: WcTeamLineup[]
   statistics: WcStatistic[]
   events: WcFixtureEvent[]
+}
+
+export interface WcTeamSFARankingItem {
+  rank: number
+  team_external_id: number
+  team_name: string
+  total_sfa_pts: number
+  total_goals: number
+  player_count: number
+}
+
+export interface WcTeamSFARankingResponse {
+  season: string
+  rankings: WcTeamSFARankingItem[]
+}
+
+export interface WcTopPlayer {
+  rank: number
+  player_id: number
+  player_name: string
+  team_name: string
+  team_logo_url: string | null
+  position: string
+  total_pts: number
+  matches_played: number
+  photo_url: string | null
+  goals: number
+  assists: number
+}
+
+export interface WcTeamProfileResponse {
+  team_external_id: number
+  team_name: string
+  total_sfa_pts: number
+  total_goals: number
+  top_players: WcTopPlayer[]
 }
 
 export interface PlayerCompetitionAchievement {

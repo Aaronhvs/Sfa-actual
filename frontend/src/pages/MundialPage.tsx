@@ -6,11 +6,12 @@ import type {
   WcFixturesResponse,
   WcStanding,
   WcStandingsResponse,
+  WcTeamSFARankingItem,
 } from '../types'
-import { fetchWcFixtures, fetchWcLive, fetchWcStandings } from '../api/client'
+import { fetchWcFixtures, fetchWcLive, fetchWcStandings, fetchWcTeamSFARanking } from '../api/client'
 import { worldCupTeamName } from '../utils/worldCupTeams'
 
-type MundialView = 'matches' | 'standings' | 'bracket'
+type MundialView = 'matches' | 'standings' | 'bracket' | 'teams'
 type MatchTone = 'live' | 'result' | 'upcoming'
 
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN'])
@@ -273,10 +274,58 @@ function StandingsGroup({ group, rows }: { group: string; rows: WcStanding[] }) 
   )
 }
 
+function TeamSFARankingView({ teams }: { teams: WcTeamSFARankingItem[] }) {
+  if (teams.length === 0) {
+    return <div className="wm-teams-empty">No hay datos de selecciones disponibles todavía.</div>
+  }
+  return (
+    <div className="wm-teams-ranking">
+      <div className="wm-teams-ranking__header" aria-hidden="true">
+        <span>Pos.</span>
+        <span>Selección</span>
+        <span>Goles</span>
+        <span>Jugadores</span>
+        <span>Pts SFA</span>
+      </div>
+      {teams.map((team) => {
+        const fakeTeam = { name: team.team_name, external_id: team.team_external_id }
+        const displayName = worldCupTeamName(fakeTeam as WcFixture['home_team'])
+        const logo = `https://media.api-sports.io/football/teams/${team.team_external_id}.png`
+        return (
+          <Link
+            key={team.team_external_id}
+            to={`/mundial/seleccion/${team.team_external_id}`}
+            className={`wm-teams-ranking__row${team.rank <= 3 ? ` wm-teams-ranking__row--top${team.rank}` : ''}`}
+          >
+            <span className="wm-teams-ranking__rank">{team.rank}</span>
+            <span className="wm-teams-ranking__team">
+              <img
+                src={logo}
+                alt=""
+                className="wm-teams-ranking__logo"
+                loading="lazy"
+                onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
+              />
+              <span>{displayName}</span>
+            </span>
+            <span className="wm-teams-ranking__goals">{team.total_goals}</span>
+            <span className="wm-teams-ranking__players">{team.player_count}</span>
+            <span className="wm-teams-ranking__pts">
+              {team.total_sfa_pts.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              <small>pts</small>
+            </span>
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function MundialPage() {
   const navigate = useNavigate()
   const [fixturesData, setFixturesData] = useState<WcFixturesResponse | null>(null)
   const [standingsData, setStandingsData] = useState<WcStandingsResponse | null>(null)
+  const [teamsRanking, setTeamsRanking] = useState<WcTeamSFARankingItem[]>([])
   const [view, setView] = useState<MundialView>('matches')
   const [resultDate, setResultDate] = useState<string | null>(null)
   const [upcomingDate, setUpcomingDate] = useState<string | null>(null)
@@ -296,6 +345,10 @@ export default function MundialPage() {
       })
       .catch((requestError) => setError(requestError.message ?? 'Error al cargar el Mundial'))
       .finally(() => setLoading(false))
+
+    fetchWcTeamSFARanking()
+      .then((teamsData) => setTeamsRanking(teamsData.rankings))
+      .catch(() => setTeamsRanking([]))
   }, [])
 
   useEffect(() => {
@@ -382,6 +435,7 @@ export default function MundialPage() {
           ['matches', 'Partidos'],
           ['standings', 'Grupos'],
           ['bracket', 'Cruces'],
+          ['teams', 'Selecciones'],
         ] as const).map(([id, label]) => (
           <button
             type="button"
@@ -468,6 +522,18 @@ export default function MundialPage() {
               <StandingsGroup group={group} rows={rows} key={group} />
             ))}
           </div>
+        )}
+
+        {!loading && !error && view === 'teams' && (
+          <section className="wm-section">
+            <header className="wm-section__header">
+              <div>
+                <span className="wm-section__eyebrow">Stats Football Award</span>
+                <h2>Ranking por selección</h2>
+              </div>
+            </header>
+            <TeamSFARankingView teams={teamsRanking} />
+          </section>
         )}
 
         {!loading && !error && view === 'bracket' && (

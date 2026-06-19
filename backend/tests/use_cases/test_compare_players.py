@@ -53,6 +53,9 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_total_player_stats(self, player_id, season, rules_version_id=None):
         return (0, 0, 0, 0.0)
 
+    async def get_b1_bonus_for_player(self, player_id, season, rules_version_id=None):
+        return (0.0, None)
+
     async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50,
                                       name=None, rules_version_id=None, use_total=False):
         return []

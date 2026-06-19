@@ -51,6 +51,9 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_total_player_stats(self, player_id, season, rules_version_id=None):
         return (0, 0, 0, 0.0)
 
+    async def get_b1_bonus_for_player(self, player_id, season, rules_version_id=None):
+        return (0.0, None)
+
     async def get_available_seasons_for_player(self, player_id):
         return ["2025", "2024"]
 

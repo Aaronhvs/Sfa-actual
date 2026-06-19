@@ -48,6 +48,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
         rules_version_id: int | None = None,
         use_total: bool = False,
     ) -> RankingResult:
+        explicit_rules_version = rules_version_id is not None
         if rules_version_id is None:
             rules_version_id = self._default_rules_version_id
 
@@ -68,6 +69,11 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                 season=ALL_SEASONS_SENTINEL,
                 total=total,
                 ranking=ranking,
+            )
+
+        if not explicit_rules_version:
+            rules_version_id = await self._score_repo.resolve_rules_version_id_for_season(
+                season, rules_version_id,
             )
 
         ranking = await self._score_repo.get_ranking(

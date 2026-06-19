@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchRanking, fetchWcFixtures, fetchWcStandings } from '../api/client'
-import type { RankedPlayer, WcFixture, WcFixturesResponse, WcStanding, WcStandingsResponse, WcTeam } from '../types'
+import { fetchWcFixtures, fetchWcStandings, fetchWcTeamProfile } from '../api/client'
+import type { WcFixture, WcFixturesResponse, WcStanding, WcStandingsResponse, WcTeam, WcTeamProfileResponse, WcTopPlayer } from '../types'
 import { worldCupTeamName, worldCupTeamNameFromString } from '../utils/worldCupTeams'
 
 const TEAM_LOGO = (externalId: number | null) =>
@@ -47,16 +47,16 @@ function TeamFixtureRow({ fixture, teamId }: { fixture: WcFixture; teamId: numbe
   )
 }
 
-function TeamPlayerRow({ player }: { player: RankedPlayer }) {
+function TeamPlayerRow({ player }: { player: WcTopPlayer }) {
   return (
-    <Link to={`/player/${player.id}?season=2026`} className="wmt-player">
+    <Link to={`/player/${player.player_id}?season=2026`} className="wmt-player">
       <span className="wmt-player__rank">{String(player.rank).padStart(2, '0')}</span>
       {player.photo_url && <img src={player.photo_url} alt="" loading="lazy" decoding="async" />}
       <span>
-        <strong>{player.name}</strong>
+        <strong>{player.player_name}</strong>
         <small>{player.position} · {player.goals} G · {player.assists} A</small>
       </span>
-      <b>{Math.round(player.sfa_pts).toLocaleString('es-ES')} pts</b>
+      <b>{Math.round(player.total_pts).toLocaleString('es-ES')} pts</b>
     </Link>
   )
 }
@@ -67,7 +67,7 @@ export default function MundialTeamPage() {
   const numericTeamId = Number(teamId)
   const [fixturesData, setFixturesData] = useState<WcFixturesResponse | null>(null)
   const [standingsData, setStandingsData] = useState<WcStandingsResponse | null>(null)
-  const [players, setPlayers] = useState<RankedPlayer[]>([])
+  const [teamProfile, setTeamProfile] = useState<WcTeamProfileResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,12 +86,12 @@ export default function MundialTeamPage() {
     Promise.all([
       fetchWcFixtures(),
       fetchWcStandings(),
-      fetchRanking({ season: '2026', limit: 300 }),
+      fetchWcTeamProfile(numericTeamId).catch(() => null),
     ])
-      .then(([fixtures, standings, ranking]) => {
+      .then(([fixtures, standings, profile]) => {
         setFixturesData(fixtures)
         setStandingsData(standings)
-        setPlayers(ranking.ranking)
+        setTeamProfile(profile)
       })
       .catch((requestError) => setError(requestError.message ?? 'No se pudo cargar la selección.'))
       .finally(() => setLoading(false))
@@ -115,9 +115,7 @@ export default function MundialTeamPage() {
   const upcoming = teamFixtures.filter((fixture) => !fixture.is_live && !FINISHED_STATUSES.has(fixture.status)).slice(0, 4)
   const results = teamFixtures.filter((fixture) => FINISHED_STATUSES.has(fixture.status)).slice(-4).reverse()
   const standing = standingsData?.standings.find((row) => row.team.external_id === numericTeamId) ?? null
-  const bestPlayers = players
-    .filter((player) => worldCupTeamNameFromString(player.team).toLowerCase() === normalizedTeamName)
-    .slice(0, 8)
+  const bestPlayers = teamProfile?.top_players.slice(0, 8) ?? []
   const logo = TEAM_LOGO(team?.external_id ?? null)
 
   function goBack() {
@@ -194,7 +192,7 @@ export default function MundialTeamPage() {
           <header><span>Rendimiento</span><h2>Mejores jugadores SFA</h2></header>
           <div className="wmt-list">
             {bestPlayers.length > 0
-              ? bestPlayers.map((player) => <TeamPlayerRow player={player} key={player.id} />)
+              ? bestPlayers.map((player) => <TeamPlayerRow player={player} key={player.player_id} />)
               : <div className="wmt-empty">Los jugadores aparecerán cuando el ranking del Mundial tenga datos de esta selección.</div>}
           </div>
         </section>

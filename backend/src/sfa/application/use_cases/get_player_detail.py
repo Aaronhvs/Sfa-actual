@@ -30,6 +30,8 @@ class PlayerDetailResult:
     breakdown: dict[str, BreakdownEntry] | None
     competitions: list[str]
     available_seasons: list[str] = field(default_factory=list)
+    b1_bonus_pts: float = 0.0
+    b1_bonus_label: str | None = None
 
 
 @runtime_checkable
@@ -56,6 +58,7 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
     async def execute(
         self, player_id: int, season: str | None = None, rules_version_id: int | None = None,
     ) -> PlayerDetailResult:
+        explicit_rules_version = rules_version_id is not None
         if rules_version_id is None:
             rules_version_id = self._default_rules_version_id
 
@@ -71,9 +74,10 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
         )
 
         if season == "all":
+            historical_rules_version_id = rules_version_id if explicit_rules_version else None
             total_matches, total_goals, total_assists, total_pts = (
                 await self._score_repo.get_total_player_stats_all_seasons(
-                    player_id, rules_version_id
+                    player_id, historical_rules_version_id
                 )
             )
             if total_pts == 0.0 and total_matches == 0:
@@ -85,17 +89,20 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
             if latest is None:
                 raise PlayerNotFoundError(player_id)
 
+            latest_rules_version_id = await self._score_repo.resolve_rules_version_id_for_season(
+                latest, rules_version_id,
+            )
             score = await self._score_repo.get_best_score_for_player_season(
-                player_id, latest, rules_version_id,
+                player_id, latest, latest_rules_version_id,
             )
             if score is None:
                 raise PlayerNotFoundError(player_id)
 
             competitions = await self._score_repo.get_competitions_for_player_season(
-                player_id, latest, rules_version_id,
+                player_id, latest, latest_rules_version_id,
             )
             global_rank = await self._score_repo.get_global_rank_all_seasons(
-                player_id, total_pts, rules_version_id,
+                player_id, total_pts, historical_rules_version_id,
             )
             return self._build_result(
                 score=score,
@@ -107,6 +114,11 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
                 total_assists=total_assists,
                 total_pts=total_pts,
                 global_rank=global_rank,
+            )
+
+        if not explicit_rules_version:
+            rules_version_id = await self._score_repo.resolve_rules_version_id_for_season(
+                season, rules_version_id,
             )
 
         # 2. Obtener score principal
@@ -130,6 +142,9 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
         global_rank = await self._score_repo.get_global_rank(
             player_id, season, total_pts, rules_version_id,
         )
+        b1_bonus_pts, b1_bonus_label = await self._score_repo.get_b1_bonus_for_player(
+            player_id, season, rules_version_id,
+        )
 
         return self._build_result(
             score=score,
@@ -141,6 +156,8 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
             total_assists=total_assists,
             total_pts=total_pts,
             global_rank=global_rank,
+            b1_bonus_pts=b1_bonus_pts,
+            b1_bonus_label=b1_bonus_label,
         )
 
     @staticmethod
@@ -154,6 +171,8 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
         total_assists: int,
         total_pts: float,
         global_rank: int,
+        b1_bonus_pts: float = 0.0,
+        b1_bonus_label: str | None = None,
     ) -> PlayerDetailResult:
         breakdown: dict[str, BreakdownEntry] | None = None
         if score.breakdown:
@@ -179,6 +198,8 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
             breakdown=breakdown,
             competitions=competitions,
             available_seasons=available_seasons,
+            b1_bonus_pts=b1_bonus_pts,
+            b1_bonus_label=b1_bonus_label,
         )
 
 

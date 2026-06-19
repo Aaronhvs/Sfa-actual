@@ -27,6 +27,8 @@ class PlayerDetailSchema(BaseModel):
     breakdown: dict[str, BreakdownEntrySchema] | None
     competitions: list[str]
     available_seasons: list[str] = Field(default_factory=list)
+    b1_bonus_pts: float = 0.0
+    b1_bonus_label: str | None = None
 
 
 class PlayerEventSchema(BaseModel):
@@ -59,11 +61,16 @@ class PlayerFixtureSchema(BaseModel):
     stage: str
     home_team: str
     away_team: str
+    player_team: str | None = None
     played_at: datetime
     sfa_pts: float
     events_count: int
     minutes: int = 0
+    shots_total: int = 0
     shots_on: int = 0
+    passes_total: int = 0
+    passes_accurate: int = 0
+    passes_key: int = 0
     dribbles_won: int = 0
     duels_won: int = 0
     tackles_won: int = 0
@@ -72,8 +79,11 @@ class PlayerFixtureSchema(BaseModel):
     fouls_drawn: int = 0
     home_team_logo: str | None = None
     away_team_logo: str | None = None
+    player_team_logo: str | None = None
     breakdown: dict[str, BreakdownEntrySchema] | None = None
     rating: float | None = None
+    fixture_external_id: int | None = None
+    competition_id: int | None = None
 
 
 class PlayerSeasonStatsSchema(BaseModel):

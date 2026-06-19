@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -159,6 +159,24 @@ export async function fetchWcFixtureDetail(
     if (cached) return cached
   }
   const data = await get<WcFixtureDetailResponse>(`/wc/fixtures/${fixtureId}`)
+  setCache(key, data)
+  return data
+}
+
+export async function fetchWcTeamSFARanking(): Promise<WcTeamSFARankingResponse> {
+  const key = 'wc:team-sfa-ranking'
+  const cached = getCached<WcTeamSFARankingResponse>(key)
+  if (cached) return cached
+  const data = await get<WcTeamSFARankingResponse>('/wc/teams/sfa-ranking')
+  setCache(key, data)
+  return data
+}
+
+export async function fetchWcTeamProfile(teamExternalId: number): Promise<WcTeamProfileResponse> {
+  const key = `wc:team-profile:${teamExternalId}`
+  const cached = getCached<WcTeamProfileResponse>(key)
+  if (cached) return cached
+  const data = await get<WcTeamProfileResponse>(`/wc/teams/${teamExternalId}`)
   setCache(key, data)
   return data
 }

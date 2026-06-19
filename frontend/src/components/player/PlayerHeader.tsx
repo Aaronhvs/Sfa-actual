@@ -27,6 +27,17 @@ function formatPts(pts: number): string {
   return pts.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
+function B1Badge({ player }: { player: PlayerDetail }) {
+  if (!player.b1_bonus_label) return null
+
+  const tone = player.b1_bonus_label === 'Veterano' ? 'veteran' : 'prospect'
+  return (
+    <span className={`b1-player-badge b1-player-badge--${tone}`}>
+      <b>{player.b1_bonus_label}</b>
+    </span>
+  )
+}
+
 export default function PlayerHeader({ player, isWorldCup = false }: Props) {
   const posLabel = POSITION_LABELS[player.position] ?? player.position
   const teamName = isWorldCup ? worldCupTeamNameFromString(player.team) : player.team
@@ -52,6 +63,7 @@ export default function PlayerHeader({ player, isWorldCup = false }: Props) {
         <div className="player-header__name-row">
           <h1 className="player-header__name">{player.name}</h1>
           <span className="player-rank-tag">#{player.global_rank}</span>
+          <B1Badge player={player} />
         </div>
         <div className="player-header__meta">
           <span className="pos-badge">{player.position}</span>

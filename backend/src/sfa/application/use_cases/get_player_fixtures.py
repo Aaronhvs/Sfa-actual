@@ -34,6 +34,7 @@ class GetPlayerFixturesUseCase(GetPlayerFixturesUseCaseProtocol):
         competition_name: str | None = None,
         rival: str | None = None,
         date: datetime.date | None = None,
+        rules_version_id: int | None = None,
     ) -> list[PlayerFixtureDTO]:
         if season == "all":
             season = None
@@ -44,13 +45,16 @@ class GetPlayerFixturesUseCase(GetPlayerFixturesUseCaseProtocol):
             competition_name=competition_name,
             rival=rival,
             date=date,
+            rules_version_id=rules_version_id,
         )
 
         if not include_breakdown or not fixtures:
             return fixtures
 
         fixture_ids = [f.fixture_id for f in fixtures]
-        breakdown_map = await self._event_repo.get_fixture_breakdown_by_player(player_id, fixture_ids)
+        breakdown_map = await self._event_repo.get_fixture_breakdown_by_player(
+            player_id, fixture_ids, season, rules_version_id,
+        )
 
         return [
             dataclasses.replace(f, breakdown=breakdown_map.get(f.fixture_id))

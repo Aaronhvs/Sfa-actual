@@ -125,7 +125,10 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
     })
 
     const pts: Pt[] = sorted.map((f, index) => {
-      const isHome = f.home_team === playerTeam
+      const fixturePlayerTeam = f.player_team ?? playerTeam
+      const isHome = f.home_team === fixturePlayerTeam
+      const isAway = f.away_team === fixturePlayerTeam
+      const fallbackIsHome = f.home_team === playerTeam
       return {
         x: PL + (xUnits[index] / totalUnits) * IW,
         y: toY(f.sfa_pts),
@@ -136,8 +139,14 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
         season: seasons[index],
         goals: (f.breakdown?.['goal']?.count ?? 0) + (f.breakdown?.['goal_penalty']?.count ?? 0),
         assists: f.breakdown?.['assist']?.count ?? 0,
-        opponent: isHome ? f.away_team : f.home_team,
-        oppLogo: isHome ? f.away_team_logo : f.home_team_logo,
+        opponent: isHome ? f.away_team : isAway ? f.home_team : fallbackIsHome ? f.away_team : f.home_team,
+        oppLogo: isHome
+          ? f.away_team_logo
+          : isAway
+            ? f.home_team_logo
+            : fallbackIsHome
+              ? f.away_team_logo
+              : f.home_team_logo,
       }
     })
     const logoOffsets = [0, -14, 14, -26, 26]

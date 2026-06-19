@@ -18,6 +18,8 @@ class RankedPlayerSchema(BaseModel):
     assists: int = 0
     dribbles_won: int = 0
     duels_won: int = 0
+    b1_bonus_pts: float = 0.0
+    b1_bonus_label: str | None = None
 
 
 class RankingResponseSchema(BaseModel):

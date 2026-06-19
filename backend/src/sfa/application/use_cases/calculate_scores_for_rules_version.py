@@ -28,6 +28,8 @@ from sfa.infrastructure.models.enums import EventType, Position
 
 logger = logging.getLogger(__name__)
 
+WORLD_CUP_COMPETITION_ID = 350
+
 MIN_MINUTES_FOR_RANKING = 90
 
 _STATS_EVENT_TYPE = EventType.STATS.value
@@ -224,7 +226,8 @@ class CalculateScoresForRulesVersionUseCase:
         config = service._config
         player_team_pos = event.player_team_pos or 10
         rival_team_pos = event.rival_team_pos or 10
-        is_away = event.is_away or False
+        is_neutral_world_cup = event.competition_id == WORLD_CUP_COMPETITION_ID
+        is_away = (event.is_away or False) and not is_neutral_world_cup
         minute = max(1, min(90, event.minute))
         score_diff = event.score_diff if event.score_diff is not None else 0
         is_penalty = action == ActionType.GOAL_PENALTY
@@ -306,6 +309,7 @@ class CalculateScoresForRulesVersionUseCase:
             "M3": round(m3.value, 3),
             "M4": round(m4.value, 3),
             "Mvisit": round(mvisit.value, 2),
+            "neutral_site": is_neutral_world_cup,
             "Mrating": mrating_val,
             "combined_before_clamp": round(raw, 4),
             "combined_after_clamp": round(combined, 4),

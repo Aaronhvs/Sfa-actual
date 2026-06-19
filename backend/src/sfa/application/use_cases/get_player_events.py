@@ -24,9 +24,10 @@ class GetPlayerEventsUseCase(GetPlayerEventsUseCaseProtocol):
         player_id: int,
         season: str | None = None,
         competition_id: int | None = None,
+        rules_version_id: int | None = None,
     ) -> list[PlayerEventDTO]:
         if season == "all":
             season = None
         return await self._event_repo.get_events_by_player(
-            player_id, season, competition_id,
+            player_id, season, competition_id, rules_version_id,
         )

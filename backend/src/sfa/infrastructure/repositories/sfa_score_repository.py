@@ -1,4 +1,6 @@
-from sqlalchemy import Integer, case, cast, func, select
+from datetime import date
+
+from sqlalchemy import Integer, Numeric, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.ports import (
@@ -6,10 +8,90 @@ from sfa.domain.ports import (
     RankedPlayerDTO,
     SFAScoreRepositoryProtocol,
 )
+from sfa.domain.player_position_overrides import (
+    override_name_terms_for_position,
+    position_for_context,
+)
 from sfa.infrastructure.models.competitions.models import Competition
+from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 from sfa.infrastructure.models.teams.models import Team
+
+
+def _age_at_date(birth_date: date, reference_date: date) -> int:
+    age = reference_date.year - birth_date.year
+    if (reference_date.month, reference_date.day) < (birth_date.month, birth_date.day):
+        age -= 1
+    return age
+
+
+def _b1_label_for_birth_date(birth_date: date | None) -> str | None:
+    if birth_date is None:
+        return None
+    age = _age_at_date(birth_date, date.today())
+    if 17 <= age <= 20:
+        return "Promesa"
+    if age >= 35:
+        return "Veterano"
+    return None
+
+
+def _position_value(position: object) -> str | None:
+    if position is None:
+        return None
+    return position.value if hasattr(position, "value") else str(position)
+
+
+def _position_filter(position: str | None):
+    if position is None:
+        return None
+    name_terms = override_name_terms_for_position(position)
+    if not name_terms:
+        return Player.position == position
+    return or_(
+        Player.position == position,
+        *[
+            func.unaccent(Player.name).ilike(func.concat("%", func.unaccent(term), "%"))
+            for term in name_terms
+        ],
+    )
+
+
+def _historical_scores_scope(rules_version_id: int | None = None):
+    columns = (
+        SFASeasonScore.player_id,
+        SFASeasonScore.competition_id,
+        SFASeasonScore.team_id,
+        SFASeasonScore.season,
+        SFASeasonScore.total_pts,
+        SFASeasonScore.achievement_bonus_pts,
+        SFASeasonScore.matches_played,
+        SFASeasonScore.breakdown,
+        SFASeasonScore.rules_version_id,
+    )
+    if rules_version_id is not None:
+        return (
+            select(*columns)
+            .where(SFASeasonScore.rules_version_id == rules_version_id)
+            .subquery()
+        )
+
+    ranked = (
+        select(
+            *columns,
+            func.row_number().over(
+                partition_by=(
+                    SFASeasonScore.player_id,
+                    SFASeasonScore.competition_id,
+                    SFASeasonScore.season,
+                ),
+                order_by=func.coalesce(SFASeasonScore.rules_version_id, 0).desc(),
+            ).label("rn"),
+        )
+        .subquery()
+    )
+    return select(ranked).where(ranked.c.rn == 1).subquery()
 
 
 class SFAScoreRepository(SFAScoreRepositoryProtocol):
@@ -52,12 +134,17 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         row = (await self._session.execute(stmt)).mappings().first()
         if row is None:
             return None
-        pos = row["position"]
+        pos = position_for_context(
+            _position_value(row["position"]),
+            player_name=row["player_name"],
+            team_name=row["team_name"],
+            competition_id=row["competition_id"],
+        )
         return PlayerScoreDTO(
             player_id=row["player_id"],
             player_name=row["player_name"],
             team_name=row["team_name"],
-            position=pos.value if hasattr(pos, "value") else str(pos),
+            position=pos or "",
             competition_name=row["competition_name"],
             competition_id=row["competition_id"],
             total_pts=float(row["total_pts"]),
@@ -155,6 +242,39 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .group_by(SFASeasonScore.player_id)
             .subquery()
         )
+        b1_filters = [
+            PlayerEventScore.season == season,
+            PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
+        ]
+        if rules_version_id is not None:
+            b1_filters.append(PlayerEventScore.rules_version_id == rules_version_id)
+        if competition_id is not None:
+            b1_filters.append(PlayerEventScore.competition_id == competition_id)
+
+        b1_age = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["age_at_match"].astext,
+            Integer,
+        )
+        b1_pts = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["b1_per_event"].astext,
+            Numeric,
+        )
+        b1_agg = (
+            select(
+                PlayerEventScore.player_id,
+                func.coalesce(
+                    func.sum(case((b1_age <= 20, b1_pts), else_=0)),
+                    0,
+                ).label("b1_young_pts"),
+                func.coalesce(
+                    func.sum(case((b1_age >= 35, b1_pts), else_=0)),
+                    0,
+                ).label("b1_veteran_pts"),
+            )
+            .where(*b1_filters)
+            .group_by(PlayerEventScore.player_id)
+            .subquery()
+        )
 
         ranked_scores = (
             select(
@@ -189,10 +309,12 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 rank_col,
                 Player.id.label("player_id"),
                 Player.name.label("player_name"),
+                Player.birth_date.label("birth_date"),
                 Team.name.label("team_name"),
                 Team.external_id.label("team_external_id"),
                 Player.position,
                 Competition.name.label("competition_name"),
+                best_comp.c.competition_id.label("competition_id"),
                 agg.c.sum_pts.label("total_pts"),
                 agg.c.sum_matches.label("matches_played"),
                 Player.photo_url,
@@ -200,23 +322,31 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 agg.c.sum_assists.label("assists"),
                 agg.c.sum_dribbles.label("dribbles_won"),
                 agg.c.sum_duels.label("duels_won"),
+                func.coalesce(b1_agg.c.b1_young_pts, 0).label("b1_young_pts"),
+                func.coalesce(b1_agg.c.b1_veteran_pts, 0).label("b1_veteran_pts"),
             )
             .join(agg, Player.id == agg.c.player_id)
             .join(best_comp, Player.id == best_comp.c.player_id)
             .join(Team, best_comp.c.team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
+            .outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
             .order_by(agg.c.sum_pts.desc())
         )
         if position is not None:
-            stmt = stmt.where(Player.position == position)
+            stmt = stmt.where(_position_filter(position))
 
         if name is not None:
             sub = stmt.subquery()
             final = (
                 select(sub)
                 .where(
-                    func.unaccent(sub.c.player_name).ilike(
-                        func.concat("%", func.unaccent(name), "%")
+                    or_(
+                        func.unaccent(sub.c.player_name).ilike(
+                            func.concat("%", func.unaccent(name), "%")
+                        ),
+                        func.unaccent(sub.c.team_name).ilike(
+                            func.concat("%", func.unaccent(name), "%")
+                        ),
                     )
                 )
                 .limit(limit)
@@ -229,14 +359,29 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         def _logo(ext_id: int | None) -> str | None:
             return f"https://media.api-sports.io/football/teams/{ext_id}.png" if ext_id else None
 
-        return [
-            RankedPlayerDTO(
+        result: list[RankedPlayerDTO] = []
+        for row in rows:
+            b1_young = float(row["b1_young_pts"] or 0)
+            b1_veteran = float(row["b1_veteran_pts"] or 0)
+            b1_total = round(b1_young + b1_veteran, 2)
+            b1_label = _b1_label_for_birth_date(row["birth_date"])
+            if b1_total > 0:
+                b1_label = "Veterano" if b1_veteran >= b1_young and b1_veteran > 0 else "Promesa"
+            display_position = position_for_context(
+                _position_value(row["position"]),
+                player_name=row["player_name"],
+                team_name=row["team_name"],
+                competition_id=row["competition_id"],
+            )
+            if position is not None and display_position != position:
+                continue
+            result.append(RankedPlayerDTO(
                 rank=row["rank"],
                 player_id=row["player_id"],
                 player_name=row["player_name"],
                 team_name=row["team_name"],
                 team_logo_url=_logo(row["team_external_id"]),
-                position=(lambda p: p.value if hasattr(p, "value") else str(p))(row["position"]),
+                position=display_position or "",
                 competition_name=row["competition_name"],
                 total_pts=float(row["total_pts"]),
                 matches_played=row["matches_played"],
@@ -245,9 +390,10 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 assists=int(row["assists"] or 0),
                 dribbles_won=int(row["dribbles_won"] or 0),
                 duels_won=int(row["duels_won"] or 0),
-            )
-            for row in rows
-        ]
+                b1_bonus_pts=b1_total,
+                b1_bonus_label=b1_label,
+            ))
+        return result
 
     async def get_ranking_total(
         self,
@@ -272,13 +418,68 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .group_by(SFASeasonScore.player_id)
         )
         if position is not None:
-            inner = inner.where(Player.position == position)
+            inner = inner.where(_position_filter(position))
         if name is not None:
-            inner = inner.where(
-                func.unaccent(Player.name).ilike(
-                    func.concat("%", func.unaccent(name), "%")
+            team_match = (
+                select(SFASeasonScore.player_id)
+                .join(Team, SFASeasonScore.team_id == Team.id)
+                .where(
+                    *score_filters,
+                    func.unaccent(Team.name).ilike(
+                        func.concat("%", func.unaccent(name), "%")
+                    ),
                 )
             )
+            inner = inner.where(
+                or_(
+                    func.unaccent(Player.name).ilike(
+                        func.concat("%", func.unaccent(name), "%")
+                    ),
+                    Player.id.in_(team_match),
+                )
+            )
+
+        if position is not None:
+            exact_stmt = (
+                select(
+                    Player.id.label("player_id"),
+                    Player.name.label("player_name"),
+                    Player.position,
+                    Team.name.label("team_name"),
+                    SFASeasonScore.competition_id,
+                )
+                .join(Player, SFASeasonScore.player_id == Player.id)
+                .join(Team, SFASeasonScore.team_id == Team.id)
+                .where(*score_filters, _position_filter(position))
+                .group_by(
+                    Player.id,
+                    Player.name,
+                    Player.position,
+                    Team.name,
+                    SFASeasonScore.competition_id,
+                )
+            )
+            if name is not None:
+                exact_stmt = exact_stmt.where(
+                    or_(
+                        func.unaccent(Player.name).ilike(
+                            func.concat("%", func.unaccent(name), "%")
+                        ),
+                        Player.id.in_(team_match),
+                    )
+                )
+            rows = (await self._session.execute(exact_stmt)).mappings().all()
+            counted: set[int] = set()
+            for row in rows:
+                display_position = position_for_context(
+                    _position_value(row["position"]),
+                    player_name=row["player_name"],
+                    team_name=row["team_name"],
+                    competition_id=row["competition_id"],
+                )
+                if display_position == position:
+                    counted.add(row["player_id"])
+            return len(counted)
 
         subq = inner.subquery()
         stmt = select(func.count()).select_from(subq)
@@ -295,6 +496,40 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             )
         )
         return result.scalar_one_or_none()
+
+    async def resolve_rules_version_id_for_season(
+        self, season: str, preferred_rules_version_id: int | None = None,
+    ) -> int | None:
+        if preferred_rules_version_id is not None:
+            preferred_count = await self._session.scalar(
+                select(func.count())
+                .select_from(SFASeasonScore)
+                .where(
+                    SFASeasonScore.season == season,
+                    SFASeasonScore.rules_version_id == preferred_rules_version_id,
+                )
+            )
+            if preferred_count and preferred_count > 0:
+                return preferred_rules_version_id
+
+        latest_rules_version = await self._session.scalar(
+            select(func.max(SFASeasonScore.rules_version_id)).where(
+                SFASeasonScore.season == season,
+                SFASeasonScore.rules_version_id.is_not(None),
+            )
+        )
+        if latest_rules_version is not None:
+            return int(latest_rules_version)
+
+        null_count = await self._session.scalar(
+            select(func.count())
+            .select_from(SFASeasonScore)
+            .where(
+                SFASeasonScore.season == season,
+                SFASeasonScore.rules_version_id.is_(None),
+            )
+        )
+        return None if null_count and null_count > 0 else preferred_rules_version_id
 
     async def get_total_player_stats(
         self, player_id: int, season: str, rules_version_id: int | None = None,
@@ -332,6 +567,48 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         )
         total_pts = round(sum(float(r[2]) + float(r[3]) for r in rows), 2)
         return total_matches, total_goals, total_assists, total_pts
+
+    async def get_b1_bonus_for_player(
+        self, player_id: int, season: str, rules_version_id: int | None = None,
+    ) -> tuple[float, str | None]:
+        birth_date = await self._session.scalar(
+            select(Player.birth_date).where(Player.id == player_id)
+        )
+        age_label = _b1_label_for_birth_date(birth_date)
+
+        filters = [
+            PlayerEventScore.player_id == player_id,
+            PlayerEventScore.season == season,
+            PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
+        ]
+        if rules_version_id is not None:
+            filters.append(PlayerEventScore.rules_version_id == rules_version_id)
+
+        b1_age = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["age_at_match"].astext,
+            Integer,
+        )
+        b1_pts = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["b1_per_event"].astext,
+            Numeric,
+        )
+        stmt = select(
+            func.coalesce(func.sum(case((b1_age <= 20, b1_pts), else_=0)), 0),
+            func.coalesce(func.sum(case((b1_age >= 35, b1_pts), else_=0)), 0),
+        ).where(*filters)
+
+        row = (await self._session.execute(stmt)).first()
+        if row is None:
+            return (0.0, age_label)
+
+        young_pts = float(row[0] or 0)
+        veteran_pts = float(row[1] or 0)
+        total = round(young_pts + veteran_pts, 2)
+        if total <= 0:
+            return (0.0, age_label)
+
+        label = "Veterano" if veteran_pts >= young_pts and veteran_pts > 0 else "Promesa"
+        return (total, label)
 
     async def get_available_seasons_for_player(self, player_id: int) -> list[str]:
         stmt = (
@@ -419,6 +696,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 Team.external_id.label("team_external_id"),
                 Player.position,
                 Competition.name.label("competition_name"),
+                best_comp.c.competition_id.label("competition_id"),
                 agg.c.sum_pts.label("total_pts"),
                 agg.c.sum_matches.label("matches_played"),
                 Player.photo_url,
@@ -434,15 +712,20 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .order_by(agg.c.sum_pts.desc())
         )
         if position is not None:
-            stmt = stmt.where(Player.position == position)
+            stmt = stmt.where(_position_filter(position))
 
         if name is not None:
             sub = stmt.subquery()
             final = (
                 select(sub)
                 .where(
-                    func.unaccent(sub.c.player_name).ilike(
-                        func.concat("%", func.unaccent(name), "%")
+                    or_(
+                        func.unaccent(sub.c.player_name).ilike(
+                            func.concat("%", func.unaccent(name), "%")
+                        ),
+                        func.unaccent(sub.c.team_name).ilike(
+                            func.concat("%", func.unaccent(name), "%")
+                        ),
                     )
                 )
                 .limit(limit)
@@ -455,14 +738,23 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         def _logo(ext_id: int | None) -> str | None:
             return f"https://media.api-sports.io/football/teams/{ext_id}.png" if ext_id else None
 
-        return [
-            RankedPlayerDTO(
+        result: list[RankedPlayerDTO] = []
+        for row in rows:
+            display_position = position_for_context(
+                _position_value(row["position"]),
+                player_name=row["player_name"],
+                team_name=row["team_name"],
+                competition_id=row["competition_id"],
+            )
+            if position is not None and display_position != position:
+                continue
+            result.append(RankedPlayerDTO(
                 rank=row["rank"],
                 player_id=row["player_id"],
                 player_name=row["player_name"],
                 team_name=row["team_name"],
                 team_logo_url=_logo(row["team_external_id"]),
-                position=(lambda p: p.value if hasattr(p, "value") else str(p))(row["position"]),
+                position=display_position or "",
                 competition_name=row["competition_name"],
                 total_pts=float(row["total_pts"]),
                 matches_played=row["matches_played"],
@@ -471,9 +763,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 assists=int(row["assists"] or 0),
                 dribbles_won=int(row["dribbles_won"] or 0),
                 duels_won=int(row["duels_won"] or 0),
-            )
-            for row in rows
-        ]
+            ))
+        return result
 
     async def get_ranking_total_all_seasons(
         self,
@@ -497,13 +788,68 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .group_by(SFASeasonScore.player_id)
         )
         if position is not None:
-            inner = inner.where(Player.position == position)
+            inner = inner.where(_position_filter(position))
         if name is not None:
-            inner = inner.where(
-                func.unaccent(Player.name).ilike(
-                    func.concat("%", func.unaccent(name), "%")
+            team_match = (
+                select(SFASeasonScore.player_id)
+                .join(Team, SFASeasonScore.team_id == Team.id)
+                .where(
+                    *score_filters,
+                    func.unaccent(Team.name).ilike(
+                        func.concat("%", func.unaccent(name), "%")
+                    ),
                 )
             )
+            inner = inner.where(
+                or_(
+                    func.unaccent(Player.name).ilike(
+                        func.concat("%", func.unaccent(name), "%")
+                    ),
+                    Player.id.in_(team_match),
+                )
+            )
+
+        if position is not None:
+            exact_stmt = (
+                select(
+                    Player.id.label("player_id"),
+                    Player.name.label("player_name"),
+                    Player.position,
+                    Team.name.label("team_name"),
+                    SFASeasonScore.competition_id,
+                )
+                .join(Player, SFASeasonScore.player_id == Player.id)
+                .join(Team, SFASeasonScore.team_id == Team.id)
+                .where(*score_filters, _position_filter(position))
+                .group_by(
+                    Player.id,
+                    Player.name,
+                    Player.position,
+                    Team.name,
+                    SFASeasonScore.competition_id,
+                )
+            )
+            if name is not None:
+                exact_stmt = exact_stmt.where(
+                    or_(
+                        func.unaccent(Player.name).ilike(
+                            func.concat("%", func.unaccent(name), "%")
+                        ),
+                        Player.id.in_(team_match),
+                    )
+                )
+            rows = (await self._session.execute(exact_stmt)).mappings().all()
+            counted: set[int] = set()
+            for row in rows:
+                display_position = position_for_context(
+                    _position_value(row["position"]),
+                    player_name=row["player_name"],
+                    team_name=row["team_name"],
+                    competition_id=row["competition_id"],
+                )
+                if display_position == position:
+                    counted.add(row["player_id"])
+            return len(counted)
 
         subq = inner.subquery()
         stmt = select(func.count()).select_from(subq)
@@ -512,22 +858,16 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_total_player_stats_all_seasons(
         self, player_id: int, rules_version_id: int | None = None,
     ) -> tuple[int, int, int, float]:
-        rv_filter = (
-            SFASeasonScore.rules_version_id == rules_version_id
-            if rules_version_id is not None
-            else SFASeasonScore.rules_version_id.is_(None)
-        )
+        scores = _historical_scores_scope(rules_version_id)
         stmt = (
             select(
-                SFASeasonScore.matches_played,
-                SFASeasonScore.breakdown,
-                SFASeasonScore.total_pts,
-                SFASeasonScore.achievement_bonus_pts,
+                scores.c.matches_played,
+                scores.c.breakdown,
+                scores.c.total_pts,
+                scores.c.achievement_bonus_pts,
             )
-            .where(
-                SFASeasonScore.player_id == player_id,
-                rv_filter,
-            )
+            .select_from(scores)
+            .where(scores.c.player_id == player_id)
         )
         rows = (await self._session.execute(stmt)).fetchall()
 
@@ -551,23 +891,19 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         total_pts: float,
         rules_version_id: int | None = None,
     ) -> int:
-        rv_filter = (
-            SFASeasonScore.rules_version_id == rules_version_id
-            if rules_version_id is not None
-            else SFASeasonScore.rules_version_id.is_(None)
-        )
+        scores = _historical_scores_scope(rules_version_id)
         per_player = (
             select(
-                SFASeasonScore.player_id,
+                scores.c.player_id,
                 func.sum(
-                    SFASeasonScore.total_pts + SFASeasonScore.achievement_bonus_pts
+                    scores.c.total_pts + scores.c.achievement_bonus_pts
                 ).label("sum_pts"),
             )
+            .select_from(scores)
             .where(
-                SFASeasonScore.player_id != player_id,
-                rv_filter,
+                scores.c.player_id != player_id,
             )
-            .group_by(SFASeasonScore.player_id)
+            .group_by(scores.c.player_id)
             .subquery()
         )
         stmt = select(func.count()).where(per_player.c.sum_pts > total_pts)

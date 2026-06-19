@@ -31,6 +31,17 @@ function compactName(name: string): string {
   return lastName.length <= 18 ? lastName : `${lastName.slice(0, 16)}…`
 }
 
+function B1Badge({ player }: { player: RankedPlayer }) {
+  if (!player.b1_bonus_label) return null
+
+  const tone = player.b1_bonus_label === 'Veterano' ? 'veteran' : 'prospect'
+  return (
+    <span className={`b1-player-badge b1-player-badge--${tone}`}>
+      <b>{player.b1_bonus_label}</b>
+    </span>
+  )
+}
+
 function cardClass(rank: number, isWorldCup: boolean): string {
   const tournamentClass = isWorldCup ? ' player-showcase-card--wc' : ''
   if (rank === 1) return `player-showcase-card player-showcase-card--first${tournamentClass}`
@@ -64,6 +75,7 @@ export default function ShowcaseCard({ player, season, isWorldCup = false }: Pro
         <div className="psc-mobile-podium__bar">
           {flagUrl && <img src={flagUrl} alt={player.team} className="psc-mobile-podium__flag" />}
           <strong title={player.name} aria-label={player.name}>{mobileName}</strong>
+          <B1Badge player={player} />
           <span>{formatPts(player.sfa_pts)} pts</span>
           <div
             className="psc-mobile-podium__ga"
@@ -104,6 +116,7 @@ export default function ShowcaseCard({ player, season, isWorldCup = false }: Pro
 
       <div className="psc-content">
         <div className="psc-name">{player.name}</div>
+        <B1Badge player={player} />
         <div className="psc-divider" />
         <div className="psc-stats">
           <div className="psc-stat-main">

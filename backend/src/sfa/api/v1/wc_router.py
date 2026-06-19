@@ -14,6 +14,10 @@ from sfa.api.v1.schemas.wc_schemas import (
     WcStatisticSchema,
     WcTeamSchema,
     WcTeamLineupSchema,
+    WcTeamProfileResponseSchema,
+    WcTeamSFARankingResponseSchema,
+    WcTeamSFARankingItemSchema,
+    WcTopPlayerSchema,
     WcVenueSchema,
 )
 from sfa.application.use_cases.get_world_cup import (
@@ -21,6 +25,8 @@ from sfa.application.use_cases.get_world_cup import (
     GetWorldCupFixturesUseCase,
     GetWorldCupLiveUseCase,
     GetWorldCupStandingsUseCase,
+    GetWcTeamSFARankingUseCase,
+    GetWcTeamProfileUseCase,
     LIVE_STATUSES,
 )
 from sfa.core.dependencies import (
@@ -28,6 +34,8 @@ from sfa.core.dependencies import (
     get_world_cup_fixtures_use_case,
     get_world_cup_live_use_case,
     get_world_cup_standings_use_case,
+    get_wc_team_sfa_ranking_use_case,
+    get_wc_team_profile_use_case,
 )
 from sfa.domain.world_cup_ports import (
     WorldCupFixtureDTO,
@@ -170,4 +178,72 @@ async def get_wc_standings(
     return WcStandingsResponseSchema(
         season=result.season,
         standings=[_standing_schema(standing) for standing in result.standings],
+    )
+
+
+@router.get("/wc/teams/sfa-ranking", response_model=WcTeamSFARankingResponseSchema)
+async def get_wc_team_sfa_ranking(
+    use_case: Annotated[
+        GetWcTeamSFARankingUseCase,
+        Depends(get_wc_team_sfa_ranking_use_case),
+    ],
+    season: str = "2026",
+    rules_version_id: int | None = None,
+) -> WcTeamSFARankingResponseSchema:
+    rankings = await use_case.execute(season=season, rules_version_id=rules_version_id)
+    return WcTeamSFARankingResponseSchema(
+        season=season,
+        rankings=[
+            WcTeamSFARankingItemSchema(
+                rank=r.rank,
+                team_external_id=r.team_external_id,
+                team_name=r.team_name,
+                total_sfa_pts=r.total_sfa_pts,
+                total_goals=r.total_goals,
+                player_count=r.player_count,
+            )
+            for r in rankings
+        ],
+    )
+
+
+@router.get("/wc/teams/{team_external_id}", response_model=WcTeamProfileResponseSchema)
+async def get_wc_team_profile(
+    team_external_id: int,
+    use_case: Annotated[
+        GetWcTeamProfileUseCase,
+        Depends(get_wc_team_profile_use_case),
+    ],
+    season: str = "2026",
+    rules_version_id: int | None = None,
+) -> WcTeamProfileResponseSchema:
+    try:
+        profile = await use_case.execute(
+            team_external_id=team_external_id,
+            season=season,
+            rules_version_id=rules_version_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return WcTeamProfileResponseSchema(
+        team_external_id=profile.team_external_id,
+        team_name=profile.team_name,
+        total_sfa_pts=profile.total_sfa_pts,
+        total_goals=profile.total_goals,
+        top_players=[
+            WcTopPlayerSchema(
+                rank=p.rank,
+                player_id=p.player_id,
+                player_name=p.player_name,
+                team_name=p.team_name,
+                team_logo_url=p.team_logo_url,
+                position=p.position,
+                total_pts=p.total_pts,
+                matches_played=p.matches_played,
+                photo_url=p.photo_url,
+                goals=p.goals,
+                assists=p.assists,
+            )
+            for p in profile.top_players
+        ],
     )

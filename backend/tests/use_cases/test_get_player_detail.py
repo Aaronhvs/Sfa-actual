@@ -15,12 +15,14 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
         competitions: list[str] | None = None,
         latest_season: str | None = "2024-25",
         latest_season_for_player: str | None = "2024-25",
+        b1_bonus: tuple[float, str | None] = (0.0, None),
     ):
         self._best_score = best_score
         self._global_rank = global_rank
         self._competitions = competitions or []
         self._latest_season = latest_season
         self._latest_season_for_player = latest_season_for_player
+        self._b1_bonus = b1_bonus
 
     async def get_best_score_for_player_season(self, player_id, season, rules_version_id=None):
         return self._best_score
@@ -47,6 +49,9 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
 
     async def get_total_player_stats(self, player_id, season, rules_version_id=None):
         return (0, 0, 0, 0.0)
+
+    async def get_b1_bonus_for_player(self, player_id, season, rules_version_id=None):
+        return self._b1_bonus
 
     async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50,
                                       name=None, rules_version_id=None, use_total=False):
@@ -147,3 +152,16 @@ class TestGetPlayerDetail:
         assert "goal" in result.breakdown
         assert result.breakdown["goal"].count == 10
         assert result.breakdown["goal"].pts == 500.0
+
+    @pytest.mark.anyio
+    async def test_returns_b1_bonus_category(self, sample_score):
+        repo = FakeSFAScoreRepository(
+            best_score=sample_score,
+            b1_bonus=(600.0, "Veterano"),
+        )
+        uc = GetPlayerDetailUseCase(repo)
+
+        result = await uc.execute(player_id=1, season="2024-25")
+
+        assert result.b1_bonus_pts == 600.0
+        assert result.b1_bonus_label == "Veterano"

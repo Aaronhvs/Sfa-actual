@@ -47,6 +47,8 @@ class RankedPlayerDTO:
     assists: int = 0
     dribbles_won: int = 0
     duels_won: int = 0
+    b1_bonus_pts: float = 0.0
+    b1_bonus_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -86,8 +88,13 @@ class PlayerFixtureDTO:
     played_at: datetime
     sfa_pts: float
     events_count: int
+    player_team: str | None = None
     minutes: int = 0
+    shots_total: int = 0
     shots_on: int = 0
+    passes_total: int = 0
+    passes_accurate: int = 0
+    passes_key: int = 0
     dribbles_won: int = 0
     duels_won: int = 0
     tackles_won: int = 0
@@ -96,8 +103,11 @@ class PlayerFixtureDTO:
     fouls_drawn: int = 0
     home_team_logo: str | None = None
     away_team_logo: str | None = None
+    player_team_logo: str | None = None
     breakdown: dict[str, FixtureActionBreakdown] | None = None
     rating: float | None = None
+    fixture_external_id: int | None = None
+    competition_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -225,6 +235,10 @@ class SFAScoreRepositoryProtocol(Protocol):
         """Retorna (total_matches, total_goals, total_assists, total_pts) sumando todas las competiciones."""
         ...
 
+    async def get_b1_bonus_for_player(
+        self, player_id: int, season: str, rules_version_id: int | None = None,
+    ) -> tuple[float, str | None]: ...
+
     async def get_available_seasons_for_player(self, player_id: int) -> list[str]: ...
 
     async def get_ranking_all_seasons(
@@ -244,6 +258,10 @@ class SFAScoreRepositoryProtocol(Protocol):
         name: str | None = None,
         rules_version_id: int | None = None,
     ) -> int: ...
+
+    async def resolve_rules_version_id_for_season(
+        self, season: str, preferred_rules_version_id: int | None = None,
+    ) -> int | None: ...
 
     async def get_total_player_stats_all_seasons(
         self, player_id: int, rules_version_id: int | None = None,
@@ -288,6 +306,7 @@ class PlayerEventRepositoryProtocol(Protocol):
         player_id: int,
         season: str | None = None,
         competition_id: int | None = None,
+        rules_version_id: int | None = None,
     ) -> list[PlayerEventDTO]: ...
 
     async def get_fixtures_by_player(
@@ -298,12 +317,15 @@ class PlayerEventRepositoryProtocol(Protocol):
         competition_name: str | None = None,
         rival: str | None = None,
         date: date | None = None,
+        rules_version_id: int | None = None,
     ) -> list[PlayerFixtureDTO]: ...
 
     async def get_fixture_breakdown_by_player(
         self,
         player_id: int,
         fixture_ids: list[int],
+        season: str | None = None,
+        rules_version_id: int | None = None,
     ) -> dict[int, dict[str, FixtureActionBreakdown]]: ...
 
     async def get_player_season_stats(

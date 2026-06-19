@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { PlayerEvent, PlayerFixture } from '../../types'
+
+const WC_COMPETITION_ID = 350
 
 interface Props {
   fixture: PlayerFixture
@@ -127,7 +130,10 @@ function ActionBreakdownGrid({ fixture }: { fixture: PlayerFixture }) {
   const statsPts = bd['stats']?.pts ?? 0
 
   const totalStatCount =
+    fixture.shots_total +
     fixture.shots_on +
+    fixture.passes_total +
+    fixture.passes_key +
     fixture.dribbles_won +
     fixture.duels_won +
     fixture.tackles_won +
@@ -137,110 +143,223 @@ function ActionBreakdownGrid({ fixture }: { fixture: PlayerFixture }) {
   return (
     <div className="fac-section">
       <div className="event-category">Desglose de acciones</div>
-      <div className="fac-grid">
+
+      {/* Scoring zone: equal-width table row, large numbers */}
+      <div className="fac-scoring-zone">
         {SCORING_ACTIONS.map(({ key, label }) => {
           const entry = bd[key]
           return (
-            <StatCard
-              key={key}
-              label={label}
-              value={entry?.count ?? 0}
-              pts={entry?.pts}
-              zero
-            />
+            <StatCard key={key} label={label} value={entry?.count ?? 0} pts={entry?.pts} zero />
           )
         })}
-
-        {totalStatCount > 0 && (
-          <>
-            <div className="fac-divider" />
-            {fixture.shots_on > 0 && (
-              <StatCard label="Disparos" value={fixture.shots_on} />
-            )}
-            {fixture.dribbles_won > 0 && (
-              <StatCard label="Regates" value={fixture.dribbles_won} />
-            )}
-            {fixture.duels_won > 0 && (
-              <StatCard label="Duelos" value={fixture.duels_won} />
-            )}
-            {(fixture.tackles_won > 0 || fixture.interceptions > 0) && (
-              <StatCard
-                label="Tackles/Int"
-                value={fixture.tackles_won + fixture.interceptions}
-              />
-            )}
-            {fixture.blocks > 0 && (
-              <StatCard label="Bloqueos" value={fixture.blocks} />
-            )}
-            {fixture.clearances > 0 && (
-              <StatCard label="Despejes" value={fixture.clearances} />
-            )}
-            {fixture.fouls_drawn > 0 && (
-              <StatCard label="Faltas rec." value={fixture.fouls_drawn} />
-            )}
-            {statsPts > 0 && (
-              <div className="fac fac--stats-total">
-                <span className="fac__label">Total stats</span>
-                <span className="fac__count fac__count--gold">{fmt(statsPts)}</span>
-                <span className="fac__pts">pts</span>
-              </div>
-            )}
-          </>
+        {statsPts > 0 && (
+          <div className="fac fac--stats-total">
+            <span className="fac__label">Total stats</span>
+            <span className="fac__count fac__count--gold">{fmt(statsPts)}</span>
+            <span className="fac__pts">pts</span>
+          </div>
         )}
-
-        {totalStatCount === 0 && statsPts > 0 && (
-          <>
-            <div className="fac-divider" />
-            <div className="fac fac--stats-total">
-              <span className="fac__label">Stats</span>
-              <span className="fac__count fac__count--gold">{fmt(statsPts)}</span>
-              <span className="fac__pts">pts</span>
-            </div>
-          </>
-        )}
+        {totalStatCount === 0 && statsPts === 0 && null}
       </div>
+
+      {/* Volume zone: compact chips */}
+      {totalStatCount > 0 && (
+        <div className="fac-volume-zone">
+          {fixture.shots_total > 0 && <StatCard label="Remates" value={fixture.shots_total} />}
+          {fixture.shots_on > 0 && <StatCard label="Al arco" value={fixture.shots_on} />}
+          {fixture.passes_total > 0 && <StatCard label="Pases" value={fixture.passes_total} />}
+          {fixture.passes_accurate > 0 && <StatCard label="Pases comp." value={fixture.passes_accurate} />}
+          {fixture.passes_key > 0 && <StatCard label="Pases clave" value={fixture.passes_key} />}
+          {fixture.dribbles_won > 0 && <StatCard label="Regates" value={fixture.dribbles_won} />}
+          {fixture.duels_won > 0 && <StatCard label="Duelos" value={fixture.duels_won} />}
+          {(fixture.tackles_won > 0 || fixture.interceptions > 0) && (
+            <StatCard label="Tackles/Int" value={fixture.tackles_won + fixture.interceptions} />
+          )}
+          {fixture.blocks > 0 && <StatCard label="Bloqueos" value={fixture.blocks} />}
+          {fixture.clearances > 0 && <StatCard label="Despejes" value={fixture.clearances} />}
+          {fixture.fouls_drawn > 0 && <StatCard label="Faltas rec." value={fixture.fouls_drawn} />}
+        </div>
+      )}
     </div>
   )
 }
 
+function multiplierAvg(events: PlayerEvent[], key: 'm1' | 'm2' | 'm3'): number | null {
+  if (events.length === 0) return null
+  return events.reduce((sum, event) => sum + event[key], 0) / events.length
+}
+
+function rivalContext(avgM1: number): { title: string; detail: string; tone: 'up' | 'down' | 'flat' } {
+  if (avgM1 >= 1.4) {
+    return {
+      title: 'Rival élite',
+      detail: 'M1 subió fuerte el valor porque el rival era de máxima dificultad.',
+      tone: 'up',
+    }
+  }
+  if (avgM1 >= 1.1) {
+    return {
+      title: 'Rival superior',
+      detail: 'M1 premió las acciones por hacerse contra un rival más fuerte.',
+      tone: 'up',
+    }
+  }
+  if (avgM1 >= 0.9) {
+    return {
+      title: 'Rival similar',
+      detail: 'M1 mantuvo el valor cerca de la base por dificultad pareja.',
+      tone: 'flat',
+    }
+  }
+  return {
+    title: 'Rival inferior',
+    detail: 'M1 redujo el valor porque el rival tenía menor dificultad.',
+    tone: 'down',
+  }
+}
+
+function matchLocationContext(fixture: PlayerFixture, isVisitor: boolean) {
+  if (fixture.competition_id === WC_COMPETITION_ID) {
+    return {
+      title: 'Sede neutral',
+      factor: 'Mvisit ×1.00',
+      detail: 'En Mundial no se suma bonus local ni visitante.',
+      tone: 'flat' as const,
+    }
+  }
+  if (isVisitor) {
+    return {
+      title: 'Visitante',
+      factor: 'Mvisit ×1.15',
+      detail: 'Se aplicó bonus por jugar fuera de casa.',
+      tone: 'up' as const,
+    }
+  }
+  return {
+    title: 'Local',
+    factor: 'Mvisit ×1.00',
+    detail: 'No se aplicó bonus visitante.',
+    tone: 'flat' as const,
+  }
+}
+
 function FixtureContextBar({ fixture, events }: { fixture: PlayerFixture; events: PlayerEvent[] }) {
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
+
   const keyEvents = events.filter(
     (event) => GOAL_TYPES.has(event.event_type) || CREATION_TYPES.has(event.event_type),
   )
-  const avgM1 = keyEvents.length > 0
-    ? keyEvents.reduce((sum, event) => sum + event.m1, 0) / keyEvents.length
-    : null
+  const avgM1 = multiplierAvg(keyEvents, 'm1')
+  const avgM2 = multiplierAvg(keyEvents, 'm2')
+  const avgM3 = multiplierAvg(keyEvents, 'm3')
   const isVisitor = keyEvents.some((event) => event.mvisit > 1)
+  const location = keyEvents.length > 0 ? matchLocationContext(fixture, isVisitor) : null
 
-  const items: { label: string; value: string }[] = []
+  const cards: {
+    label: string
+    title: string
+    factor?: string
+    detail: string
+    tone?: 'up' | 'down' | 'flat'
+  }[] = []
 
   if (fixture.minutes > 0) {
-    items.push({ label: 'Jugó', value: `${fixture.minutes} min` })
+    cards.push({
+      label: 'Minutos',
+      title: `${fixture.minutes} min`,
+      detail: 'Tiempo jugado en este partido.',
+      tone: 'flat',
+    })
   }
 
   if (avgM1 !== null) {
-    const rivalDesc =
-      avgM1 >= 1.4 ? 'Élite' :
-      avgM1 >= 1.1 ? 'Superior' :
-      avgM1 >= 0.9 ? 'Similar' : 'Inferior'
-    items.push({ label: 'Rival', value: `M1 ×${avgM1.toFixed(2)} · ${rivalDesc}` })
+    const rival = rivalContext(avgM1)
+    cards.push({
+      label: 'Dificultad rival',
+      title: rival.title,
+      factor: `M1 ×${avgM1.toFixed(2)}`,
+      detail: rival.detail,
+      tone: rival.tone,
+    })
   }
 
-  if (keyEvents.length > 0) {
-    items.push({ label: 'Campo', value: isVisitor ? 'Visitante ×1.15' : 'Local' })
+  if (avgM2 !== null) {
+    cards.push({
+      label: 'Fase del torneo',
+      title: 'Impacto de fase',
+      factor: `M2 ×${avgM2.toFixed(2)}`,
+      detail: 'Ajusta el valor según la etapa competitiva del partido.',
+      tone: avgM2 > 1 ? 'up' : 'flat',
+    })
   }
 
-  if (items.length === 0) return null
+  if (avgM3 !== null) {
+    cards.push({
+      label: 'Momento del partido',
+      title: avgM3 >= 1.2 ? 'Momento clave' : 'Contexto normal',
+      factor: `M3 ×${avgM3.toFixed(2)}`,
+      detail: avgM3 >= 1.2
+        ? 'El marcador o el minuto aumentaron el peso de la acción.'
+        : 'La acción se valoró con presión normal de partido.',
+      tone: avgM3 >= 1.2 ? 'up' : 'flat',
+    })
+  }
+
+  if (location) {
+    cards.push({
+      label: 'Campo',
+      title: location.title,
+      factor: location.factor,
+      detail: location.detail,
+      tone: location.tone,
+    })
+  }
+
+  if (cards.length === 0) return null
 
   return (
     <div className="fxctx">
-      {items.map((item) => (
-        <div key={item.label} className="fxctx__item">
-          <span className="fxctx__label">{item.label}</span>
-          <span className="fxctx__value">{item.value}</span>
-        </div>
-      ))}
+      {cards.map((card) => {
+        const isExpanded = expandedCard === card.label
+        return (
+          <div
+            key={card.label}
+            className={`fxctx__card fxctx__card--${card.tone ?? 'flat'}${isExpanded ? ' fxctx__card--expanded' : ''}`}
+            onClick={() => setExpandedCard(isExpanded ? null : card.label)}
+            role="button"
+            tabIndex={0}
+            aria-expanded={isExpanded}
+            onKeyDown={(e) => e.key === 'Enter' && setExpandedCard(isExpanded ? null : card.label)}
+          >
+            <span className="fxctx__label">{card.label}</span>
+            <span className="fxctx__hero">{card.factor ?? card.title}</span>
+            {card.factor && <span className="fxctx__verdict">{card.title}</span>}
+            <div className="fxctx__detail-wrapper">
+              <div className="fxctx__detail-inner">
+                <p className="fxctx__detail">{card.detail}</p>
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
+  )
+}
+
+function WorldCupMatchLink({ fixture }: { fixture: PlayerFixture }) {
+  if (fixture.competition_id !== WC_COMPETITION_ID || fixture.fixture_external_id == null) {
+    return null
+  }
+
+  return (
+    <Link to={`/mundial/partido/${fixture.fixture_external_id}`} className="fixture-row__wc-link">
+      <span className="fixture-row__wc-link-text">Ver resultado y cronología del Mundial</span>
+      <span className="fixture-row__wc-link-icon" aria-hidden="true">
+        <svg viewBox="0 0 12 12" fill="none" width="10" height="10">
+          <path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </span>
+    </Link>
   )
 }
 
@@ -251,6 +370,7 @@ function EventsPanel({ events, fixture }: { events: PlayerEvent[]; fixture: Play
 
   return (
     <div className="events-panel">
+      <WorldCupMatchLink fixture={fixture} />
       <FixtureContextBar fixture={fixture} events={events} />
       <ActionBreakdownGrid fixture={fixture} />
       {hasDetail && (

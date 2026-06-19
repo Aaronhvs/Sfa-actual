@@ -135,6 +135,8 @@ from sfa.application.use_cases.get_world_cup import (
     GetWorldCupFixturesUseCase,
     GetWorldCupLiveUseCase,
     GetWorldCupStandingsUseCase,
+    GetWcTeamSFARankingUseCase,
+    GetWcTeamProfileUseCase,
 )
 from sfa.application.use_cases.list_competitions import ListCompetitionsUseCase
 from sfa.application.use_cases.manage_scoring_rules_version import (
@@ -273,6 +275,22 @@ async def get_world_cup_standings_use_case(
     repository: Annotated[WorldCupRepository, Depends(get_world_cup_repository)],
 ) -> GetWorldCupStandingsUseCase:
     return GetWorldCupStandingsUseCase(repository)
+
+
+async def get_wc_team_sfa_ranking_use_case(
+    repository: Annotated[WorldCupRepository, Depends(get_world_cup_repository)],
+    ver_repo: Annotated[ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)],
+) -> GetWcTeamSFARankingUseCase:
+    active = await ver_repo.get_active_version()
+    return GetWcTeamSFARankingUseCase(repository, default_rules_version_id=active.id if active else None)
+
+
+async def get_wc_team_profile_use_case(
+    repository: Annotated[WorldCupRepository, Depends(get_world_cup_repository)],
+    ver_repo: Annotated[ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)],
+) -> GetWcTeamProfileUseCase:
+    active = await ver_repo.get_active_version()
+    return GetWcTeamProfileUseCase(repository, default_rules_version_id=active.id if active else None)
 
 
 async def get_ingestion_status_use_case(

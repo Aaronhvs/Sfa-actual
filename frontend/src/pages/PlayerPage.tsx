@@ -38,14 +38,8 @@ export default function PlayerPage() {
   })
 
   function goBackToRanking() {
-    const historyIndex = window.history.state?.idx
-    if (typeof historyIndex === 'number' && historyIndex > 0) {
-      navigate(-1)
-      return
-    }
-
-    const fallbackSeason = season || seasonFromUrl
-    navigate(fallbackSeason ? `/ranking?season=${fallbackSeason}` : '/ranking')
+    const targetSeason = season || seasonFromUrl
+    navigate(targetSeason ? `/ranking?season=${targetSeason}` : '/ranking')
   }
 
   useEffect(() => {
@@ -66,10 +60,13 @@ export default function PlayerPage() {
         const initialSeason = seasonFromUrl || p.available_seasons?.[0] || ''
         initialSeasonRef.current = initialSeason
         setSeason(initialSeason)
+        const statsRequest = initialSeason === 'all'
+          ? Promise.resolve(null)
+          : fetchPlayerSeasonStats(playerId, initialSeason)
         return Promise.all([
           fetchPlayerEvents(playerId, initialSeason || undefined),
           fetchPlayerFixtures(playerId, initialSeason || undefined),
-          fetchPlayerSeasonStats(playerId, initialSeason),
+          statsRequest,
           fetchPlayerAchievements(playerId, initialSeason),
         ])
       })
@@ -104,11 +101,14 @@ export default function PlayerPage() {
     const playerId = Number(id)
     setSeasonChanging(true)
     setError(null)
+    const statsRequest = season === 'all'
+      ? Promise.resolve(null)
+      : fetchPlayerSeasonStats(playerId, season)
     Promise.all([
       fetchPlayer(playerId, season),
       fetchPlayerEvents(playerId, season),
       fetchPlayerFixtures(playerId, season),
-      fetchPlayerSeasonStats(playerId, season),
+      statsRequest,
       fetchPlayerAchievements(playerId, season),
     ])
       .then(([p, ev, fx, stats, playerAchievements]) => {

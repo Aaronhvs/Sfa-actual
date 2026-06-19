@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, runtime_checkable
+
+from sfa.domain.ports import RankedPlayerDTO
 
 
 @dataclass(frozen=True)
@@ -114,6 +118,25 @@ class WorldCupStandingsResultDTO:
     standings: list[WorldCupStandingDTO]
 
 
+@dataclass(frozen=True)
+class WcTeamSFARankingDTO:
+    rank: int
+    team_external_id: int
+    team_name: str
+    total_sfa_pts: float
+    total_goals: int
+    player_count: int
+
+
+@dataclass(frozen=True)
+class WcTeamProfileDTO:
+    team_external_id: int
+    team_name: str
+    total_sfa_pts: float
+    total_goals: int
+    top_players: list[RankedPlayerDTO]
+
+
 @runtime_checkable
 class WorldCupRepositoryProtocol(Protocol):
     async def get_fixtures(self, season: str) -> list[WorldCupFixtureDTO]: ...
@@ -128,3 +151,11 @@ class WorldCupRepositoryProtocol(Protocol):
     async def get_fixture_events(
         self, fixture_external_id: int,
     ) -> list[WorldCupFixtureEventDTO]: ...
+
+    async def get_wc_team_sfa_ranking(
+        self, season: str, rules_version_id: int | None,
+    ) -> list[WcTeamSFARankingDTO]: ...
+
+    async def get_wc_team_profile(
+        self, team_external_id: int, season: str, rules_version_id: int | None,
+    ) -> WcTeamProfileDTO | None: ...
