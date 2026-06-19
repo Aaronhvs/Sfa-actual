@@ -242,6 +242,41 @@ KNOWN_POSITIONS: dict[str, Position] = {
     "Cucho Hernández":         Position.DEL,
     "João Félix":              Position.EXT,
     "Samuel Chukwueze":        Position.EXT,
+
+    # ── Mundial 2026 — correcciones (API-Football asigna posición genérica) ──
+    # Laterales clasificados como MC o DC
+    "Wilfried Singo":          Position.LAT,
+    "Ramy Bensebaini":         Position.LAT,
+    "Gideon Mensah":           Position.LAT,
+    "Piero Hincapié":          Position.LAT,
+    "Alexander Freeman":       Position.LAT,
+    "Amir Murillo":            Position.LAT,
+    "Daniel Muñoz":            Position.LAT,
+    "Douglas Santos":          Position.LAT,
+    "Ricardo Rodríguez":       Position.LAT,
+    "Jesús Gallardo":          Position.LAT,
+    "Nahuel Molina":           Position.LAT,
+    "Stefan Posch":            Position.LAT,
+    "Ghislain Konan":          Position.LAT,
+    "Quinten Timber":          Position.LAT,
+    # Defensas centrales clasificados como MC
+    "Marquinhos":              Position.DC,
+    "Kim Min-jae":             Position.DC,
+    "Issa Diop":               Position.DC,
+    "Gabriel Magalhães":       Position.DC,
+    "Tomás Araújo":            Position.DC,
+    "Johan Vásquez":           Position.DC,
+    # Delanteros clasificados como MC
+    "Chris Wood":              Position.DEL,
+    "Koki Ogawa":              Position.DEL,
+    "Ali Alipour":             Position.DEL,
+    # Extremos clasificados como MC
+    "Pedro Neto":              Position.EXT,
+    "Julio Enciso":            Position.EXT,
+    "Junya Ito":               Position.EXT,
+    # Mediapuntas clasificados como MC
+    "Luka Modrić":             Position.MCO,
+    "Martin Ødegaard":         Position.MCO,
 }
 
 
