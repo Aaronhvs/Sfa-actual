@@ -15,6 +15,7 @@ import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 const PAGE_SIZE = 12
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
+const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
 
 export default function RankingPage() {
   const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
@@ -92,7 +93,7 @@ export default function RankingPage() {
 
     setSearchLoading(true)
     searchTimerRef.current = setTimeout(() => {
-      fetchRanking({ season, name: search, limit: 50 })
+      fetchRanking({ season, name: search, position: position || undefined, limit: 50 })
         .then((data) => setSearchResults(data.ranking))
         .catch(() => setSearchResults([]))
         .finally(() => setSearchLoading(false))
@@ -101,7 +102,7 @@ export default function RankingPage() {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
-  }, [search, players, season])
+  }, [search, players, season, position])
 
   useEffect(() => {
     if (!season) return
@@ -327,7 +328,21 @@ export default function RankingPage() {
                 <h2>Todos los jugadores</h2>
               </div>
               {isWcSeason && (
-                <label className="wc-ranking-search">
+                <div className="wc-ranking-tools">
+                  <label className="wc-position-filter">
+                    <span>Posicion</span>
+                    <select
+                      value={position}
+                      onChange={(event) => setPosition(event.target.value)}
+                      aria-label="Filtrar ranking mundial por posicion"
+                    >
+                      <option value="">Todas</option>
+                      {WORLD_CUP_POSITION_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="wc-ranking-search">
                   <svg viewBox="0 0 20 20" aria-hidden="true">
                     <circle cx="8.5" cy="8.5" r="5.5" />
                     <path d="m13 13 4 4" />
@@ -348,7 +363,8 @@ export default function RankingPage() {
                       ×
                     </button>
                   )}
-                </label>
+                  </label>
+                </div>
               )}
             </div>
 

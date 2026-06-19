@@ -96,6 +96,12 @@ const EJEMPLO_FILAS = [
   { concepto: 'Mv (partido de visitante)', valor: '× 1.15' },
 ]
 
+const B1_FILAS = [
+  { contribuciones: '1 gol o asistencia', bono: '+200 pts' },
+  { contribuciones: '2 goles/asistencias', bono: '+400 pts' },
+  { contribuciones: '3+ goles/asistencias', bono: '+600 pts' },
+]
+
 function LogroColumn({ titulo, grupo }: { titulo: string; grupo: string }) {
   return (
     <div className="met-logro__column">
@@ -126,7 +132,7 @@ function LogroColumn({ titulo, grupo }: { titulo: string; grupo: string }) {
 
 export default function MetodologiaPage() {
   useEffect(() => {
-    const items = document.querySelectorAll('.met-concepto__card, .met-mult__item, .met-logro__row')
+    const items = document.querySelectorAll('.met-concepto__card, .met-mult__item, .met-logro__row, .met-b1__row')
     const observer = new IntersectionObserver(
       (entries) => entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -211,6 +217,36 @@ export default function MetodologiaPage() {
             <div className="met-formula__pill met-formula__pill--m3"><strong>M3</strong>Momento del partido (minuto + marcador)</div>
             <div className="met-formula__pill met-formula__pill--m4"><strong>M4</strong>Dificultad del disparo (xG)</div>
             <div className="met-formula__pill met-formula__pill--mv"><strong>Mv</strong>Bonus visitante (1.15× fuera de casa)</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="met-b1 met-section">
+        <div className="met-section-header">
+          <span className="met-eyebrow">Beta Mundial 2026</span>
+          <h2 className="met-section-title">B1 - Edad excepcional</h2>
+        </div>
+        <div className="met-b1__grid">
+          <div className="met-b1__panel">
+            <span className="met-b1__tag">Solo Mundial</span>
+            <p>
+              B1 reconoce partidos de alto impacto cuando el jugador esta en un
+              rango de edad especialmente exigente: promesas de 17 a 20 años o
+              veteranos de 35 años en adelante.
+            </p>
+            <p>
+              El bono aplica solo sobre contribuciones directas de gol:
+              goles y asistencias. No modifica pases, duelos, tiros ni acciones
+              defensivas.
+            </p>
+          </div>
+          <div className="met-b1__rows" aria-label="Tabla de bono B1">
+            {B1_FILAS.map((fila) => (
+              <div key={fila.contribuciones} className="met-b1__row">
+                <span>{fila.contribuciones}</span>
+                <strong>{fila.bono}</strong>
+              </div>
+            ))}
           </div>
         </div>
       </section>

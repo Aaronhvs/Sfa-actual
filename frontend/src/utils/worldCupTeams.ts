@@ -94,6 +94,18 @@ const WORLD_CUP_IDENTITIES: Record<string, { name: string; code: string }> = {
   uruguay: { name: 'Uruguay', code: 'UY' },
   usa: { name: 'Estados Unidos', code: 'US' },
   'united states': { name: 'Estados Unidos', code: 'US' },
+  'bosnia & herzegovina': { name: 'Bosnia y Herzegovina', code: 'BA' },
+  'bosnia and herzegovina': { name: 'Bosnia y Herzegovina', code: 'BA' },
+  bosnia: { name: 'Bosnia y Herzegovina', code: 'BA' },
+  curacao: { name: 'Curazao', code: 'CW' },
+  curazao: { name: 'Curazao', code: 'CW' },
+  'curaçao': { name: 'Curazao', code: 'CW' },
+  'ivory coast': { name: 'Costa de Marfil', code: 'CI' },
+  'new zealand': { name: 'Nueva Zelanda', code: 'NZ' },
+  'nueva zelanda': { name: 'Nueva Zelanda', code: 'NZ' },
+  'south africa': { name: 'SudÃ¡frica', code: 'ZA' },
+  sudafrica: { name: 'SudÃ¡frica', code: 'ZA' },
+  'sudáfrica': { name: 'SudÃ¡frica', code: 'ZA' },
 }
 
 function identityKey(teamName: string): string {

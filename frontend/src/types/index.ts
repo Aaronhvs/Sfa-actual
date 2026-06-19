@@ -237,12 +237,22 @@ export interface WcStatistic {
   away_numeric: number | null
 }
 
+export interface WcFixtureEvent {
+  minute: number
+  extra_minute: number
+  team_external_id: number
+  event_type: string
+  player_name: string
+  assist_name: string | null
+}
+
 export interface WcFixtureDetailResponse {
   fixture: WcFixture
   venue: WcVenue
   referee: string | null
   lineups: WcTeamLineup[]
   statistics: WcStatistic[]
+  events: WcFixtureEvent[]
 }
 
 export interface PlayerCompetitionAchievement {

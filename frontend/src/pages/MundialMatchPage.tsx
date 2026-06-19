@@ -9,6 +9,7 @@ import type {
   WcTeam,
   WcTeamLineup,
 } from '../types'
+import MatchTimeline from '../components/mundial/MatchTimeline'
 import { worldCupTeamName } from '../utils/worldCupTeams'
 
 type DetailTab = 'lineups' | 'statistics' | 'performance'
@@ -93,8 +94,9 @@ function matchStatus(fixture: WcFixture): string {
   return `${formatDate(fixture.played_at)} · ${formatTime(fixture.played_at)}`
 }
 
-function PlayerRow({ player }: { player: WcLineupPlayer }) {
+function PlayerRow({ player, color }: { player: WcLineupPlayer; color: string }) {
   const photo = PLAYER_PHOTO(player.external_id)
+  const style = { '--team-color': color } as React.CSSProperties
   const content = (
     <>
       <span className="wmd-player__avatar">
@@ -109,8 +111,8 @@ function PlayerRow({ player }: { player: WcLineupPlayer }) {
             }}
           />
         )}
+        <b className="wmd-player__number">{player.number ?? '-'}</b>
       </span>
-      <span className="wmd-player__number">{player.number ?? '-'}</span>
       <span className="wmd-player__name">{player.name}</span>
       {player.sfa_points != null ? (
         <strong className="wmd-player__points">
@@ -124,14 +126,14 @@ function PlayerRow({ player }: { player: WcLineupPlayer }) {
 
   if (player.player_id != null) {
     return (
-      <Link className="wmd-player wmd-player--link" to={`/player/${player.player_id}?season=2026`}>
+      <Link className="wmd-player wmd-player--link" style={style} to={`/player/${player.player_id}?season=2026`}>
         {content}
       </Link>
     )
   }
 
   return (
-    <div className="wmd-player">
+    <div className="wmd-player" style={style}>
       {content}
     </div>
   )
@@ -165,9 +167,91 @@ function shortPlayerName(name: string): string {
   return parts.length > 1 ? parts[parts.length - 1] : name
 }
 
-function teamColor(externalId: number | null): string {
-  const colors = ['#d33f49', '#2878d0', '#15965b', '#d39b20', '#7b57c7', '#b64b86']
-  return colors[Math.abs(externalId ?? 0) % colors.length]
+const NATIONAL_COLORS: Record<string, string> = {
+  'argentina': '#75AADB',
+  'brasil': '#009C3B',
+  'brazil': '#009C3B',
+  'alemania': '#CC0000',
+  'germany': '#CC0000',
+  'francia': '#002395',
+  'france': '#002395',
+  'españa': '#AA151B',
+  'spain': '#AA151B',
+  'inglaterra': '#CF081F',
+  'england': '#CF081F',
+  'países bajos': '#FF6B00',
+  'holanda': '#FF6B00',
+  'netherlands': '#FF6B00',
+  'portugal': '#006600',
+  'estados unidos': '#002868',
+  'usa': '#002868',
+  'méxico': '#006847',
+  'mexico': '#006847',
+  'suiza': '#DA291C',
+  'switzerland': '#DA291C',
+  'bosnia y herzegovina': '#003DA5',
+  'bosnia': '#003DA5',
+  'canadá': '#FF0000',
+  'canada': '#FF0000',
+  'japón': '#BC002D',
+  'japan': '#BC002D',
+  'marruecos': '#C1272D',
+  'morocco': '#C1272D',
+  'senegal': '#00853F',
+  'ghana': '#FCD116',
+  'panamá': '#DA121A',
+  'panama': '#DA121A',
+  'colombia': '#FCD116',
+  'ecuador': '#002D62',
+  'chile': '#D52B1E',
+  'uruguay': '#75AADB',
+  'bélgica': '#EF3340',
+  'belgium': '#EF3340',
+  'croacia': '#FF0000',
+  'croatia': '#FF0000',
+  'dinamarca': '#C60C30',
+  'denmark': '#C60C30',
+  'austria': '#ED2939',
+  'australia': '#00843D',
+  'corea del sur': '#CD2E3A',
+  'irán': '#239F40',
+  'iran': '#239F40',
+  'qatar': '#8D1B3D',
+  'arabia saudita': '#006C35',
+  'arabia saudí': '#006C35',
+  'venezuela': '#CF142B',
+  'paraguay': '#D52B1E',
+  'honduras': '#0073CF',
+  'costa rica': '#002B7F',
+  'nigeria': '#008751',
+  'camerún': '#007A5E',
+  'costa de marfil': '#F77F00',
+  'egipto': '#CE1126',
+  'turquía': '#E30A17',
+  'turkey': '#E30A17',
+  'ucrania': '#005BBB',
+  'ukraine': '#005BBB',
+  'serbia': '#C6363C',
+  'rumania': '#002B7F',
+  'eslovaquia': '#0B4EA2',
+  'georgia': '#DA291C',
+  'escocia': '#003380',
+  'scotland': '#003380',
+  'indonesia': '#CE1126',
+  'irak': '#007A3D',
+  'iraq': '#007A3D',
+  'nueva zelanda': '#00247D',
+  'new zealand': '#00247D',
+}
+
+function teamColor(name: string | null, externalId: number | null): string {
+  if (name) {
+    const key = name.toLowerCase().trim()
+    const mapped = NATIONAL_COLORS[key]
+    if (mapped) return mapped
+  }
+  const fallback = ['#d33f49', '#2878d0', '#15965b', '#d39b20', '#7b57c7', '#b64b86']
+  return fallback[Math.abs(externalId ?? 0) % fallback.length]
 }
 
 function PitchPlayer({
@@ -188,10 +272,7 @@ function PitchPlayer({
   const photo = PLAYER_PHOTO(player.external_id)
   const node = (
     <>
-      <span
-        className="wmd-pitch-player__portrait"
-        style={{ '--team-color': teamColorValue } as CSSProperties}
-      >
+      <span className="wmd-pitch-player__portrait">
         {photo && (
           <img
             src={photo}
@@ -203,25 +284,27 @@ function PitchPlayer({
             }}
           />
         )}
-        <b>{player.number ?? index + 1}</b>
       </span>
-      <small>{player.number ?? index + 1} {shortPlayerName(player.name)}</small>
+      <b className="wmd-pitch-player__num">{player.number ?? index + 1}</b>
+      <small>{shortPlayerName(player.name)}</small>
       {player.sfa_points != null && (
         <strong>{Math.round(player.sfa_points).toLocaleString('es-ES')}</strong>
       )}
     </>
   )
 
+  const playerStyle = { ...position, '--team-color': teamColorValue } as CSSProperties
+
   return player.player_id != null ? (
     <Link
       to={`/player/${player.player_id}?season=2026`}
       className="wmd-pitch-player wmd-pitch-player--link"
-      style={position}
+      style={playerStyle}
     >
       {node}
     </Link>
   ) : (
-    <div className="wmd-pitch-player" style={position}>
+    <div className="wmd-pitch-player" style={playerStyle}>
       {node}
     </div>
   )
@@ -234,8 +317,8 @@ function CombinedTacticalPitch({
   homeLineup: WcTeamLineup
   awayLineup: WcTeamLineup
 }) {
-  const homeColor = teamColor(homeLineup.team.external_id)
-  const awayColor = teamColor(awayLineup.team.external_id)
+  const homeColor = teamColor(homeLineup.team.name, homeLineup.team.external_id)
+  const awayColor = teamColor(awayLineup.team.name, awayLineup.team.external_id)
 
   return (
     <section className="wmd-combined-tactical">
@@ -284,7 +367,7 @@ function CombinedTacticalPitch({
   )
 }
 
-function LineupColumn({ lineup }: { lineup: WcTeamLineup }) {
+function LineupColumn({ lineup, color }: { lineup: WcTeamLineup; color: string }) {
   return (
     <section className="wmd-lineup">
       <header className="wmd-lineup__header">
@@ -297,7 +380,7 @@ function LineupColumn({ lineup }: { lineup: WcTeamLineup }) {
       <h3>Titulares</h3>
       <div className="wmd-player-list">
         {lineup.start_xi.map((player, index) => (
-          <PlayerRow player={player} key={`${player.external_id ?? player.name}-${index}`} />
+          <PlayerRow player={player} color={color} key={`${player.external_id ?? player.name}-${index}`} />
         ))}
       </div>
       {lineup.substitutes.length > 0 && (
@@ -305,7 +388,7 @@ function LineupColumn({ lineup }: { lineup: WcTeamLineup }) {
           <h3>Suplentes</h3>
           <div className="wmd-player-list wmd-player-list--subs">
             {lineup.substitutes.map((player, index) => (
-              <PlayerRow player={player} key={`${player.external_id ?? player.name}-${index}`} />
+              <PlayerRow player={player} color={color} key={`${player.external_id ?? player.name}-${index}`} />
             ))}
           </div>
         </>
@@ -530,6 +613,10 @@ export default function MundialMatchPage() {
         {tab === 'lineups' && (
           detail.lineups.length > 0 ? (
             <>
+              <MatchTimeline
+                events={detail.events ?? []}
+                homeTeamExternalId={fixture.home_team.external_id ?? fixture.home_team.id}
+              />
               {homeLineup && awayLineup && (
                 <CombinedTacticalPitch homeLineup={homeLineup} awayLineup={awayLineup} />
               )}
@@ -538,8 +625,8 @@ export default function MundialMatchPage() {
                 <small>Los puntos SFA aparecen cuando el partido ya fue procesado.</small>
               </div>
               <div className="wmd-lineups-grid">
-                {homeLineup && <LineupColumn lineup={homeLineup} />}
-                {awayLineup && <LineupColumn lineup={awayLineup} />}
+                {homeLineup && <LineupColumn lineup={homeLineup} color={teamColor(homeLineup.team.name, homeLineup.team.external_id)} />}
+                {awayLineup && <LineupColumn lineup={awayLineup} color={teamColor(awayLineup.team.name, awayLineup.team.external_id)} />}
               </div>
             </>
           ) : <div className="empty-state">Las alineaciones todavía no fueron publicadas.</div>
