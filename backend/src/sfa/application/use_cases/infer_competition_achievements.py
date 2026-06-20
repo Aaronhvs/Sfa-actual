@@ -132,8 +132,15 @@ class InferCompetitionAchievementsUseCase:
         if "final" in teams_at_stage:
             final_fixtures = [fx for fx in fixtures if fx.stage == "final"]
             winner_id, runner_up_id = await self._resolve_final_winner(final_fixtures)
-            phase_teams["winner"] = {winner_id}
-            phase_teams["runner_up"] = {runner_up_id}
+            if winner_id is not None and runner_up_id is not None:
+                phase_teams["winner"] = {winner_id}
+                phase_teams["runner_up"] = {runner_up_id}
+            else:
+                logger.info(
+                    "[InferCompetitionAchievementsUseCase] competition_id=%d season=%s: "
+                    "final winner undetermined, skipping winner/runner_up phases",
+                    competition_id, season,
+                )
 
         for stage in sorted_stages:
             if stage == "final":
@@ -201,7 +208,7 @@ class InferCompetitionAchievementsUseCase:
 
     async def _resolve_final_winner(
         self, final_fixtures: list[KnockoutFixtureDTO]
-    ) -> tuple[int, int]:
+    ) -> tuple[int | None, int | None]:
         home_ids: set[int] = set()
         away_ids: set[int] = set()
         for fx in final_fixtures:
@@ -210,13 +217,11 @@ class InferCompetitionAchievementsUseCase:
 
         all_teams = home_ids | away_ids
         if len(all_teams) != 2:
-            sorted_ids = sorted(all_teams)
             logger.warning(
-                "[InferCompetitionAchievementsUseCase] final has unexpected teams %s, "
-                "falling back to min team_id as winner",
+                "[InferCompetitionAchievementsUseCase] final has unexpected teams %s, skipping",
                 all_teams,
             )
-            return sorted_ids[0], sorted_ids[1]
+            return None, None
 
         team_a, team_b = sorted(all_teams)
         scores: dict[int, int] = {team_a: 0, team_b: 0}
@@ -245,13 +250,14 @@ class InferCompetitionAchievementsUseCase:
             runner_up = team_b if winner == team_a else team_a
             return winner, runner_up
 
-        # Last fallback: lower team_id wins
+        # No goal data available — cannot determine winner, skip to preserve manual entries
         logger.warning(
             "[InferCompetitionAchievementsUseCase] Cannot determine final winner "
-            "from goals (all tied). Using lower team_id=%d as winner.",
-            team_a,
+            "from goals or shootout (all 0). Skipping winner/runner_up — "
+            "manual achievements preserved. teams=%s",
+            all_teams,
         )
-        return team_a, team_b
+        return None, None
 
 
 class InferAllCompetitionAchievementsUseCase:

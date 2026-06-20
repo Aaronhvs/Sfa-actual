@@ -146,6 +146,7 @@ async def trigger_full_recalculate(body: FullRecalculateRequestSchema):
         rules_version_id=body.rules_version_id,
         season=body.season,
         force_recalculate=body.force_recalculate,
+        infer_achievements=body.infer_achievements,
     )
     return FullRecalculateResponseSchema(
         task_id=task.id,

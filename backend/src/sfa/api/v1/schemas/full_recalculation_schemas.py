@@ -5,6 +5,7 @@ class FullRecalculateRequestSchema(BaseModel):
     rules_version_id: int
     season: str
     force_recalculate: bool = True
+    infer_achievements: bool = True
 
 
 class FullRecalculateResponseSchema(BaseModel):
