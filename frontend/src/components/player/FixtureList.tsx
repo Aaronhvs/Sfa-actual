@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import type { PlayerEvent, PlayerFixture } from '../../types'
 import FixtureRow from './FixtureRow'
 import HighlightsView from './HighlightsView'
+import { normalizeSearchText, teamMatchesSearch } from '../../utils/teamSearch'
 
 interface Props {
   fixtures: PlayerFixture[]
@@ -50,7 +51,7 @@ export default function FixtureList({ fixtures, events }: Props) {
   const DESTACADOS_LIMIT = 15
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeSearchText(search)
 
     // Con búsqueda activa: busca en todos los partidos, ordenados por fecha
     if (q) {
@@ -58,10 +59,10 @@ export default function FixtureList({ fixtures, events }: Props) {
         .sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime())
         .filter(
           (f) =>
-            f.home_team.toLowerCase().includes(q) ||
-            f.away_team.toLowerCase().includes(q) ||
-            f.competition.toLowerCase().includes(q) ||
-            f.stage.toLowerCase().includes(q),
+            teamMatchesSearch(f.home_team, search) ||
+            teamMatchesSearch(f.away_team, search) ||
+            normalizeSearchText(f.competition).includes(q) ||
+            normalizeSearchText(f.stage).includes(q),
         )
     }
 

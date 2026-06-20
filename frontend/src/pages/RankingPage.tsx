@@ -11,6 +11,7 @@ import WorldCupPageHeader from '../components/shared/WorldCupPageHeader'
 import WcLiveChip from '../components/shared/WcLiveChip'
 import { useCountUp } from '../hooks/useCountUp'
 import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
+import { playerOrTeamMatchesSearch } from '../utils/teamSearch'
 
 const PAGE_SIZE = 12
 const SEARCH_DEBOUNCE_MS = 350
@@ -88,10 +89,7 @@ export default function RankingPage() {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
 
     const localHits = search
-      ? players.filter((p) => {
-          const q = search.toLowerCase()
-          return p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q)
-        })
+      ? players.filter((p) => playerOrTeamMatchesSearch(p.name, p.team, search))
       : players
 
     if (!search || search.length < 2 || (!isWcSeason && localHits.length > 0)) {
@@ -152,10 +150,7 @@ export default function RankingPage() {
   const restPlayers = players.slice(3)
 
   const localFiltered = search
-    ? players.filter((p) => {
-        const q = search.toLowerCase()
-        return p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q)
-      })
+    ? players.filter((p) => playerOrTeamMatchesSearch(p.name, p.team, search))
     : restPlayers
 
   const isServerSearch = search.length >= 2 && (isWcSeason || localFiltered.length === 0)

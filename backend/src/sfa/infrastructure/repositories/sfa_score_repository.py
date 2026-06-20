@@ -1,4 +1,5 @@
 from datetime import date
+from unicodedata import combining, normalize
 
 from sqlalchemy import Integer, Numeric, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +36,97 @@ def _b1_label_for_birth_date(birth_date: date | None) -> str | None:
     if age >= 35:
         return "Veterano"
     return None
+
+
+_TEAM_SEARCH_ALIAS_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("argentina",),
+    ("australia",),
+    ("austria",),
+    ("belgium", "belgica", "belgique"),
+    ("brazil", "brasil"),
+    ("canada",),
+    ("colombia",),
+    ("croatia", "croacia"),
+    ("czechia", "chequia", "czech republic", "republica checa"),
+    ("ecuador",),
+    ("egypt", "egipto"),
+    ("england", "inglaterra"),
+    ("france", "francia"),
+    ("germany", "alemania", "deutschland"),
+    ("ghana",),
+    ("haiti",),
+    ("iran",),
+    ("japan", "japon"),
+    ("jordan", "jordania"),
+    ("mexico",),
+    ("morocco", "marruecos"),
+    ("netherlands", "paises bajos", "holanda", "holland"),
+    ("new zealand", "nueva zelanda"),
+    ("norway", "noruega"),
+    ("panama",),
+    ("paraguay",),
+    ("portugal",),
+    ("qatar", "catar"),
+    ("scotland", "escocia"),
+    ("senegal",),
+    ("south africa", "sudafrica"),
+    ("south korea", "corea del sur", "korea republic", "republica de corea"),
+    ("spain", "espana"),
+    ("switzerland", "suiza"),
+    ("tunisia", "tunez"),
+    ("turkey", "turquia", "turkiye"),
+    ("united states", "estados unidos", "usa", "eeuu", "ee.uu."),
+    ("uruguay",),
+    ("uzbekistan",),
+    ("ivory coast", "costa de marfil", "cote d'ivoire"),
+    ("dr congo", "rd congo", "republica democratica del congo", "congo dr"),
+    ("bosnia and herzegovina", "bosnia y herzegovina", "bosnia & herzegovina", "bosnia"),
+    ("curacao", "curazao"),
+    ("paris saint germain", "paris saint-germain", "psg"),
+    ("bayern munchen", "bayern munich"),
+    ("inter", "internazionale", "inter milan"),
+    ("atletico madrid", "atleti"),
+    ("manchester city", "man city"),
+    ("manchester united", "man united", "man utd"),
+    ("tottenham", "tottenham hotspur", "spurs"),
+)
+
+
+def _plain(value: str) -> str:
+    return "".join(
+        char for char in normalize("NFKD", value.lower()) if not combining(char)
+    ).strip()
+
+
+def _team_search_terms(name: str) -> list[str]:
+    query = _plain(name)
+    terms = {name.strip()}
+    if not query:
+        return []
+
+    for aliases in _TEAM_SEARCH_ALIAS_GROUPS:
+        normalized_aliases = {_plain(alias) for alias in aliases}
+        if any(query in alias or alias in query for alias in normalized_aliases):
+            terms.update(aliases)
+
+    return sorted(term for term in terms if term.strip())
+
+
+def _unaccent_ilike(column, term: str):
+    return func.unaccent(column).ilike(func.concat("%", func.unaccent(term), "%"))
+
+
+def _any_unaccent_ilike(column, terms: list[str]):
+    if not terms:
+        return _unaccent_ilike(column, "")
+    return or_(*[_unaccent_ilike(column, term) for term in terms])
+
+
+def _player_or_team_name_filter(player_column, team_column, name: str):
+    return or_(
+        _unaccent_ilike(player_column, name),
+        _any_unaccent_ilike(team_column, _team_search_terms(name)),
+    )
 
 
 def _position_value(position: object) -> str | None:
@@ -339,16 +431,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             sub = stmt.subquery()
             final = (
                 select(sub)
-                .where(
-                    or_(
-                        func.unaccent(sub.c.player_name).ilike(
-                            func.concat("%", func.unaccent(name), "%")
-                        ),
-                        func.unaccent(sub.c.team_name).ilike(
-                            func.concat("%", func.unaccent(name), "%")
-                        ),
-                    )
-                )
+                .where(_player_or_team_name_filter(sub.c.player_name, sub.c.team_name, name))
                 .limit(limit)
             )
         else:
@@ -425,16 +508,12 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 .join(Team, SFASeasonScore.team_id == Team.id)
                 .where(
                     *score_filters,
-                    func.unaccent(Team.name).ilike(
-                        func.concat("%", func.unaccent(name), "%")
-                    ),
+                    _any_unaccent_ilike(Team.name, _team_search_terms(name)),
                 )
             )
             inner = inner.where(
                 or_(
-                    func.unaccent(Player.name).ilike(
-                        func.concat("%", func.unaccent(name), "%")
-                    ),
+                    _unaccent_ilike(Player.name, name),
                     Player.id.in_(team_match),
                 )
             )
@@ -462,9 +541,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             if name is not None:
                 exact_stmt = exact_stmt.where(
                     or_(
-                        func.unaccent(Player.name).ilike(
-                            func.concat("%", func.unaccent(name), "%")
-                        ),
+                        _unaccent_ilike(Player.name, name),
                         Player.id.in_(team_match),
                     )
                 )
@@ -718,16 +795,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             sub = stmt.subquery()
             final = (
                 select(sub)
-                .where(
-                    or_(
-                        func.unaccent(sub.c.player_name).ilike(
-                            func.concat("%", func.unaccent(name), "%")
-                        ),
-                        func.unaccent(sub.c.team_name).ilike(
-                            func.concat("%", func.unaccent(name), "%")
-                        ),
-                    )
-                )
+                .where(_player_or_team_name_filter(sub.c.player_name, sub.c.team_name, name))
                 .limit(limit)
             )
         else:
@@ -795,16 +863,12 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 .join(Team, SFASeasonScore.team_id == Team.id)
                 .where(
                     *score_filters,
-                    func.unaccent(Team.name).ilike(
-                        func.concat("%", func.unaccent(name), "%")
-                    ),
+                    _any_unaccent_ilike(Team.name, _team_search_terms(name)),
                 )
             )
             inner = inner.where(
                 or_(
-                    func.unaccent(Player.name).ilike(
-                        func.concat("%", func.unaccent(name), "%")
-                    ),
+                    _unaccent_ilike(Player.name, name),
                     Player.id.in_(team_match),
                 )
             )
@@ -832,9 +896,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             if name is not None:
                 exact_stmt = exact_stmt.where(
                     or_(
-                        func.unaccent(Player.name).ilike(
-                            func.concat("%", func.unaccent(name), "%")
-                        ),
+                        _unaccent_ilike(Player.name, name),
                         Player.id.in_(team_match),
                     )
                 )
