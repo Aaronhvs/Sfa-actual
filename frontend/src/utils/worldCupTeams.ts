@@ -119,6 +119,13 @@ const WORLD_CUP_IDENTITIES: Record<string, { name: string; code: string }> = {
   'dr congo': { name: 'R.D. Congo', code: 'CD' },
   'democratic republic of congo': { name: 'R.D. Congo', code: 'CD' },
   'congo dr': { name: 'R.D. Congo', code: 'CD' },
+  turkey: { name: 'Turquía', code: 'TR' },
+  turkiye: { name: 'Turquía', code: 'TR' },
+  türkiye: { name: 'Turquía', code: 'TR' },
+  turquía: { name: 'Turquía', code: 'TR' },
+  'saudi arabia': { name: 'Arabia Saudita', code: 'SA' },
+  'arabia saudita': { name: 'Arabia Saudita', code: 'SA' },
+  'arabia saudi': { name: 'Arabia Saudita', code: 'SA' },
 }
 
 function identityKey(teamName: string): string {
