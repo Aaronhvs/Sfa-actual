@@ -137,7 +137,12 @@ export async function fetchWcFixtures(fresh = false): Promise<WcFixturesResponse
 }
 
 export async function fetchWcLive(): Promise<WcLiveResponse> {
-  return get<WcLiveResponse>('/wc/live')
+  const key = 'wc:live'
+  const cached = getCached<WcLiveResponse>(key)
+  if (cached) return cached
+  const data = await get<WcLiveResponse>('/wc/live')
+  setCache(key, data)
+  return data
 }
 
 export async function fetchWcStandings(): Promise<WcStandingsResponse> {

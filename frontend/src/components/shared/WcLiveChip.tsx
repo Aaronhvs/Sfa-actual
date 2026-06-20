@@ -30,7 +30,7 @@ export default function WcLiveChip() {
             return
           }
 
-          fetchWcFixtures(true)
+          fetchWcFixtures()
             .then((fixturesRes) => {
               const now = Date.now()
               const nextFixture = fixturesRes.fixtures
@@ -52,7 +52,7 @@ export default function WcLiveChip() {
         .catch(() => {})
     }
     check()
-    const timer = setInterval(check, 60_000)
+    const timer = setInterval(check, 120_000)
     return () => clearInterval(timer)
   }, [])
 

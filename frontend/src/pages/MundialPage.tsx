@@ -358,7 +358,7 @@ export default function MundialPage() {
         .catch(() => {})
     }
 
-    const timer = setInterval(refreshLive, 60_000)
+    const timer = setInterval(refreshLive, 120_000)
     return () => clearInterval(timer)
   }, [])
 
