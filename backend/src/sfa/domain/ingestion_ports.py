@@ -28,6 +28,7 @@ class FixtureRawDTO:
     played_at: datetime
     home_goals: int
     away_goals: int
+    status: str = "FT"
 
 
 @dataclass(frozen=True)
@@ -142,6 +143,10 @@ class FootballDataProviderPort(Protocol):
         self, fixture_external_id: int,
     ) -> list[PlayerStatsRawDTO]: ...
 
+    async def fetch_league_fixtures(
+        self, league_id: int, season: int,
+    ) -> list[FixtureRawDTO]: ...
+
 
 @runtime_checkable
 class IngestionRepositoryPort(Protocol):
@@ -166,6 +171,7 @@ class IngestionRepositoryPort(Protocol):
         home_team_id: int, away_team_id: int,
         stage: str, season: str, played_at: datetime,
         matchday: int | None,
+        status: str = "FT",
     ) -> int: ...
 
     async def upsert_standing_snapshot(
@@ -240,6 +246,10 @@ class IngestionRepositoryPort(Protocol):
     async def save_fixture_events(
         self, fixture_external_id: int, events: list[FixtureEventRawDTO],
     ) -> None: ...
+
+    async def get_completed_fixture_ids(
+        self, competition_id: int, season: str,
+    ) -> set[int]: ...
 
 
 @dataclass(frozen=True)

@@ -154,6 +154,7 @@ class IngestionRepository(IngestionRepositoryPort):
         season: str,
         played_at: object,
         matchday: int | None,
+        status: str = "FT",
     ) -> int:
         stmt = (
             pg_insert(Fixture)
@@ -166,16 +167,30 @@ class IngestionRepository(IngestionRepositoryPort):
                 season=season,
                 played_at=played_at,
                 matchday=matchday,
+                status=status,
             )
             .on_conflict_do_update(
                 index_elements=["external_id"],
-                set_={"stage": stage, "matchday": matchday},
+                set_={"stage": stage, "matchday": matchday, "status": status},
             )
             .returning(Fixture.id)
         )
         result = await self._session.execute(stmt)
         await self._session.flush()
         return result.scalar_one()
+
+    async def get_completed_fixture_ids(
+        self, competition_id: int, season: str,
+    ) -> set[int]:
+        COMPLETED = {"FT", "AET", "PEN"}
+        result = await self._session.execute(
+            select(Fixture.external_id).where(
+                Fixture.competition_id == competition_id,
+                Fixture.season == season,
+                Fixture.status.in_(COMPLETED),
+            )
+        )
+        return {row[0] for row in result.all()}
 
     async def upsert_standing_snapshot(
         self,

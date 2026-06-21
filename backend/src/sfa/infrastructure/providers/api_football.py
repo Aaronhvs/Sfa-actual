@@ -423,6 +423,33 @@ class APIFootballProvider:
                 logger.warning("Skipping malformed fixture: %s", exc)
         return result
 
+    async def fetch_league_fixtures(
+        self, league_id: int, season: int,
+    ) -> list[FixtureRawDTO]:
+        data = await self._get("fixtures", {"league": league_id, "season": season})
+        result: list[FixtureRawDTO] = []
+        for f in data.get("response", []):
+            try:
+                played_at = datetime.fromisoformat(f["fixture"]["date"])
+                result.append(
+                    FixtureRawDTO(
+                        external_id=f["fixture"]["id"],
+                        home_team_external_id=f["teams"]["home"]["id"],
+                        away_team_external_id=f["teams"]["away"]["id"],
+                        home_team_name=f["teams"]["home"]["name"],
+                        away_team_name=f["teams"]["away"]["name"],
+                        round_str=f["league"]["round"],
+                        league_name=f["league"]["name"],
+                        played_at=played_at,
+                        home_goals=f["goals"].get("home") or 0,
+                        away_goals=f["goals"].get("away") or 0,
+                        status=f["fixture"]["status"].get("short") or "NS",
+                    )
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                logger.warning("[fetch_league_fixtures] Skipping malformed fixture: %s", exc)
+        return result
+
     async def fetch_fixture_events(self, fixture_id: int) -> list[FixtureEventRawDTO]:
         data = await self._get("fixtures/events", {"fixture": fixture_id})
         result: list[FixtureEventRawDTO] = []

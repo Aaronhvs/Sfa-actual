@@ -154,21 +154,28 @@ class IngestCompetitionUseCase:
                         matchday, standing.position, standing.points,
                     )
 
-            # --- Phase 2: Fixtures per team ---
-            top_teams = sorted(standings, key=lambda s: s.position)[: league.top_n]
-            processed_fixture_ids: set[int] = set()
+            # --- Phase 2: Fixtures ---
+            # top_n=None means all teams (e.g. WC) → 1 bulk API call instead of N per-team calls
+            if league.top_n is None:
+                all_fixtures = await self._provider.fetch_league_fixtures(league.id, season)
+            else:
+                top_teams = sorted(standings, key=lambda s: s.position)[: league.top_n]
+                seen_ids: set[int] = set()
+                all_fixtures = []
+                for team_standing in top_teams:
+                    for fx in await self._provider.fetch_team_fixtures(
+                        team_standing.team_external_id, league.id, season
+                    ):
+                        if fx.external_id not in seen_ids:
+                            seen_ids.add(fx.external_id)
+                            all_fixtures.append(fx)
 
-            for team_standing in top_teams:
-                team_ext_id = team_standing.team_external_id
-                fixtures = await self._provider.fetch_team_fixtures(
-                    team_ext_id, league.id, season
-                )
+            # Pre-fetch completed fixture ids to skip Phase 3 for already-processed fixtures
+            completed_ids = await self._repo.get_completed_fixture_ids(
+                competition_id, season_str
+            )
 
-                for fixture in fixtures:
-                    if fixture.external_id in processed_fixture_ids:
-                        continue
-                    processed_fixture_ids.add(fixture.external_id)
-
+            for fixture in all_fixtures:
                     stage = self._provider.get_stage(fixture.round_str, fixture.league_name)
                     stage_factor = await self._repo.get_stage_factor(competition_id, stage)
                     matchday_num = _parse_matchday(fixture.round_str)
@@ -191,7 +198,13 @@ class IngestCompetitionUseCase:
                         fixture.external_id, competition_id,
                         home_db_id, away_db_id,
                         stage, season_str, fixture.played_at, matchday_num,
+                        status=fixture.status,
                     )
+
+                    # Skip events/players for fixtures already completed in DB
+                    if fixture.external_id in completed_ids:
+                        fixtures_processed += 1
+                        continue
 
                     # --- Phase 3: Events and players ---
                     events = await self._provider.fetch_fixture_events(fixture.external_id)

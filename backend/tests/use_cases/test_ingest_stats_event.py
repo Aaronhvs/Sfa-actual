@@ -105,6 +105,16 @@ class FakeFootballProvider:
     ) -> list[PlayerStatsRawDTO]:
         return [self._player] if team_id == self._player_team_id else []
 
+    async def fetch_all_fixture_players(
+        self, fixture_external_id: int,
+    ) -> list[PlayerStatsRawDTO]:
+        return [self._player]
+
+    async def fetch_league_fixtures(
+        self, league_id: int, season: int,
+    ) -> list[FixtureRawDTO]:
+        return self._fixtures
+
     def get_stage(self, round_str: str, league_name: str) -> str:
         return "regular"
 
@@ -170,6 +180,7 @@ class FakeIngestionRepository:
         season: str,
         played_at: datetime,
         matchday: int | None,
+        status: str = "FT",
     ) -> int:
         if external_id not in self._fixture_ids:
             self._fixture_counter += 1
@@ -270,6 +281,11 @@ class FakeIngestionRepository:
         competition_id: int | None = None,
     ) -> list[PlayerFixtureInfoRow]:
         return []
+
+    async def get_completed_fixture_ids(
+        self, competition_id: int, season: str,
+    ) -> set[int]:
+        return set()
 
 
 # ---------------------------------------------------------------------------
@@ -437,3 +453,107 @@ async def test_repository_rejects_non_positive_player_external_id():
 
     with pytest.raises(ValueError, match="positive integer"):
         await repository.upsert_player(0, "Invalid Identity", Position.MC)
+
+
+# ---------------------------------------------------------------------------
+# Spec 0036 — API call reduction tests
+# ---------------------------------------------------------------------------
+
+class _TrackingProvider(FakeFootballProvider):
+    """Extends FakeFootballProvider to record which fetch methods were called."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.league_fixtures_calls: list[tuple[int, int]] = []
+        self.team_fixtures_calls: list[tuple[int, int, int]] = []
+        self.fixture_events_calls: list[int] = []
+        self.fixture_players_calls: list[tuple[int, int]] = []
+
+    async def fetch_league_fixtures(self, league_id: int, season: int) -> list[FixtureRawDTO]:
+        self.league_fixtures_calls.append((league_id, season))
+        return await super().fetch_league_fixtures(league_id, season)
+
+    async def fetch_team_fixtures(
+        self, team_id: int, league_id: int, season: int,
+    ) -> list[FixtureRawDTO]:
+        self.team_fixtures_calls.append((team_id, league_id, season))
+        return await super().fetch_team_fixtures(team_id, league_id, season)
+
+    async def fetch_fixture_events(self, fixture_id: int) -> list[FixtureEventRawDTO]:
+        self.fixture_events_calls.append(fixture_id)
+        return await super().fetch_fixture_events(fixture_id)
+
+    async def fetch_fixture_players(
+        self, fixture_id: int, team_id: int,
+    ) -> list[PlayerStatsRawDTO]:
+        self.fixture_players_calls.append((fixture_id, team_id))
+        return await super().fetch_fixture_players(fixture_id, team_id)
+
+
+_LEAGUE_NO_TOP_N = LeagueConfig(
+    id=1, name="World Cup", country="World", comp_factor=1.0, top_n=None,
+    participant_kind="national_team",
+)
+
+
+@pytest.mark.anyio
+async def test_bulk_fixtures_used_when_top_n_is_none():
+    """When top_n=None, fetch_league_fixtures is called and fetch_team_fixtures is not."""
+    provider = _TrackingProvider(fixtures=[_fixture()], player=_player_stats())
+    repo = FakeIngestionRepository()
+
+    await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE_NO_TOP_N, 2026)
+
+    assert len(provider.league_fixtures_calls) == 1
+    assert provider.league_fixtures_calls[0] == (1, 2026)
+    assert len(provider.team_fixtures_calls) == 0
+
+
+@pytest.mark.anyio
+async def test_per_team_used_when_top_n_has_value():
+    """When top_n has a value, fetch_team_fixtures is called and fetch_league_fixtures is not."""
+    provider = _TrackingProvider(fixtures=[_fixture()], player=_player_stats())
+    repo = FakeIngestionRepository()
+
+    await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE, 2024)
+
+    assert len(provider.team_fixtures_calls) >= 1
+    assert len(provider.league_fixtures_calls) == 0
+
+
+class _FakeRepoWithCompleted(FakeIngestionRepository):
+    """FakeIngestionRepository that returns pre-set completed fixture ids."""
+
+    def __init__(self, completed: set[int]) -> None:
+        super().__init__()
+        self._completed = completed
+
+    async def get_completed_fixture_ids(
+        self, competition_id: int, season: str,
+    ) -> set[int]:
+        return self._completed
+
+
+@pytest.mark.anyio
+async def test_skip_events_for_completed_fixture():
+    """Phase 3 is skipped for fixtures already completed in DB."""
+    fixture = _fixture(ext_id=9001, home_team=1, away_team=2)
+    provider = _TrackingProvider(fixtures=[fixture], player=_player_stats())
+    repo = _FakeRepoWithCompleted(completed={9001})
+
+    await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE, 2024)
+
+    assert 9001 not in provider.fixture_events_calls
+    assert all(fx_id != 9001 for fx_id, _ in provider.fixture_players_calls)
+
+
+@pytest.mark.anyio
+async def test_events_fetched_for_non_completed_fixture():
+    """Phase 3 runs normally for fixtures not present in completed_ids."""
+    fixture = _fixture(ext_id=9002, home_team=1, away_team=2)
+    provider = _TrackingProvider(fixtures=[fixture], player=_player_stats())
+    repo = _FakeRepoWithCompleted(completed=set())
+
+    await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE, 2024)
+
+    assert 9002 in provider.fixture_events_calls

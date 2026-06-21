@@ -20,3 +20,4 @@ class Fixture(Base):
     season: Mapped[str] = mapped_column(String(10), nullable=False)
     played_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     matchday: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="FT")
