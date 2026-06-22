@@ -40,9 +40,9 @@ logger = logging.getLogger(__name__)
 _WC_COMPETITION_ID = 350
 _FIXTURES_TTL_SECONDS = 600
 _STANDINGS_TTL_SECONDS = 3600
-_DETAIL_LIVE_TTL_SECONDS = 300
-_DETAIL_DEFAULT_TTL_SECONDS = 21600
-_LIVE_STATUSES = {"1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"}
+_DETAIL_SHORT_TTL_SECONDS = 300      # upcoming + live: recheck every 5 min
+_DETAIL_DEFAULT_TTL_SECONDS = 21600  # completed: safe to cache 6h
+_COMPLETED_STATUSES = {"FT", "AET", "PEN", "AWD", "WO"}
 
 
 class WorldCupRepository(WorldCupRepositoryProtocol):
@@ -111,9 +111,9 @@ class WorldCupRepository(WorldCupRepositoryProtocol):
             return None
 
         ttl = (
-            _DETAIL_LIVE_TTL_SECONDS
-            if detail.fixture.status in _LIVE_STATUSES
-            else _DETAIL_DEFAULT_TTL_SECONDS
+            _DETAIL_DEFAULT_TTL_SECONDS
+            if detail.fixture.status in _COMPLETED_STATUSES
+            else _DETAIL_SHORT_TTL_SECONDS
         )
         await self._redis.setex(
             cache_key,
