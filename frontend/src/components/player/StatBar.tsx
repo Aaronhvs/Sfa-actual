@@ -75,6 +75,12 @@ export default function StatBar({ player, fixtures, seasonStats }: Props) {
     const passesCompleted = s.passes_accuracy_avg > 0
       ? Math.round(s.passes_total * s.passes_accuracy_avg / 100)
       : s.passes_total
+    const shotAccuracy = s.shots_total > 0
+      ? Math.round((s.shots_on / s.shots_total) * 100)
+      : null
+    const goalConversion = s.shots_on > 0
+      ? Math.round((s.goals / s.shots_on) * 100)
+      : null
     return [
       {
         label: 'Pases comp.',
@@ -82,10 +88,15 @@ export default function StatBar({ player, fixtures, seasonStats }: Props) {
         sub: s.passes_accuracy_avg > 0 ? `${Math.round(s.passes_accuracy_avg)}% prec.` : undefined,
       },
       {
-        label: 'Disparos tot.',
+        label: 'Disparos',
         value: fmt(s.shots_total),
-        sub: s.shots_on > 0 ? `${fmt(s.shots_on)} a puerta` : undefined,
+        sub: shotAccuracy !== null ? `${fmt(s.shots_on)} a puerta · ${shotAccuracy}% prec.` : undefined,
       },
+      ...(!isGK && goalConversion !== null ? [{
+        label: 'Conversión',
+        value: `${goalConversion}%`,
+        sub: `${s.goals} ${s.goals === 1 ? 'gol' : 'goles'} de ${s.shots_on} a puerta`,
+      }] : []),
       {
         label: 'Duelos tot.',
         value: fmt(s.duels_total),
