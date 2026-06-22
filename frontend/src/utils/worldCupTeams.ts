@@ -52,8 +52,12 @@ const WORLD_CUP_TEAM_NAMES_ES: Record<number, string> = {
 }
 
 export function worldCupTeamName(team: WcTeam): string {
-  if (team.external_id == null) return team.name
-  return WORLD_CUP_TEAM_NAMES_ES[team.external_id] ?? team.name
+  if (team.external_id != null) {
+    const byId = WORLD_CUP_TEAM_NAMES_ES[team.external_id]
+    if (byId) return byId
+  }
+  const byName = WORLD_CUP_IDENTITIES[identityKey(team.name)]
+  return byName ? byName.name : team.name
 }
 
 const WORLD_CUP_IDENTITIES: Record<string, { name: string; code: string }> = {
@@ -150,4 +154,20 @@ export function worldCupTeamFlag(teamName: string): string {
 export function worldCupTeamFlagUrl(teamName: string): string | null {
   const identity = WORLD_CUP_IDENTITIES[identityKey(teamName)]
   return identity ? `https://flagcdn.com/w80/${identity.code.toLowerCase()}.png` : null
+}
+
+const STAGE_LABELS_ES: Record<string, string> = {
+  'Group Stage - 1': 'Fase de grupos',
+  'Group Stage - 2': 'Fase de grupos',
+  'Group Stage - 3': 'Fase de grupos',
+  'Round of 32': 'Ronda de 32',
+  'Round of 16': 'Octavos de final',
+  'Quarter-finals': 'Cuartos de final',
+  'Semi-finals': 'Semifinales',
+  '3rd Place Final': 'Tercer puesto',
+  'Final': 'Final',
+}
+
+export function worldCupStageLabel(stage: string): string {
+  return STAGE_LABELS_ES[stage] ?? stage.replace('Group Stage', 'Fase de grupos')
 }

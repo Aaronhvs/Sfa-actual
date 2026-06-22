@@ -9,7 +9,7 @@ import type {
   WcTeamSFARankingItem,
 } from '../types'
 import { fetchWcFixtures, fetchWcLive, fetchWcStandings, fetchWcTeamSFARanking } from '../api/client'
-import { worldCupTeamName } from '../utils/worldCupTeams'
+import { worldCupTeamName, worldCupStageLabel } from '../utils/worldCupTeams'
 
 type MundialView = 'matches' | 'standings' | 'bracket' | 'teams'
 type MatchTone = 'live' | 'result' | 'upcoming'
@@ -110,7 +110,7 @@ function FixtureCard({ fixture, compact = false }: {
       ].filter(Boolean).join(' ')}
       aria-label={`Ver ${worldCupTeamName(fixture.home_team)} contra ${worldCupTeamName(fixture.away_team)}`}
     >
-      <div className="wm-match__stage">{fixture.stage.replace('Group Stage', 'Fase de grupos')}</div>
+      <div className="wm-match__stage">{worldCupStageLabel(fixture.stage)}</div>
 
       <div className="wm-match__teams">
         <div className="wm-match__team">
@@ -201,7 +201,7 @@ function ScorePill({ fixture, tone }: { fixture: WcFixture; tone: MatchTone }) {
       aria-label={`Ver ${homeName} contra ${awayName}`}
     >
       <span className="wm-score-pill__stage">
-        {fixture.stage.replace('Group Stage', 'Fase de grupos')}
+        {worldCupStageLabel(fixture.stage)}
       </span>
       <span className="wm-score-pill__line">
         <span className="wm-score-pill__team">

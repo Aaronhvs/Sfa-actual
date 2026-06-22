@@ -10,7 +10,7 @@ import type {
   WcTeamLineup,
 } from '../types'
 import MatchTimeline from '../components/mundial/MatchTimeline'
-import { worldCupTeamName } from '../utils/worldCupTeams'
+import { worldCupTeamName, worldCupStageLabel } from '../utils/worldCupTeams'
 
 type DetailTab = 'lineups' | 'statistics' | 'performance'
 
@@ -569,7 +569,7 @@ export default function MundialMatchPage() {
 
       <header className="wmd-scoreboard">
         <div className="wmd-scoreboard__spectrum" />
-        <span className="wmd-scoreboard__stage">{fixture.stage.replace('Group Stage', 'Fase de grupos')}</span>
+        <span className="wmd-scoreboard__stage">{worldCupStageLabel(fixture.stage)}</span>
         <div className="wmd-scoreboard__match">
           <TeamIdentity team={fixture.home_team} asLink />
           <div className="wmd-scoreboard__score">
