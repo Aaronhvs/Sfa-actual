@@ -29,14 +29,15 @@ logger = logging.getLogger(__name__)
 ROUND_TO_STAGE: dict[str, str] = {
     "group stage":     "group",
     "league stage":    "group",
-    "round of 32":     "round_of_16",
+    "round of 32":     "round_of_32",
+    "last 32":         "round_of_32",
     "last 16":         "round_of_16",
     "round of 16":     "round_of_16",
     "quarter-finals":  "quarter",
     "quarter finals":  "quarter",
     "semi-finals":     "semi",
     "semi finals":     "semi",
-    "3rd place final": "semi",
+    "3rd place final": "third_place",
     "final":           "final",
 }
 

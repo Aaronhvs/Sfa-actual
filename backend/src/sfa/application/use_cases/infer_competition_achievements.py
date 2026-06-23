@@ -18,6 +18,7 @@ from sfa.domain.scoring_ports import (
 logger = logging.getLogger(__name__)
 
 COMPETITION_CATEGORY_MAP: dict[str, str] = {
+    "World Cup":             "world_cup",
     "Champions League":      "champions_league",
     "Europa League":         "europa_league",
     "Conference League":     "conference_league",
@@ -36,21 +37,25 @@ COMPETITION_CATEGORY_MAP: dict[str, str] = {
 }
 
 STAGE_TO_PHASE: dict[str, str] = {
-    "final":       "winner",
-    "semi":        "semi_final",
-    "semi_final":  "semi_final",
-    "quarter":     "quarter_final",
+    "final":        "winner",
+    "third_place":  "third_place",
+    "semi":         "semi_final",
+    "semi_final":   "semi_final",
+    "quarter":      "quarter_final",
     "quarter_final": "quarter_final",
-    "round_of_16": "round_of_16",
+    "round_of_16":  "round_of_16",
+    "round_of_32":  "round_of_32",
 }
 
 STAGE_ORDER: dict[str, int] = {
-    "round_of_16":  1,
-    "quarter":      2,
-    "quarter_final": 2,
-    "semi":         3,
-    "semi_final":   3,
-    "final":        4,
+    "round_of_32":  1,
+    "round_of_16":  2,
+    "quarter":      3,
+    "quarter_final": 3,
+    "semi":         4,
+    "semi_final":   4,
+    "third_place":  5,
+    "final":        6,
 }
 
 

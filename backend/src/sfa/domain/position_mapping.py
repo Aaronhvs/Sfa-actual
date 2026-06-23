@@ -277,6 +277,12 @@ KNOWN_POSITIONS: dict[str, Position] = {
     # Mediapuntas clasificados como MC
     "Luka Modrić":             Position.MCO,
     "Martin Ødegaard":         Position.MCO,
+    # Cristiano Ronaldo: API-Football lo asigna como "Midfielder" en Portugal/WC
+    "Cristiano Ronaldo":       Position.EXT,
+    "C. Ronaldo":              Position.EXT,
+    # Cuti Romero: API-Football lo asigna como "Forward" en Argentina
+    "Cristian Romero":         Position.DC,
+    "C. Romero":               Position.DC,
 }
 
 
