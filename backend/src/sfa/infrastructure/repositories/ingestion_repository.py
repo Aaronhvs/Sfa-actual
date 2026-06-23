@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -183,11 +183,15 @@ class IngestionRepository(IngestionRepositoryPort):
         self, competition_id: int, season: str,
     ) -> set[int]:
         COMPLETED = {"FT", "AET", "PEN"}
+        # Only skip fixtures completed more than 3h ago so API-Football has time
+        # to finalize all statistics (goals, assists, cards) after a match ends.
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=3)
         result = await self._session.execute(
             select(Fixture.external_id).where(
                 Fixture.competition_id == competition_id,
                 Fixture.season == season,
                 Fixture.status.in_(COMPLETED),
+                Fixture.played_at < cutoff,
             )
         )
         return {row[0] for row in result.all()}
