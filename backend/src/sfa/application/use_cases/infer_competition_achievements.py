@@ -161,6 +161,10 @@ class InferCompetitionAchievementsUseCase:
             phase = STAGE_TO_PHASE[stage]
             phase_teams.setdefault(phase, set()).update(eliminated)
 
+        await self._achievement_repo.delete_achievements_for_competition_season(
+            competition_id, season
+        )
+
         achievements_upserted = 0
         phases_found: list[str] = []
 

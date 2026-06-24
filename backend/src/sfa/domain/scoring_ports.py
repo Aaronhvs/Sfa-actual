@@ -266,6 +266,10 @@ class TeamStrengthRepositoryPort(Protocol):
 class CompetitionAchievementRepositoryPort(Protocol):
     async def upsert_achievement(self, achievement: CompetitionAchievement) -> int: ...
 
+    async def delete_achievements_for_competition_season(
+        self, competition_id: int, season: str
+    ) -> None: ...
+
     async def get_achievements_for_season(
         self, competition_id: int, season: str
     ) -> list[CompetitionAchievement]: ...

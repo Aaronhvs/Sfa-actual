@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,6 +50,16 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         result = await self._session.execute(stmt)
         await self._session.flush()
         return result.scalar_one()
+
+    async def delete_achievements_for_competition_season(
+        self, competition_id: int, season: str
+    ) -> None:
+        stmt = delete(CompetitionAchievementModel).where(
+            CompetitionAchievementModel.competition_id == competition_id,
+            CompetitionAchievementModel.season == season,
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
 
     async def get_achievements_for_season(
         self, competition_id: int, season: str
