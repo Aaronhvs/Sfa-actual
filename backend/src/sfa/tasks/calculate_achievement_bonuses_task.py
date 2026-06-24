@@ -6,7 +6,12 @@ from sfa.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, max_retries=2, default_retry_delay=300)
+@celery_app.task(
+    bind=True,
+    name="sfa.tasks.calculate_achievement_bonuses_task",
+    max_retries=2,
+    default_retry_delay=300,
+)
 def calculate_achievement_bonuses_task(
     self,
     season: str,
