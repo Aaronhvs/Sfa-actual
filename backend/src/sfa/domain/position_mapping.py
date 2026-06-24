@@ -278,8 +278,8 @@ KNOWN_POSITIONS: dict[str, Position] = {
     "Luka Modrić":             Position.MCO,
     "Martin Ødegaard":         Position.MCO,
     # Cristiano Ronaldo: API-Football lo asigna como "Midfielder" en Portugal/WC
-    "Cristiano Ronaldo":       Position.EXT,
-    "C. Ronaldo":              Position.EXT,
+    "Cristiano Ronaldo":       Position.DEL,
+    "C. Ronaldo":              Position.DEL,
     # Cuti Romero: API-Football lo asigna como "Forward" en Argentina
     "Cristian Romero":         Position.DC,
     "C. Romero":               Position.DC,
