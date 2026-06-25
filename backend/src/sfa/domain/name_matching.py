@@ -17,14 +17,14 @@ def name_matches(event_name: str | None, player_name: str) -> bool:
     if a == b or a in b or b in a:
         return True
     # "X. Surname" → normalize strips the dot → "x surname".
-    # Detect single-initial prefix: match on surname AND verify initial against player first name.
-    parts = a.split()
-    if len(parts) >= 2 and len(parts[0]) == 1:
-        surname_part = " ".join(parts[1:])
-        player_parts = b.split()
-        first_initial_matches = player_parts and player_parts[0].startswith(parts[0])
-        if surname_part in b and first_initial_matches:
-            return True
+    # Detect single-initial prefix in either name; match on surname + initial.
+    for abbreviated, full in [(a, b), (b, a)]:
+        parts = abbreviated.split()
+        if len(parts) >= 2 and len(parts[0]) == 1:
+            surname_part = " ".join(parts[1:])
+            full_parts = full.split()
+            if full_parts and full_parts[0].startswith(parts[0]) and surname_part in full:
+                return True
     return False
 
 
