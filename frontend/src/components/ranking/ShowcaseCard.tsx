@@ -7,6 +7,7 @@ interface Props {
   player: RankedPlayer
   detail: PlayerDetail | null
   isFirst?: boolean
+  podiumPlace?: number
   season?: string
   isWorldCup?: boolean
 }
@@ -42,22 +43,23 @@ function B1Badge({ player }: { player: RankedPlayer }) {
   )
 }
 
-function cardClass(rank: number, isWorldCup: boolean): string {
+function cardClass(place: number, isWorldCup: boolean): string {
   const tournamentClass = isWorldCup ? ' player-showcase-card--wc' : ''
-  if (rank === 1) return `player-showcase-card player-showcase-card--first${tournamentClass}`
-  if (rank === 2) return `player-showcase-card player-showcase-card--second${tournamentClass}`
+  if (place === 1) return `player-showcase-card player-showcase-card--first${tournamentClass}`
+  if (place === 2) return `player-showcase-card player-showcase-card--second${tournamentClass}`
   return `player-showcase-card player-showcase-card--third${tournamentClass}`
 }
 
-export default function ShowcaseCard({ player, season, isWorldCup = false }: Props) {
-  const animatedRank = useCountUp(player.rank, 620)
+export default function ShowcaseCard({ player, podiumPlace, season, isWorldCup = false }: Props) {
   const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
-  const displayedRank = String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')
+  const displayPlace = podiumPlace ?? player.rank
+  const animatedDisplayPlace = useCountUp(displayPlace, 620)
+  const displayedRank = String(isWorldCup ? displayPlace : animatedDisplayPlace).padStart(2, '0')
   const flagUrl = isWorldCup ? worldCupTeamFlagUrl(player.team) : null
   const mobileName = compactName(player.name)
 
   return (
-    <Link to={playerLink} className={cardClass(player.rank, isWorldCup)}>
+    <Link to={playerLink} className={cardClass(displayPlace, isWorldCup)}>
       <div className="psc-mobile-podium">
         <div className="psc-mobile-podium__portrait">
           {player.photo_url ? (

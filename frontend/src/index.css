@@ -15168,7 +15168,7 @@ body.mode-tournament .main-content {
   body.mode-tournament .ranking-page > .rp-podium--wc,
   body.mode-tournament .ranking-page > .rp-control-deck + .rp-podium {
     margin-top: 0 !important;
-    padding-top: 2px !important;
+    padding-top: 0 !important;
   }
 
   body.mode-tournament .ranking-page > .rp-podium .players-showcase {

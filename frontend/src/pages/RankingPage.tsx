@@ -311,12 +311,13 @@ export default function RankingPage() {
               aria-label="Podio del ranking"
             >
               <div className="players-showcase">
-                {top3.map((p) => (
+                {top3.map((p, index) => (
                   <ShowcaseCard
                     key={p.id}
                     player={p}
                     detail={loadingShowcase ? null : (topDetails.get(p.id) ?? null)}
                     isFirst={p.rank === 1}
+                    podiumPlace={index + 1}
                     season={season}
                     isWorldCup={isWcSeason}
                   />
