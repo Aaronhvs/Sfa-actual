@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 _WC_COMPETITION_ID = 350
 _FIXTURES_TTL_SECONDS = 600
+_FIXTURES_LIVE_TTL_SECONDS = 45
 _STANDINGS_TTL_SECONDS = 3600
 _DETAIL_LIVE_TTL_SECONDS = 45        # in-progress: show events within ~45s
 _DETAIL_UPCOMING_TTL_SECONDS = 120   # pre-match: recheck every 2 min
@@ -71,11 +72,14 @@ class WorldCupRepository(WorldCupRepositoryProtocol):
             season=int(season),
         )
         payload = [self._fixture_to_dict(item) for item in fixtures]
-        await self._redis.setex(cache_key, _FIXTURES_TTL_SECONDS, json.dumps(payload))
+        has_live = any(f.status in _LIVE_STATUSES for f in fixtures)
+        ttl = _FIXTURES_LIVE_TTL_SECONDS if has_live else _FIXTURES_TTL_SECONDS
+        await self._redis.setex(cache_key, ttl, json.dumps(payload))
         logger.info(
-            "[WorldCupRepository] Cached %d fixtures for season=%s",
+            "[WorldCupRepository] Cached %d fixtures for season=%s ttl=%d",
             len(fixtures),
             season,
+            ttl,
         )
         return fixtures
 
