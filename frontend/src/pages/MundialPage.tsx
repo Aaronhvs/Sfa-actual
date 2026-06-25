@@ -462,7 +462,15 @@ export default function MundialPage() {
 
         {!loading && !error && view === 'matches' && (
           <>
-            {spotlightFixture && <SpotlightMatch fixture={spotlightFixture} />}
+            {live.length > 1 ? (
+              <div className="wm-multi-live">
+                {live.map((fixture) => (
+                  <SpotlightMatch fixture={fixture} key={fixture.id} />
+                ))}
+              </div>
+            ) : spotlightFixture ? (
+              <SpotlightMatch fixture={spotlightFixture} />
+            ) : null}
 
             <div className="wm-scoreboard-layout">
               <section className="wm-section wm-scoreboard-panel">
