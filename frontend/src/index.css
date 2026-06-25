@@ -12730,7 +12730,8 @@ body.mode-tournament .main-content {
 
   .wmd-tl-event__assist,
   .wmd-tl-event__sub-out {
-    display: none;
+    font-size: 0.5rem;
+    max-width: 105px;
   }
 }
 

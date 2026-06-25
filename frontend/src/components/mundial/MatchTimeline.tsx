@@ -135,7 +135,7 @@ function EventContent({ event, side }: { event: WcFixtureEvent; side: 'home' | '
               {event.player_name}
             </strong>
             {event.assist_name && (
-              <span className="wmd-tl-event__assist">Asist. {event.assist_name}</span>
+              <span className="wmd-tl-event__assist">Asistencia: {event.assist_name}</span>
             )}
           </>
         )}
