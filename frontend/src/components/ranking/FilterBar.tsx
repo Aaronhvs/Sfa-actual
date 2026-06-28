@@ -12,6 +12,8 @@ const POSITIONS: { value: string; label: string }[] = [
 interface Props {
   position: string
   onPosition: (position: string) => void
+  bonusFilter: string
+  onBonusFilter: (bonus: string) => void
   competition: number | undefined
   onCompetition: (id: number | undefined) => void
   competitions: Competition[]
@@ -22,6 +24,8 @@ interface Props {
 export default function FilterBar({
   position,
   onPosition,
+  bonusFilter,
+  onBonusFilter,
   competition,
   onCompetition,
   competitions,
@@ -31,11 +35,11 @@ export default function FilterBar({
   return (
     <div className="filter-bar" aria-label="Filtros del ranking">
       <label className="filter-select">
-        <span className="filter-select__label">Posición</span>
+        <span className="filter-select__label">Posici&oacute;n</span>
         <select
           value={position}
           onChange={(event) => onPosition(event.target.value)}
-          aria-label="Filtrar por posición"
+          aria-label="Filtrar por posici&oacute;n"
         >
           <option value="">Todas las posiciones</option>
           {POSITIONS.map((item) => (
@@ -45,13 +49,26 @@ export default function FilterBar({
       </label>
 
       <label className="filter-select">
-        <span className="filter-select__label">Competición</span>
+        <span className="filter-select__label">Perfil</span>
+        <select
+          value={bonusFilter}
+          onChange={(event) => onBonusFilter(event.target.value)}
+          aria-label="Filtrar por promesa o veterano"
+        >
+          <option value="">Todos los perfiles</option>
+          <option value="Promesa">Promesas</option>
+          <option value="Veterano">Veteranos</option>
+        </select>
+      </label>
+
+      <label className="filter-select">
+        <span className="filter-select__label">Competici&oacute;n</span>
         <select
           value={competition ?? ''}
           onChange={(event) => {
             onCompetition(event.target.value ? Number(event.target.value) : undefined)
           }}
-          aria-label="Filtrar por competición"
+          aria-label="Filtrar por competici&oacute;n"
         >
           <option value="">Todas las competiciones</option>
           {competitions.map((item) => (
@@ -78,9 +95,9 @@ export default function FilterBar({
             type="button"
             className="filter-search-clear"
             onClick={() => onSearch('')}
-            aria-label="Limpiar búsqueda"
+            aria-label="Limpiar b&uacute;squeda"
           >
-            ×
+            &times;
           </button>
         )}
       </label>

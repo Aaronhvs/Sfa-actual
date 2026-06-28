@@ -14172,7 +14172,7 @@ body.mode-tournament .main-content {
 
 .filter-bar {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) minmax(240px, 1.2fr);
+  grid-template-columns: minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(190px, 1fr) minmax(240px, 1.2fr);
   align-items: end;
   gap: 12px;
 }
@@ -14404,8 +14404,12 @@ body.mode-tournament .main-content {
   .wc-ranking-tools {
     width: 100%;
     display: grid;
-    grid-template-columns: minmax(112px, 0.34fr) minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
+  }
+
+  .wc-ranking-search {
+    grid-column: 1 / -1;
   }
 
   .wc-position-filter,

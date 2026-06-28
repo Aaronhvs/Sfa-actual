@@ -17,12 +17,18 @@ const PAGE_SIZE = 12
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
 const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
+const BONUS_FILTER_OPTIONS = ['Promesa', 'Veterano']
+
+function matchesBonusFilter(player: RankedPlayer, bonusFilter: string): boolean {
+  return !bonusFilter || player.b1_bonus_label === bonusFilter
+}
 
 export default function RankingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
   const [season, setSeason] = useState<string>(searchParams.get('season') ?? '')
   const [position, setPosition] = useState('')
+  const [bonusFilter, setBonusFilter] = useState('')
   const [competition, setCompetition] = useState<number | undefined>(undefined)
   const [competitions, setCompetitions] = useState<Competition[]>([])
   const [search, setSearch] = useState('')
@@ -74,6 +80,7 @@ export default function RankingPage() {
   useEffect(() => {
     if (!isWcSeason) return
     setPosition('')
+    setBonusFilter('')
     setCompetition(undefined)
     setSearch('')
   }, [isWcSeason])
@@ -82,15 +89,15 @@ export default function RankingPage() {
     setPage(0)
     setPageDir('next')
     setSearchResults(null)
-  }, [position, competition, search])
+  }, [position, competition, search, bonusFilter])
 
   // Server-side name search — fires when local filter yields nothing and query >= 2 chars
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
 
     const localHits = search
-      ? players.filter((p) => playerOrTeamMatchesSearch(p.name, p.team, search))
-      : players
+      ? players.filter((p) => matchesBonusFilter(p, bonusFilter) && playerOrTeamMatchesSearch(p.name, p.team, search))
+      : players.filter((p) => matchesBonusFilter(p, bonusFilter))
 
     if (!search || search.length < 2 || (!isWcSeason && localHits.length > 0)) {
       setSearchResults(null)
@@ -100,7 +107,7 @@ export default function RankingPage() {
     setSearchLoading(true)
     searchTimerRef.current = setTimeout(() => {
       fetchRanking({ season, name: search, position: position || undefined, limit: 50 })
-        .then((data) => setSearchResults(data.ranking))
+        .then((data) => setSearchResults(data.ranking.filter((p) => matchesBonusFilter(p, bonusFilter))))
         .catch(() => setSearchResults([]))
         .finally(() => setSearchLoading(false))
     }, SEARCH_DEBOUNCE_MS)
@@ -108,7 +115,7 @@ export default function RankingPage() {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
-  }, [search, players, season, position, isWcSeason])
+  }, [search, players, season, position, isWcSeason, bonusFilter])
 
   useEffect(() => {
     if (!season) return
@@ -146,17 +153,18 @@ export default function RankingPage() {
       })
   }, [position, competition, season])
 
-  const top3 = players.slice(0, 3)
-  const restPlayers = players.slice(3)
+  const bonusFilteredPlayers = players.filter((p) => matchesBonusFilter(p, bonusFilter))
+  const top3 = bonusFilteredPlayers.slice(0, 3)
+  const restPlayers = bonusFilteredPlayers.slice(3)
 
   const localFiltered = search
-    ? players.filter((p) => playerOrTeamMatchesSearch(p.name, p.team, search))
+    ? bonusFilteredPlayers.filter((p) => playerOrTeamMatchesSearch(p.name, p.team, search))
     : restPlayers
 
   const isServerSearch = search.length >= 2 && (isWcSeason || localFiltered.length === 0)
   const filteredPlayers = isServerSearch ? (searchResults ?? []) : localFiltered
 
-  const showHero = !search && players.length >= 3
+  const showHero = !search && bonusFilteredPlayers.length >= 3
   const totalPages = Math.ceil(filteredPlayers.length / PAGE_SIZE)
   const currentPagePlayers = filteredPlayers.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
@@ -165,7 +173,7 @@ export default function RankingPage() {
     .sort((a, b) => MAIN_COMPETITION_IDS.indexOf(a.id) - MAIN_COMPETITION_IDS.indexOf(b.id))
 
   const activeComp = competitions.find((c) => c.id === competition)
-  const contextParts = [activeComp?.name, position || null].filter(Boolean)
+  const contextParts = [activeComp?.name, position || null, bonusFilter || null].filter(Boolean)
   const contextLabel = contextParts.length > 0 ? contextParts.join(' · ') : null
 
   const animatedTotal = useCountUp(totalPlayers)
@@ -348,6 +356,20 @@ export default function RankingPage() {
                       ))}
                     </select>
                   </label>
+                  <label className="wc-position-filter">
+                    <span>Perfil</span>
+                    <strong aria-hidden="true">{bonusFilter || 'Todos'}</strong>
+                    <select
+                      value={bonusFilter}
+                      onChange={(event) => setBonusFilter(event.target.value)}
+                      aria-label="Filtrar ranking mundial por promesa o veterano"
+                    >
+                      <option value="">Todos</option>
+                      {BONUS_FILTER_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="wc-ranking-search">
                   <svg viewBox="0 0 20 20" aria-hidden="true">
                     <circle cx="8.5" cy="8.5" r="5.5" />
@@ -378,6 +400,8 @@ export default function RankingPage() {
               <FilterBar
                 position={position}
                 onPosition={setPosition}
+                bonusFilter={bonusFilter}
+                onBonusFilter={setBonusFilter}
                 competition={competition}
                 onCompetition={setCompetition}
                 competitions={mainCompetitions}
