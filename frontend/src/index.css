@@ -11270,6 +11270,354 @@ body.mode-tournament .main-content {
 
 .wm-bracket { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
+.wm-bracket-view { display: block; }
+
+.wm-bracket-desktop { display: none; }
+.wm-bracket-mobile { display: none; }
+
+.wm-bracket-desktop__header {
+  margin-bottom: 18px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.wm-bracket-desktop__header span {
+  color: var(--tm-sun);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.wm-bracket-desktop__header h2 {
+  margin: 0;
+  color: var(--tm-text);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.wm-bracket-board {
+  width: 100%;
+  min-width: 0;
+  min-height: 760px;
+  padding: 18px 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(78px, 1fr)) minmax(132px, 1.45fr) repeat(4, minmax(78px, 1fr));
+  gap: clamp(10px, 1.15vw, 20px);
+  align-items: stretch;
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.wm-bracket-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 12px;
+}
+
+.wm-bracket-column--mid { padding-block: 48px; }
+.wm-bracket-column--late { padding-block: 118px; }
+.wm-bracket-column--semi { padding-block: 260px; }
+
+.wm-bracket-node {
+  position: relative;
+  min-height: 82px;
+  padding: 10px 8px 9px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  color: var(--tm-text);
+  text-decoration: none;
+  background: rgba(18, 18, 18, 0.94);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.22);
+}
+
+.wm-bracket-node--left::after,
+.wm-bracket-node--right::after {
+  position: absolute;
+  top: 50%;
+  width: clamp(10px, 1.15vw, 20px);
+  height: 1px;
+  content: "";
+  background: rgba(255,255,255,0.22);
+}
+
+.wm-bracket-node--left::after { left: 100%; }
+.wm-bracket-node--right::after { right: 100%; }
+
+.wm-bracket-node--live {
+  border-color: rgba(240,75,63,0.55);
+  box-shadow: 0 0 0 1px rgba(240,75,63,0.12), 0 12px 24px rgba(0,0,0,0.22);
+}
+
+.wm-bracket-node--center {
+  width: min(104px, 100%);
+  min-height: 78px;
+  margin-inline: auto;
+}
+
+.wm-bracket-node__teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.wm-bracket-team {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.wm-bracket-team__logo,
+.wm-bracket-team__crest {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.wm-bracket-team__logo {
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
+}
+
+.wm-bracket-team__crest {
+  display: block;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  clip-path: polygon(50% 0, 88% 14%, 84% 62%, 50% 100%, 16% 62%, 12% 14%);
+}
+
+.wm-bracket-team strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: clamp(0.72rem, 0.78vw, 0.84rem);
+  font-weight: 850;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.wm-bracket-node__date {
+  color: var(--tm-text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  line-height: 1;
+  text-align: center;
+  text-transform: lowercase;
+}
+
+.wm-bracket-center {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.wm-bracket-trophy {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,0.48);
+}
+
+.wm-bracket-trophy svg { width: 100%; height: 100%; }
+
+.wm-bracket-center__label {
+  color: var(--tm-text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wm-bracket-node[href]:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.26);
+    background: var(--tm-surface2);
+  }
+}
+
+@media (min-width: 1024px) {
+  .wm-dashboard:has(.wm-bracket-view) {
+    max-width: none;
+    padding-inline: 24px;
+  }
+
+  .wm-bracket-desktop {
+    display: block;
+    max-width: 1580px;
+    margin-inline: auto;
+    overflow-x: visible;
+  }
+
+  .wm-bracket-list { display: none; }
+}
+
+@media (max-width: 1023px) {
+  .wm-bracket-list { display: none; }
+
+  .wm-bracket-mobile {
+    position: relative;
+    margin-inline: auto;
+    padding: 16px 12px 18px;
+    display: grid;
+    gap: 22px;
+    overflow: hidden;
+    background:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+      rgba(18,18,18,0.92);
+    background-size: 42px 42px;
+    border: 1px solid var(--tm-border);
+    border-radius: 0 0 14px 14px;
+  }
+
+  .wm-bracket-mobile__track {
+    position: absolute;
+    inset: 42px 15% 56px;
+    pointer-events: none;
+    opacity: 0.8;
+    background:
+      linear-gradient(90deg, transparent 0 calc(50% - 1px), rgba(255,255,255,0.18) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+      linear-gradient(rgba(255,255,255,0.18), rgba(255,255,255,0.18)) center 13.5% / 52% 1px no-repeat,
+      linear-gradient(rgba(255,255,255,0.18), rgba(255,255,255,0.18)) center 30% / 28% 1px no-repeat,
+      linear-gradient(rgba(255,255,255,0.18), rgba(255,255,255,0.18)) center 72% / 28% 1px no-repeat,
+      linear-gradient(rgba(255,255,255,0.18), rgba(255,255,255,0.18)) center 88% / 52% 1px no-repeat;
+  }
+
+  .wm-bracket-mobile__row {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    align-items: center;
+    justify-items: center;
+    gap: 8px;
+  }
+
+  .wm-bracket-mobile__row--four {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .wm-bracket-mobile__row--two {
+    width: 72%;
+    margin-inline: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 52px;
+  }
+
+  .wm-bracket-mobile__row--one {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wm-bracket-mobile .wm-bracket-node {
+    width: min(74px, 100%);
+    min-height: 68px;
+    padding: 8px 5px 7px;
+    border-radius: 7px;
+  }
+
+  .wm-bracket-mobile .wm-bracket-node::after { display: none; }
+
+  .wm-bracket-mobile .wm-bracket-node__teams {
+    gap: 4px;
+  }
+
+  .wm-bracket-mobile .wm-bracket-team__logo,
+  .wm-bracket-mobile .wm-bracket-team__crest {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wm-bracket-mobile .wm-bracket-team strong {
+    font-size: 0.67rem;
+    letter-spacing: 0.01em;
+  }
+
+  .wm-bracket-mobile .wm-bracket-node__date {
+    font-size: 0.46rem;
+    letter-spacing: -0.01em;
+  }
+
+  .wm-bracket-mobile__final-zone {
+    position: relative;
+    z-index: 1;
+    min-height: 86px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .wm-bracket-mobile__bronze {
+    justify-self: center;
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+  }
+
+  .wm-bracket-mobile__bronze span {
+    padding: 2px 5px;
+    color: #071116;
+    background: var(--tm-blue);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.48rem;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .wm-bracket-mobile__winner {
+    justify-self: center;
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+  }
+
+  .wm-bracket-mobile .wm-bracket-trophy {
+    width: 56px;
+    height: 56px;
+  }
+
+  .wm-bracket-mobile .wm-bracket-center__label {
+    font-size: 0.56rem;
+    letter-spacing: 0.14em;
+  }
+}
+
+@media (max-width: 420px) {
+  .wm-bracket-mobile {
+    padding-inline: 8px;
+    gap: 20px;
+  }
+
+  .wm-bracket-mobile .wm-bracket-node {
+    width: min(68px, 100%);
+    min-height: 66px;
+  }
+
+  .wm-bracket-mobile__row--two {
+    width: 76%;
+    gap: 42px;
+  }
+}
+
 .wm-bracket-empty {
   min-height: 330px;
   padding: 54px;

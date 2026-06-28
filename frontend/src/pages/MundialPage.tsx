@@ -28,6 +28,57 @@ const KNOCKOUT_MARKERS = [
 const TEAM_LOGO = (externalId: number | null) =>
   externalId ? `https://media.api-sports.io/football/teams/${externalId}.png` : null
 
+const TEAM_CODES_BY_EXTERNAL_ID: Record<number, string> = {
+  1: 'BEL',
+  2: 'FRA',
+  3: 'CRO',
+  5: 'SWE',
+  6: 'BRA',
+  7: 'URU',
+  8: 'COL',
+  9: 'ESP',
+  10: 'ENG',
+  11: 'PAN',
+  12: 'JPN',
+  13: 'SEN',
+  15: 'SUI',
+  16: 'MEX',
+  17: 'KOR',
+  20: 'AUS',
+  22: 'IRN',
+  23: 'KSA',
+  25: 'GER',
+  26: 'ARG',
+  27: 'POR',
+  28: 'TUN',
+  31: 'MAR',
+  32: 'EGY',
+  770: 'CZE',
+  775: 'AUT',
+  777: 'TUR',
+  1090: 'NOR',
+  1108: 'SCO',
+  1113: 'BIH',
+  1118: 'NED',
+  1501: 'CIV',
+  1504: 'GHA',
+  1508: 'COD',
+  1531: 'RSA',
+  1532: 'ALG',
+  1533: 'CPV',
+  1548: 'JOR',
+  1567: 'IRQ',
+  1568: 'UZB',
+  1569: 'QAT',
+  2380: 'PAR',
+  2382: 'ECU',
+  2384: 'USA',
+  2386: 'HAI',
+  4673: 'NZL',
+  5529: 'CAN',
+  5530: 'CUW',
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', {
     weekday: 'short',
@@ -69,6 +120,14 @@ function uniqueDateOptions(fixtures: WcFixture[], direction: 'asc' | 'desc') {
 function isKnockout(fixture: WcFixture): boolean {
   const stage = fixture.stage.toLowerCase()
   return KNOCKOUT_MARKERS.some((marker) => stage.includes(marker))
+}
+
+function teamCode(team: WcFixture['home_team'] | null, fallback = 'TBD'): string {
+  if (!team) return fallback
+  if (team.external_id != null && TEAM_CODES_BY_EXTERNAL_ID[team.external_id]) {
+    return TEAM_CODES_BY_EXTERNAL_ID[team.external_id]
+  }
+  return worldCupTeamName(team).normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 3).toUpperCase()
 }
 
 function TeamLogo({ team, className }: {
@@ -150,6 +209,234 @@ function FixtureCard({ fixture, compact = false }: {
         </div>
       </div>
     </Link>
+  )
+}
+
+function bracketStageFixtures(fixtures: WcFixture[], stage: 'round32' | 'round16' | 'quarter' | 'semi' | 'final' | 'third', size: number) {
+  const matches = fixtures
+    .filter((fixture) => {
+      const normalizedStage = fixture.stage.toLowerCase()
+      if (stage === 'round32') return normalizedStage.includes('round of 32')
+      if (stage === 'round16') return normalizedStage.includes('round of 16') || normalizedStage.includes('last 16')
+      if (stage === 'quarter') return normalizedStage.includes('quarter')
+      if (stage === 'semi') return normalizedStage.includes('semi')
+      if (stage === 'third') return normalizedStage.includes('3rd') || normalizedStage.includes('third')
+      return normalizedStage.includes('final') && !normalizedStage.includes('3rd') && !normalizedStage.includes('third') && !normalizedStage.includes('semi')
+    })
+    .sort((a, b) => new Date(a.played_at).getTime() - new Date(b.played_at).getTime())
+
+  return Array.from({ length: size }, (_, index) => matches[index] ?? null)
+}
+
+function BracketTeam({ team, fallback }: { team: WcFixture['home_team'] | null; fallback: string }) {
+  if (!team) {
+    return (
+      <span className="wm-bracket-team">
+        <span className="wm-bracket-team__crest" aria-hidden="true" />
+        <strong>{fallback}</strong>
+      </span>
+    )
+  }
+
+  return (
+    <span className="wm-bracket-team">
+      <TeamLogo team={team} className="wm-bracket-team__logo" />
+      <strong>{teamCode(team, fallback)}</strong>
+    </span>
+  )
+}
+
+function BracketNode({
+  fixture,
+  homeFallback = 'TBD',
+  awayFallback = 'TBD',
+  dateFallback,
+  side,
+}: {
+  fixture: WcFixture | null
+  homeFallback?: string
+  awayFallback?: string
+  dateFallback: string
+  side: 'left' | 'right' | 'center'
+}) {
+  const date = fixture ? formatDate(fixture.played_at).replace('.', '') : dateFallback
+  const content = (
+    <>
+      <div className="wm-bracket-node__teams">
+        <BracketTeam team={fixture?.home_team ?? null} fallback={homeFallback} />
+        <BracketTeam team={fixture?.away_team ?? null} fallback={awayFallback} />
+      </div>
+      <span className="wm-bracket-node__date">{date}</span>
+    </>
+  )
+
+  const className = `wm-bracket-node wm-bracket-node--${side}${fixture?.is_live ? ' wm-bracket-node--live' : ''}`
+
+  if (!fixture) {
+    return <div className={className}>{content}</div>
+  }
+
+  return (
+    <Link to={`/mundial/partido/${fixture.external_id}`} className={className}>
+      {content}
+    </Link>
+  )
+}
+
+function WorldCupBracketDesktop({ fixtures }: { fixtures: WcFixture[] }) {
+  const round32 = bracketStageFixtures(fixtures, 'round32', 16)
+  const round16 = bracketStageFixtures(fixtures, 'round16', 8)
+  const quarters = bracketStageFixtures(fixtures, 'quarter', 4)
+  const semis = bracketStageFixtures(fixtures, 'semi', 2)
+  const final = bracketStageFixtures(fixtures, 'final', 1)[0]
+  const thirdPlace = bracketStageFixtures(fixtures, 'third', 1)[0]
+
+  return (
+    <section className="wm-bracket-desktop" aria-label="Cuadro final del Mundial">
+      <header className="wm-bracket-desktop__header">
+        <span>Fase eliminatoria</span>
+        <h2>Camino al campeon</h2>
+      </header>
+
+      <div className="wm-bracket-board">
+        <div className="wm-bracket-column wm-bracket-column--edge wm-bracket-column--left">
+          {round32.slice(0, 8).map((fixture, index) => (
+            <BracketNode fixture={fixture} dateFallback="Por definir" side="left" key={`l32-${index}`} />
+          ))}
+        </div>
+        <div className="wm-bracket-column wm-bracket-column--mid wm-bracket-column--left">
+          {round16.slice(0, 4).map((fixture, index) => (
+            <BracketNode fixture={fixture} dateFallback="Por definir" side="left" key={`l16-${index}`} />
+          ))}
+        </div>
+        <div className="wm-bracket-column wm-bracket-column--late wm-bracket-column--left">
+          {quarters.slice(0, 2).map((fixture, index) => (
+            <BracketNode
+              fixture={fixture}
+              homeFallback={`EF${index * 2 + 1}`}
+              awayFallback={`EF${index * 2 + 2}`}
+              dateFallback="Por definir"
+              side="left"
+              key={`lq-${index}`}
+            />
+          ))}
+        </div>
+        <div className="wm-bracket-column wm-bracket-column--semi wm-bracket-column--left">
+          <BracketNode fixture={semis[0]} homeFallback="WQ1" awayFallback="WQ2" dateFallback="Por definir" side="left" />
+        </div>
+
+        <div className="wm-bracket-center">
+          <div className="wm-bracket-trophy" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img">
+              <path d="M19 8h26v11c0 10-5 17-13 19-8-2-13-9-13-19V8Z" fill="none" stroke="currentColor" strokeWidth="4" />
+              <path d="M20 14H9v5c0 7 5 12 12 12M44 14h11v5c0 7-5 12-12 12" fill="none" stroke="currentColor" strokeWidth="4" />
+              <path d="M32 38v10M22 56h20M26 48h12" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+            </svg>
+          </div>
+          <span className="wm-bracket-center__label">Campeon</span>
+          <BracketNode fixture={final} homeFallback="WS1" awayFallback="WS2" dateFallback="Final" side="center" />
+          <BracketNode fixture={thirdPlace} homeFallback="LS1" awayFallback="LS2" dateFallback="Bronce" side="center" />
+        </div>
+
+        <div className="wm-bracket-column wm-bracket-column--semi wm-bracket-column--right">
+          <BracketNode fixture={semis[1]} homeFallback="WQ3" awayFallback="WQ4" dateFallback="Por definir" side="right" />
+        </div>
+        <div className="wm-bracket-column wm-bracket-column--late wm-bracket-column--right">
+          {quarters.slice(2, 4).map((fixture, index) => (
+            <BracketNode
+              fixture={fixture}
+              homeFallback={`EF${index * 2 + 5}`}
+              awayFallback={`EF${index * 2 + 6}`}
+              dateFallback="Por definir"
+              side="right"
+              key={`rq-${index}`}
+            />
+          ))}
+        </div>
+        <div className="wm-bracket-column wm-bracket-column--mid wm-bracket-column--right">
+          {round16.slice(4, 8).map((fixture, index) => (
+            <BracketNode fixture={fixture} dateFallback="Por definir" side="right" key={`r16-${index}`} />
+          ))}
+        </div>
+        <div className="wm-bracket-column wm-bracket-column--edge wm-bracket-column--right">
+          {round32.slice(8, 16).map((fixture, index) => (
+            <BracketNode fixture={fixture} dateFallback="Por definir" side="right" key={`r32-${index}`} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
+  const round32 = bracketStageFixtures(fixtures, 'round32', 16)
+  const round16 = bracketStageFixtures(fixtures, 'round16', 8)
+  const quarters = bracketStageFixtures(fixtures, 'quarter', 4)
+  const semis = bracketStageFixtures(fixtures, 'semi', 2)
+  const final = bracketStageFixtures(fixtures, 'final', 1)[0]
+  const thirdPlace = bracketStageFixtures(fixtures, 'third', 1)[0]
+
+  return (
+    <section className="wm-bracket-mobile" aria-label="Cuadro final del Mundial">
+      <div className="wm-bracket-mobile__track" aria-hidden="true" />
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four">
+        {round16.slice(0, 4).map((fixture, index) => (
+          <BracketNode fixture={fixture} dateFallback="Por definir" side="center" key={`m16-top-${index}`} />
+        ))}
+      </div>
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--two">
+        <BracketNode fixture={quarters[0]} homeFallback="EF1" awayFallback="EF2" dateFallback="Por definir" side="center" />
+        <BracketNode fixture={quarters[2]} homeFallback="EF5" awayFallback="EF6" dateFallback="Por definir" side="center" />
+      </div>
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--one">
+        <BracketNode fixture={semis[0]} homeFallback="WQ1" awayFallback="WQ2" dateFallback="Por definir" side="center" />
+      </div>
+
+      <div className="wm-bracket-mobile__final-zone">
+        <div className="wm-bracket-mobile__bronze">
+          <BracketNode fixture={thirdPlace} homeFallback="LS1" awayFallback="LS2" dateFallback="Bronce" side="center" />
+          <span>Final de bronce</span>
+        </div>
+        <div className="wm-bracket-mobile__winner">
+          <div className="wm-bracket-trophy" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img">
+              <path d="M19 8h26v11c0 10-5 17-13 19-8-2-13-9-13-19V8Z" fill="none" stroke="currentColor" strokeWidth="4" />
+              <path d="M20 14H9v5c0 7 5 12 12 12M44 14h11v5c0 7-5 12-12 12" fill="none" stroke="currentColor" strokeWidth="4" />
+              <path d="M32 38v10M22 56h20M26 48h12" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+            </svg>
+          </div>
+          <span className="wm-bracket-center__label">Campeon</span>
+        </div>
+      </div>
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--one">
+        <BracketNode fixture={final} homeFallback="WS1" awayFallback="WS2" dateFallback="Final" side="center" />
+      </div>
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--one">
+        <BracketNode fixture={semis[1]} homeFallback="WQ3" awayFallback="WQ4" dateFallback="Por definir" side="center" />
+      </div>
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--two">
+        <BracketNode fixture={quarters[1]} homeFallback="EF3" awayFallback="EF4" dateFallback="Por definir" side="center" />
+        <BracketNode fixture={quarters[3]} homeFallback="EF7" awayFallback="EF8" dateFallback="Por definir" side="center" />
+      </div>
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four">
+        {round16.slice(4, 8).map((fixture, index) => (
+          <BracketNode fixture={fixture} dateFallback="Por definir" side="center" key={`m16-bottom-${index}`} />
+        ))}
+      </div>
+
+      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four wm-bracket-mobile__row--seed">
+        {round32.slice(0, 4).map((fixture, index) => (
+          <BracketNode fixture={fixture} dateFallback="Por definir" side="center" key={`m32-a-${index}`} />
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -546,10 +833,14 @@ export default function MundialPage() {
 
         {!loading && !error && view === 'bracket' && (
           knockoutFixtures.length > 0 ? (
-            <div className="wm-bracket">
-              {knockoutFixtures.map((fixture) => (
-                <FixtureCard fixture={fixture} key={fixture.id} />
-              ))}
+            <div className="wm-bracket-view">
+              <WorldCupBracketDesktop fixtures={knockoutFixtures} />
+              <WorldCupBracketMobile fixtures={knockoutFixtures} />
+              <div className="wm-bracket wm-bracket-list">
+                {knockoutFixtures.map((fixture) => (
+                  <FixtureCard fixture={fixture} key={fixture.id} />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="wm-bracket-empty">
