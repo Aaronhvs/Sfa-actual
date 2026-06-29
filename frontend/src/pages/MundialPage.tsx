@@ -384,21 +384,21 @@ type BracketConnection = {
 }
 
 const DESKTOP_BRACKET_FALLBACK_PATHS = [
-  'M 9.2 5.7 H 12.5 V 17.6 H 9.2 M 12.5 11.65 H 15',
-  'M 9.2 29.5 H 12.5 V 41.4 H 9.2 M 12.5 35.45 H 15',
-  'M 9.2 53.3 H 12.5 V 65.2 H 9.2 M 12.5 59.25 H 15',
-  'M 9.2 77.1 H 12.5 V 89 H 9.2 M 12.5 83.05 H 15',
-  'M 22.5 11.65 H 25.4 V 35.45 H 22.5 M 25.4 23.55 H 28',
-  'M 22.5 59.25 H 25.4 V 83.05 H 22.5 M 25.4 71.15 H 28',
-  'M 35.5 23.55 H 38.5 V 71.15 H 35.5 M 38.5 47.35 H 41.5',
-  'M 90.8 5.7 H 87.5 V 17.6 H 90.8 M 87.5 11.65 H 85',
-  'M 90.8 29.5 H 87.5 V 41.4 H 90.8 M 87.5 35.45 H 85',
-  'M 90.8 53.3 H 87.5 V 65.2 H 90.8 M 87.5 59.25 H 85',
-  'M 90.8 77.1 H 87.5 V 89 H 90.8 M 87.5 83.05 H 85',
-  'M 77.5 11.65 H 74.6 V 35.45 H 77.5 M 74.6 23.55 H 72',
-  'M 77.5 59.25 H 74.6 V 83.05 H 77.5 M 74.6 71.15 H 72',
-  'M 64.5 23.55 H 61.5 V 71.15 H 64.5 M 61.5 47.35 H 58.5',
-  'M 46 47.35 H 43.2 M 54 47.35 H 56.8',
+  'M 10.4 5.7 H 11.6 V 17.6 H 10.4 M 11.6 11.65 H 12.2',
+  'M 10.4 29.5 H 11.6 V 41.4 H 10.4 M 11.6 35.45 H 12.2',
+  'M 10.4 53.3 H 11.6 V 65.2 H 10.4 M 11.6 59.25 H 12.2',
+  'M 10.4 77.1 H 11.6 V 89 H 10.4 M 11.6 83.05 H 12.2',
+  'M 20.6 11.65 H 21.8 V 35.45 H 20.6 M 21.8 23.55 H 22.4',
+  'M 20.6 59.25 H 21.8 V 83.05 H 20.6 M 21.8 71.15 H 22.4',
+  'M 31.2 23.55 H 32.7 V 71.15 H 31.2 M 32.7 47.35 H 33.4',
+  'M 89.6 5.7 H 88.4 V 17.6 H 89.6 M 88.4 11.65 H 87.8',
+  'M 89.6 29.5 H 88.4 V 41.4 H 89.6 M 88.4 35.45 H 87.8',
+  'M 89.6 53.3 H 88.4 V 65.2 H 89.6 M 88.4 59.25 H 87.8',
+  'M 89.6 77.1 H 88.4 V 89 H 89.6 M 88.4 83.05 H 87.8',
+  'M 79.4 11.65 H 78.2 V 35.45 H 79.4 M 78.2 23.55 H 77.6',
+  'M 79.4 59.25 H 78.2 V 83.05 H 79.4 M 78.2 71.15 H 77.6',
+  'M 68.8 23.55 H 67.3 V 71.15 H 68.8 M 67.3 47.35 H 66.6',
+  'M 43.8 47.35 H 42.2 M 56.2 47.35 H 57.8',
 ]
 
 const MOBILE_BRACKET_FALLBACK_PATHS = [
@@ -421,8 +421,11 @@ function BracketLines({
   connections: BracketConnection[]
   variant: 'desktop' | 'mobile'
 }) {
-  const [paths, setPaths] = useState<Array<{ d: string; tone: BracketConnection['tone'] }>>([])
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [lineState, setLineState] = useState<{
+    paths: Array<{ d: string; tone: BracketConnection['tone'] }>
+    width: number
+    height: number
+  }>({ paths: [], width: 0, height: 0 })
 
   useLayoutEffect(() => {
     const board = boardRef.current
@@ -431,7 +434,6 @@ function BracketLines({
     const measure = () => {
       const boardRect = board.getBoundingClientRect()
       if (boardRect.width <= 0 || boardRect.height <= 0) return
-      setSize({ width: boardRect.width, height: boardRect.height })
       const nodeRect = (id: string) => {
         const node = board.querySelector<HTMLElement>(`[data-bracket-node="${id}"]`)
         if (!node) return null
@@ -494,25 +496,34 @@ function BracketLines({
         return [{ d, tone: connection.tone }]
       })
 
-      setPaths(nextPaths)
+      setLineState({
+        paths: nextPaths,
+        width: boardRect.width,
+        height: boardRect.height,
+      })
     }
 
     measure()
+    const frameId = window.requestAnimationFrame(measure)
+    const timeoutIds = [80, 250, 750, 1500].map((delay) => window.setTimeout(measure, delay))
     const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
     resizeObserver?.observe(board)
     board.querySelectorAll('[data-bracket-node]').forEach((node) => resizeObserver?.observe(node))
+    document.fonts?.ready.then(measure).catch(() => {})
     window.addEventListener('resize', measure)
 
     return () => {
+      window.cancelAnimationFrame(frameId)
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId))
       resizeObserver?.disconnect()
       window.removeEventListener('resize', measure)
     }
   }, [boardRef, connections])
 
   const fallbackPaths = variant === 'desktop' ? DESKTOP_BRACKET_FALLBACK_PATHS : MOBILE_BRACKET_FALLBACK_PATHS
-  const hasMeasuredPaths = paths.length > 0 && size.width > 1 && size.height > 1
+  const hasMeasuredPaths = lineState.paths.length > 0 && lineState.width > 1 && lineState.height > 1
   const viewBox = hasMeasuredPaths
-    ? `0 0 ${size.width} ${size.height}`
+    ? `0 0 ${lineState.width} ${lineState.height}`
     : '0 0 100 100'
 
   return (
@@ -523,7 +534,7 @@ function BracketLines({
       aria-hidden="true"
     >
       {hasMeasuredPaths
-        ? paths.map((path, index) => (
+        ? lineState.paths.map((path, index) => (
             <path
               key={`${path.d}-${index}`}
               className={path.tone === 'bronze' ? 'wm-bracket-lines__bronze' : undefined}
