@@ -383,6 +383,35 @@ type BracketConnection = {
   tone?: 'default' | 'bronze'
 }
 
+const DESKTOP_BRACKET_FALLBACK_PATHS = [
+  'M 9.2 5.7 H 12.5 V 17.6 H 9.2 M 12.5 11.65 H 15',
+  'M 9.2 29.5 H 12.5 V 41.4 H 9.2 M 12.5 35.45 H 15',
+  'M 9.2 53.3 H 12.5 V 65.2 H 9.2 M 12.5 59.25 H 15',
+  'M 9.2 77.1 H 12.5 V 89 H 9.2 M 12.5 83.05 H 15',
+  'M 22.5 11.65 H 25.4 V 35.45 H 22.5 M 25.4 23.55 H 28',
+  'M 22.5 59.25 H 25.4 V 83.05 H 22.5 M 25.4 71.15 H 28',
+  'M 35.5 23.55 H 38.5 V 71.15 H 35.5 M 38.5 47.35 H 41.5',
+  'M 90.8 5.7 H 87.5 V 17.6 H 90.8 M 87.5 11.65 H 85',
+  'M 90.8 29.5 H 87.5 V 41.4 H 90.8 M 87.5 35.45 H 85',
+  'M 90.8 53.3 H 87.5 V 65.2 H 90.8 M 87.5 59.25 H 85',
+  'M 90.8 77.1 H 87.5 V 89 H 90.8 M 87.5 83.05 H 85',
+  'M 77.5 11.65 H 74.6 V 35.45 H 77.5 M 74.6 23.55 H 72',
+  'M 77.5 59.25 H 74.6 V 83.05 H 77.5 M 74.6 71.15 H 72',
+  'M 64.5 23.55 H 61.5 V 71.15 H 64.5 M 61.5 47.35 H 58.5',
+  'M 46 47.35 H 43.2 M 54 47.35 H 56.8',
+]
+
+const MOBILE_BRACKET_FALLBACK_PATHS = [
+  'M 12.5 9 V 13 H 37.5 V 9 M 25 13 V 18',
+  'M 62.5 9 V 13 H 87.5 V 9 M 75 13 V 18',
+  'M 12.5 24 V 28 H 37.5 V 24 M 25 28 V 34',
+  'M 62.5 24 V 28 H 87.5 V 24 M 75 28 V 34',
+  'M 25 39 V 44 H 50 V 49 M 75 39 V 44 H 50',
+  'M 50 54 V 66',
+  'M 50 74 V 82',
+  'M 25 88 V 92 H 37.5 V 96 M 75 88 V 92 H 62.5 V 96',
+]
+
 function BracketLines({
   boardRef,
   connections,
@@ -401,6 +430,7 @@ function BracketLines({
 
     const measure = () => {
       const boardRect = board.getBoundingClientRect()
+      if (boardRect.width <= 0 || boardRect.height <= 0) return
       setSize({ width: boardRect.width, height: boardRect.height })
       const nodeRect = (id: string) => {
         const node = board.querySelector<HTMLElement>(`[data-bracket-node="${id}"]`)
@@ -468,31 +498,39 @@ function BracketLines({
     }
 
     measure()
-    const resizeObserver = new ResizeObserver(measure)
-    resizeObserver.observe(board)
-    board.querySelectorAll('[data-bracket-node]').forEach((node) => resizeObserver.observe(node))
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    resizeObserver?.observe(board)
+    board.querySelectorAll('[data-bracket-node]').forEach((node) => resizeObserver?.observe(node))
     window.addEventListener('resize', measure)
 
     return () => {
-      resizeObserver.disconnect()
+      resizeObserver?.disconnect()
       window.removeEventListener('resize', measure)
     }
   }, [boardRef, connections])
 
+  const fallbackPaths = variant === 'desktop' ? DESKTOP_BRACKET_FALLBACK_PATHS : MOBILE_BRACKET_FALLBACK_PATHS
+  const hasMeasuredPaths = paths.length > 0 && size.width > 1 && size.height > 1
+  const viewBox = hasMeasuredPaths
+    ? `0 0 ${size.width} ${size.height}`
+    : '0 0 100 100'
+
   return (
     <svg
       className={`wm-bracket-lines wm-bracket-lines--${variant}`}
-      viewBox={`0 0 ${Math.max(size.width, 1)} ${Math.max(size.height, 1)}`}
+      viewBox={viewBox}
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      {paths.map((path, index) => (
-        <path
-          key={`${path.d}-${index}`}
-          className={path.tone === 'bronze' ? 'wm-bracket-lines__bronze' : undefined}
-          d={path.d}
-        />
-      ))}
+      {hasMeasuredPaths
+        ? paths.map((path, index) => (
+            <path
+              key={`${path.d}-${index}`}
+              className={path.tone === 'bronze' ? 'wm-bracket-lines__bronze' : undefined}
+              d={path.d}
+            />
+          ))
+        : fallbackPaths.map((path, index) => <path key={`fallback-${index}`} d={path} />)}
     </svg>
   )
 }
