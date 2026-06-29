@@ -393,6 +393,7 @@ function BracketLines({
   variant: 'desktop' | 'mobile'
 }) {
   const [paths, setPaths] = useState<Array<{ d: string; tone: BracketConnection['tone'] }>>([])
+  const [size, setSize] = useState({ width: 0, height: 0 })
 
   useLayoutEffect(() => {
     const board = boardRef.current
@@ -400,6 +401,7 @@ function BracketLines({
 
     const measure = () => {
       const boardRect = board.getBoundingClientRect()
+      setSize({ width: boardRect.width, height: boardRect.height })
       const nodeRect = (id: string) => {
         const node = board.querySelector<HTMLElement>(`[data-bracket-node="${id}"]`)
         if (!node) return null
@@ -478,7 +480,12 @@ function BracketLines({
   }, [boardRef, connections])
 
   return (
-    <svg className={`wm-bracket-lines wm-bracket-lines--${variant}`} aria-hidden="true">
+    <svg
+      className={`wm-bracket-lines wm-bracket-lines--${variant}`}
+      viewBox={`0 0 ${Math.max(size.width, 1)} ${Math.max(size.height, 1)}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
       {paths.map((path, index) => (
         <path
           key={`${path.d}-${index}`}

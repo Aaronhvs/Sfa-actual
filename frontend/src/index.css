@@ -11319,7 +11319,7 @@ body.mode-tournament .main-content {
 
 .wm-bracket-column {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
@@ -11332,7 +11332,7 @@ body.mode-tournament .main-content {
 
 .wm-bracket-lines {
   position: absolute;
-  z-index: 0;
+  z-index: 1;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -11356,7 +11356,7 @@ body.mode-tournament .main-content {
 
 .wm-bracket-node {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   min-height: 82px;
   padding: 10px 8px 9px;
   display: flex;
@@ -11482,6 +11482,8 @@ body.mode-tournament .main-content {
 
 .wm-bracket-center {
   min-width: 0;
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
