@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import type {
@@ -427,7 +427,7 @@ function BracketLines({
     height: number
   }>({ paths: [], width: 0, height: 0 })
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const board = boardRef.current
     if (!board) return undefined
 
@@ -504,18 +504,26 @@ function BracketLines({
     }
 
     measure()
-    const frameId = window.requestAnimationFrame(measure)
-    const timeoutIds = [80, 250, 750, 1500].map((delay) => window.setTimeout(measure, delay))
+    const frameIds = [
+      window.requestAnimationFrame(measure),
+      window.requestAnimationFrame(() => window.requestAnimationFrame(measure)),
+    ]
+    const timeoutIds = [50, 120, 250, 500, 1000, 2000].map((delay) => window.setTimeout(measure, delay))
     const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
     resizeObserver?.observe(board)
     board.querySelectorAll('[data-bracket-node]').forEach((node) => resizeObserver?.observe(node))
-    document.fonts?.ready.then(measure).catch(() => {})
+    const mutationObserver = typeof MutationObserver === 'undefined' ? null : new MutationObserver(measure)
+    mutationObserver?.observe(board, { childList: true, subtree: true, attributes: true })
+    document.fonts?.ready?.then(measure).catch(() => {})
+    window.addEventListener('load', measure)
     window.addEventListener('resize', measure)
 
     return () => {
-      window.cancelAnimationFrame(frameId)
+      frameIds.forEach((frameId) => window.cancelAnimationFrame(frameId))
       timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId))
       resizeObserver?.disconnect()
+      mutationObserver?.disconnect()
+      window.removeEventListener('load', measure)
       window.removeEventListener('resize', measure)
     }
   }, [boardRef, connections])
