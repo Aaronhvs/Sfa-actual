@@ -161,6 +161,8 @@ class APIFootballProvider:
                         ),
                         home_goals=goals.get("home"),
                         away_goals=goals.get("away"),
+                        home_winner=teams["home"].get("winner"),
+                        away_winner=teams["away"].get("winner"),
                     )
                 )
             except (KeyError, TypeError, ValueError) as exc:
@@ -266,6 +268,8 @@ class APIFootballProvider:
             away_team=away_team,
             home_goals=goals.get("home"),
             away_goals=goals.get("away"),
+            home_winner=(teams.get("home") or {}).get("winner"),
+            away_winner=(teams.get("away") or {}).get("winner"),
         )
 
         lineups = [

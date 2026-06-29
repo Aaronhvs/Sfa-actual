@@ -14,6 +14,7 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
         self._ranking = ranking or []
         self._total = total
         self._season = season
+        self.last_ranking_call = None
 
     async def get_best_score_for_player_season(self, player_id, season):
         return None
@@ -24,11 +25,22 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_competitions_for_player_season(self, player_id, season):
         return []
 
-    async def get_ranking(self, season, position=None, competition_id=None, limit=50, name=None,
+    async def get_ranking(self, season, position=None, competition_id=None, limit=50, offset=0, name=None, bonus_label=None,
                           rules_version_id=None, use_total=False):
+        self.last_ranking_call = {
+            "season": season,
+            "position": position,
+            "competition_id": competition_id,
+            "limit": limit,
+            "offset": offset,
+            "name": name,
+            "bonus_label": bonus_label,
+            "rules_version_id": rules_version_id,
+            "use_total": use_total,
+        }
         return self._ranking
 
-    async def get_ranking_total(self, season, position=None, competition_id=None, name=None,
+    async def get_ranking_total(self, season, position=None, competition_id=None, name=None, bonus_label=None,
                                 rules_version_id=None):
         return self._total
 
@@ -44,12 +56,12 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_b1_bonus_for_player(self, player_id, season, rules_version_id=None):
         return (0.0, None)
 
-    async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50,
-                                      name=None, rules_version_id=None, use_total=False):
+    async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50, offset=0,
+                                      name=None, bonus_label=None, rules_version_id=None, use_total=False):
         return self._ranking
 
     async def get_ranking_total_all_seasons(self, position=None, competition_id=None,
-                                            name=None, rules_version_id=None):
+                                            name=None, bonus_label=None, rules_version_id=None):
         return self._total
 
     async def get_available_seasons_for_player(self, player_id):
@@ -89,6 +101,12 @@ class TestGetRanking:
         assert result.season == "2024-25"
         assert result.total == 2
         assert len(result.ranking) == 2
+        assert result.pagination.page == 1
+        assert result.pagination.limit == 10
+        assert result.pagination.total_items == 2
+        assert result.pagination.total_pages == 1
+        assert result.pagination.has_next is False
+        assert result.pagination.has_prev is False
 
     @pytest.mark.anyio
     async def test_resolves_latest_season(self):
@@ -118,3 +136,28 @@ class TestGetRanking:
         result = await uc.execute(season="2024-25")
 
         assert isinstance(result, RankingResult)
+
+    @pytest.mark.anyio
+    async def test_paginates_ranking_repository_call(self):
+        repo = FakeSFAScoreRepository(total=35, ranking=[_make_ranked_player(11)])
+        uc = GetRankingUseCase(repo)
+
+        result = await uc.execute(season="2024-25", page=3, limit=10)
+
+        assert repo.last_ranking_call["limit"] == 10
+        assert repo.last_ranking_call["offset"] == 20
+        assert result.pagination.page == 3
+        assert result.pagination.limit == 10
+        assert result.pagination.total_items == 35
+        assert result.pagination.total_pages == 4
+        assert result.pagination.has_next is True
+        assert result.pagination.has_prev is True
+
+    @pytest.mark.anyio
+    async def test_passes_bonus_label_filter_to_repository(self):
+        repo = FakeSFAScoreRepository(total=1, ranking=[_make_ranked_player(1)])
+        uc = GetRankingUseCase(repo)
+
+        await uc.execute(season="2024-25", bonus_label="Promesa")
+
+        assert repo.last_ranking_call["bonus_label"] == "Promesa"

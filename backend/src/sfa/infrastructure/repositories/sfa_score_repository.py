@@ -38,6 +38,28 @@ def _b1_label_for_birth_date(birth_date: date | None) -> str | None:
     return None
 
 
+def _bonus_label_filter(bonus_label: str | None, birth_date_col, young_pts_col, veteran_pts_col):
+    if bonus_label not in {"Promesa", "Veterano"}:
+        return None
+
+    young_pts = func.coalesce(young_pts_col, 0)
+    veteran_pts = func.coalesce(veteran_pts_col, 0)
+    total_pts = young_pts + veteran_pts
+    age_years = func.date_part("year", func.age(func.current_date(), birth_date_col))
+    veteran_by_points = (veteran_pts >= young_pts) & (veteran_pts > 0)
+
+    if bonus_label == "Veterano":
+        return or_(
+            (total_pts > 0) & veteran_by_points,
+            (total_pts <= 0) & (age_years >= 35),
+        )
+
+    return or_(
+        (total_pts > 0) & ~veteran_by_points,
+        (total_pts <= 0) & (age_years >= 17) & (age_years <= 20),
+    )
+
+
 _TEAM_SEARCH_ALIAS_GROUPS: tuple[tuple[str, ...], ...] = (
     ("argentina",),
     ("australia",),
@@ -300,7 +322,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         position: str | None = None,
         competition_id: int | None = None,
         limit: int = 50,
+        offset: int = 0,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
     ) -> list[RankedPlayerDTO]:
@@ -426,6 +450,14 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         )
         if position is not None:
             stmt = stmt.where(_position_filter(position))
+        bonus_filter = _bonus_label_filter(
+            bonus_label,
+            Player.birth_date,
+            b1_agg.c.b1_young_pts,
+            b1_agg.c.b1_veteran_pts,
+        )
+        if bonus_filter is not None:
+            stmt = stmt.where(bonus_filter)
 
         if name is not None:
             sub = stmt.subquery()
@@ -433,9 +465,10 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 select(sub)
                 .where(_player_or_team_name_filter(sub.c.player_name, sub.c.team_name, name))
                 .limit(limit)
+                .offset(offset)
             )
         else:
-            final = stmt.limit(limit)
+            final = stmt.limit(limit).offset(offset)
 
         rows = (await self._session.execute(final)).mappings().all()
 
@@ -484,6 +517,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         position: str | None = None,
         competition_id: int | None = None,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
     ) -> int:
         score_filters = [SFASeasonScore.season == season]
@@ -517,6 +551,43 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                     Player.id.in_(team_match),
                 )
             )
+        b1_agg = None
+        bonus_filter = None
+        if bonus_label is not None:
+            b1_filters = [
+                PlayerEventScore.season == season,
+                PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
+            ]
+            if rules_version_id is not None:
+                b1_filters.append(PlayerEventScore.rules_version_id == rules_version_id)
+            if competition_id is not None:
+                b1_filters.append(PlayerEventScore.competition_id == competition_id)
+            b1_age = cast(
+                PlayerEventScore.calculation_details["b1_bonus"]["age_at_match"].astext,
+                Integer,
+            )
+            b1_pts = cast(
+                PlayerEventScore.calculation_details["b1_bonus"]["b1_per_event"].astext,
+                Numeric,
+            )
+            b1_agg = (
+                select(
+                    PlayerEventScore.player_id,
+                    func.coalesce(func.sum(case((b1_age <= 20, b1_pts), else_=0)), 0).label("b1_young_pts"),
+                    func.coalesce(func.sum(case((b1_age >= 35, b1_pts), else_=0)), 0).label("b1_veteran_pts"),
+                )
+                .where(*b1_filters)
+                .group_by(PlayerEventScore.player_id)
+                .subquery()
+            )
+            bonus_filter = _bonus_label_filter(
+                bonus_label,
+                Player.birth_date,
+                b1_agg.c.b1_young_pts,
+                b1_agg.c.b1_veteran_pts,
+            )
+            if bonus_filter is not None:
+                inner = inner.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
 
         if position is not None:
             exact_stmt = (
@@ -545,6 +616,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                         Player.id.in_(team_match),
                     )
                 )
+            if bonus_filter is not None and b1_agg is not None:
+                exact_stmt = exact_stmt.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
             rows = (await self._session.execute(exact_stmt)).mappings().all()
             counted: set[int] = set()
             for row in rows:
@@ -701,7 +774,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         position: str | None = None,
         competition_id: int | None = None,
         limit: int = 50,
+        offset: int = 0,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
     ) -> list[RankedPlayerDTO]:
@@ -733,6 +808,32 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             )
             .where(*score_filters)
             .group_by(SFASeasonScore.player_id)
+            .subquery()
+        )
+        b1_filters = [
+            PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
+        ]
+        if rules_version_id is not None:
+            b1_filters.append(PlayerEventScore.rules_version_id == rules_version_id)
+        if competition_id is not None:
+            b1_filters.append(PlayerEventScore.competition_id == competition_id)
+
+        b1_age = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["age_at_match"].astext,
+            Integer,
+        )
+        b1_pts = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["b1_per_event"].astext,
+            Numeric,
+        )
+        b1_agg = (
+            select(
+                PlayerEventScore.player_id,
+                func.coalesce(func.sum(case((b1_age <= 20, b1_pts), else_=0)), 0).label("b1_young_pts"),
+                func.coalesce(func.sum(case((b1_age >= 35, b1_pts), else_=0)), 0).label("b1_veteran_pts"),
+            )
+            .where(*b1_filters)
+            .group_by(PlayerEventScore.player_id)
             .subquery()
         )
 
@@ -769,6 +870,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 rank_col,
                 Player.id.label("player_id"),
                 Player.name.label("player_name"),
+                Player.birth_date.label("birth_date"),
                 Team.name.label("team_name"),
                 Team.external_id.label("team_external_id"),
                 Player.position,
@@ -781,15 +883,26 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 agg.c.sum_assists.label("assists"),
                 agg.c.sum_dribbles.label("dribbles_won"),
                 agg.c.sum_duels.label("duels_won"),
+                func.coalesce(b1_agg.c.b1_young_pts, 0).label("b1_young_pts"),
+                func.coalesce(b1_agg.c.b1_veteran_pts, 0).label("b1_veteran_pts"),
             )
             .join(agg, Player.id == agg.c.player_id)
             .join(best_comp, Player.id == best_comp.c.player_id)
             .join(Team, best_comp.c.team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
+            .outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
             .order_by(agg.c.sum_pts.desc())
         )
         if position is not None:
             stmt = stmt.where(_position_filter(position))
+        bonus_filter = _bonus_label_filter(
+            bonus_label,
+            Player.birth_date,
+            b1_agg.c.b1_young_pts,
+            b1_agg.c.b1_veteran_pts,
+        )
+        if bonus_filter is not None:
+            stmt = stmt.where(bonus_filter)
 
         if name is not None:
             sub = stmt.subquery()
@@ -797,9 +910,10 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 select(sub)
                 .where(_player_or_team_name_filter(sub.c.player_name, sub.c.team_name, name))
                 .limit(limit)
+                .offset(offset)
             )
         else:
-            final = stmt.limit(limit)
+            final = stmt.limit(limit).offset(offset)
 
         rows = (await self._session.execute(final)).mappings().all()
 
@@ -808,6 +922,12 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
 
         result: list[RankedPlayerDTO] = []
         for row in rows:
+            b1_young = float(row["b1_young_pts"] or 0)
+            b1_veteran = float(row["b1_veteran_pts"] or 0)
+            b1_total = round(b1_young + b1_veteran, 2)
+            b1_label = _b1_label_for_birth_date(row["birth_date"])
+            if b1_total > 0:
+                b1_label = "Veterano" if b1_veteran >= b1_young and b1_veteran > 0 else "Promesa"
             display_position = position_for_context(
                 _position_value(row["position"]),
                 player_name=row["player_name"],
@@ -831,6 +951,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 assists=int(row["assists"] or 0),
                 dribbles_won=int(row["dribbles_won"] or 0),
                 duels_won=int(row["duels_won"] or 0),
+                b1_bonus_pts=b1_total,
+                b1_bonus_label=b1_label,
             ))
         return result
 
@@ -839,6 +961,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         position: str | None = None,
         competition_id: int | None = None,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
     ) -> int:
         score_filters = []
@@ -872,6 +995,42 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                     Player.id.in_(team_match),
                 )
             )
+        b1_agg = None
+        bonus_filter = None
+        if bonus_label is not None:
+            b1_filters = [
+                PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
+            ]
+            if rules_version_id is not None:
+                b1_filters.append(PlayerEventScore.rules_version_id == rules_version_id)
+            if competition_id is not None:
+                b1_filters.append(PlayerEventScore.competition_id == competition_id)
+            b1_age = cast(
+                PlayerEventScore.calculation_details["b1_bonus"]["age_at_match"].astext,
+                Integer,
+            )
+            b1_pts = cast(
+                PlayerEventScore.calculation_details["b1_bonus"]["b1_per_event"].astext,
+                Numeric,
+            )
+            b1_agg = (
+                select(
+                    PlayerEventScore.player_id,
+                    func.coalesce(func.sum(case((b1_age <= 20, b1_pts), else_=0)), 0).label("b1_young_pts"),
+                    func.coalesce(func.sum(case((b1_age >= 35, b1_pts), else_=0)), 0).label("b1_veteran_pts"),
+                )
+                .where(*b1_filters)
+                .group_by(PlayerEventScore.player_id)
+                .subquery()
+            )
+            bonus_filter = _bonus_label_filter(
+                bonus_label,
+                Player.birth_date,
+                b1_agg.c.b1_young_pts,
+                b1_agg.c.b1_veteran_pts,
+            )
+            if bonus_filter is not None:
+                inner = inner.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
 
         if position is not None:
             exact_stmt = (
@@ -900,6 +1059,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                         Player.id.in_(team_match),
                     )
                 )
+            if bonus_filter is not None and b1_agg is not None:
+                exact_stmt = exact_stmt.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
             rows = (await self._session.execute(exact_stmt)).mappings().all()
             counted: set[int] = set()
             for row in rows:

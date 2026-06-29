@@ -43,6 +43,16 @@ export interface RankingResponse {
   season: string
   total: number
   ranking: RankedPlayer[]
+  pagination: RankingPagination
+}
+
+export interface RankingPagination {
+  page: number
+  limit: number
+  total_items: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
 }
 
 export interface BreakdownEntry {
@@ -183,6 +193,8 @@ export interface WcFixture {
   elapsed: number | null
   home_goals: number | null
   away_goals: number | null
+  home_winner?: boolean | null
+  away_winner?: boolean | null
   home_team: WcTeam
   away_team: WcTeam
 }

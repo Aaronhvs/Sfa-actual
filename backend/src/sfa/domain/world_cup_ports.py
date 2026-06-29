@@ -26,6 +26,8 @@ class WorldCupFixtureDTO:
     away_team: WorldCupTeamDTO
     home_goals: int | None
     away_goals: int | None
+    home_winner: bool | None = None
+    away_winner: bool | None = None
 
 
 @dataclass(frozen=True)

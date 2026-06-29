@@ -209,7 +209,9 @@ class SFAScoreRepositoryProtocol(Protocol):
         position: str | None = None,
         competition_id: int | None = None,
         limit: int = 50,
+        offset: int = 0,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
     ) -> list[RankedPlayerDTO]: ...
@@ -220,6 +222,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         position: str | None = None,
         competition_id: int | None = None,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
     ) -> int:
         """Total de jugadores en el ranking (sin limit)."""
@@ -246,7 +249,9 @@ class SFAScoreRepositoryProtocol(Protocol):
         position: str | None = None,
         competition_id: int | None = None,
         limit: int = 50,
+        offset: int = 0,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
     ) -> list[RankedPlayerDTO]: ...
@@ -256,6 +261,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         position: str | None = None,
         competition_id: int | None = None,
         name: str | None = None,
+        bonus_label: str | None = None,
         rules_version_id: int | None = None,
     ) -> int: ...
 

@@ -208,6 +208,8 @@ class WorldCupRepository(WorldCupRepositoryProtocol):
             "away_team": fixture.away_team.__dict__,
             "home_goals": fixture.home_goals,
             "away_goals": fixture.away_goals,
+            "home_winner": fixture.home_winner,
+            "away_winner": fixture.away_winner,
         }
 
     @staticmethod
@@ -224,6 +226,8 @@ class WorldCupRepository(WorldCupRepositoryProtocol):
             away_team=WorldCupTeamDTO(**data["away_team"]),
             home_goals=data.get("home_goals"),
             away_goals=data.get("away_goals"),
+            home_winner=data.get("home_winner"),
+            away_winner=data.get("away_winner"),
         )
 
     @staticmethod

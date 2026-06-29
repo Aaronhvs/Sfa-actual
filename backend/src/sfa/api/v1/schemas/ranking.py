@@ -22,7 +22,17 @@ class RankedPlayerSchema(BaseModel):
     b1_bonus_label: str | None = None
 
 
+class RankingPaginationSchema(BaseModel):
+    page: int
+    limit: int
+    total_items: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+
 class RankingResponseSchema(BaseModel):
     season: str
     total: int
     ranking: list[RankedPlayerSchema]
+    pagination: RankingPaginationSchema

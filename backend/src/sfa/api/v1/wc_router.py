@@ -63,6 +63,8 @@ def _fixture_schema(fixture: WorldCupFixtureDTO) -> WcFixtureSchema:
         elapsed=fixture.elapsed,
         home_goals=fixture.home_goals,
         away_goals=fixture.away_goals,
+        home_winner=fixture.home_winner,
+        away_winner=fixture.away_winner,
         home_team=_team_schema(
             fixture.home_team.external_id,
             fixture.home_team.name,

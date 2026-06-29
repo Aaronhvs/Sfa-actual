@@ -23,6 +23,7 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     def __init__(self):
         self.specific_called = False
         self.all_called = False
+        self.all_call = None
 
     async def get_best_score_for_player_season(self, player_id, season, rules_version_id=None):
         return None
@@ -33,12 +34,12 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_competitions_for_player_season(self, player_id, season, rules_version_id=None):
         return []
 
-    async def get_ranking(self, season, position=None, competition_id=None, limit=50, name=None,
+    async def get_ranking(self, season, position=None, competition_id=None, limit=50, offset=0, name=None, bonus_label=None,
                           rules_version_id=None, use_total=False):
         self.specific_called = True
         return [_ranked_player()]
 
-    async def get_ranking_total(self, season, position=None, competition_id=None, name=None,
+    async def get_ranking_total(self, season, position=None, competition_id=None, name=None, bonus_label=None,
                                 rules_version_id=None):
         return 1
 
@@ -57,13 +58,23 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_available_seasons_for_player(self, player_id):
         return ["2025", "2024"]
 
-    async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50,
-                                      name=None, rules_version_id=None, use_total=False):
+    async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50, offset=0,
+                                      name=None, bonus_label=None, rules_version_id=None, use_total=False):
         self.all_called = True
+        self.all_call = {
+            "position": position,
+            "competition_id": competition_id,
+            "limit": limit,
+            "offset": offset,
+            "name": name,
+            "bonus_label": bonus_label,
+            "rules_version_id": rules_version_id,
+            "use_total": use_total,
+        }
         return [_ranked_player()]
 
     async def get_ranking_total_all_seasons(self, position=None, competition_id=None,
-                                            name=None, rules_version_id=None):
+                                            name=None, bonus_label=None, rules_version_id=None):
         return 1
 
     async def get_total_player_stats_all_seasons(self, player_id, rules_version_id=None):
@@ -82,6 +93,19 @@ class TestGetRankingMultiSeason:
 
         assert repo.all_called is True
         assert repo.specific_called is False
+
+    @pytest.mark.anyio
+    async def test_season_all_paginates_all_seasons_query(self):
+        repo = FakeSFAScoreRepository()
+
+        result = await GetRankingUseCase(repo).execute(season="all", page=2, limit=10)
+
+        assert repo.all_call["limit"] == 10
+        assert repo.all_call["offset"] == 10
+        assert result.pagination.page == 2
+        assert result.pagination.total_pages == 1
+        assert result.pagination.has_next is False
+        assert result.pagination.has_prev is True
 
     @pytest.mark.anyio
     async def test_season_all_returns_season_all_in_result(self):

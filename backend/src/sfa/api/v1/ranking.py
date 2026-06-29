@@ -2,7 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from sfa.api.v1.schemas.ranking import RankedPlayerSchema, RankingResponseSchema
+from sfa.api.v1.schemas.ranking import (
+    RankedPlayerSchema,
+    RankingPaginationSchema,
+    RankingResponseSchema,
+)
 from sfa.application.use_cases.get_ranking import GetRankingUseCase
 from sfa.core.dependencies import get_ranking_use_case
 
@@ -13,13 +17,15 @@ router = APIRouter()
 async def get_ranking(
     use_case: Annotated[GetRankingUseCase, Depends(get_ranking_use_case)],
     season: str | None = Query(default=None, description="Temporada, ej: 2024-25"),
-    position: str | None = Query(default=None, description="Posición: DEL, EXT, MC, DC, LAT, GK"),
+    position: str | None = Query(default=None, description="Posicion: DEL, EXT, MC, DC, LAT, GK"),
     competition_id: int | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=500),
-    name: str | None = Query(default=None, description="Búsqueda por nombre de jugador"),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=50),
+    name: str | None = Query(default=None, description="Busqueda por nombre de jugador o equipo"),
+    bonus_label: str | None = Query(default=None, description="Filtro de perfil: Promesa o Veterano"),
     rules_version_id: int | None = Query(
         default=None,
-        description="ID de versión de reglas. Si no se pasa, usa la versión activa.",
+        description="ID de version de reglas. Si no se pasa, usa la version activa.",
     ),
     use_total: bool = Query(
         default=False,
@@ -27,11 +33,27 @@ async def get_ranking(
     ),
 ):
     result = await use_case.execute(
-        season, position, competition_id, limit, name, rules_version_id, use_total
+        season=season,
+        position=position,
+        competition_id=competition_id,
+        limit=limit,
+        page=page,
+        name=name,
+        bonus_label=bonus_label,
+        rules_version_id=rules_version_id,
+        use_total=use_total,
     )
     return RankingResponseSchema(
         season=result.season,
         total=result.total,
+        pagination=RankingPaginationSchema(
+            page=result.pagination.page,
+            limit=result.pagination.limit,
+            total_items=result.pagination.total_items,
+            total_pages=result.pagination.total_pages,
+            has_next=result.pagination.has_next,
+            has_prev=result.pagination.has_prev,
+        ),
         ranking=[
             RankedPlayerSchema(
                 rank=r.rank,
