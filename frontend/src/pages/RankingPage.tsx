@@ -13,6 +13,7 @@ import { useCountUp } from '../hooks/useCountUp'
 import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 
 const PAGE_SIZE = 10
+const WORLD_CUP_PAGE_SIZE = 15
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
 const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
@@ -43,6 +44,7 @@ export default function RankingPage() {
   const isWcSeason = isWorldCupSeason(season, seasonItems)
   const showWcBanner = isSeasonReceivingWcPoints(season, seasonItems)
   const wcSeason = seasonItems.find((item) => item.is_world_cup)?.season
+  const pageSize = isWcSeason ? WORLD_CUP_PAGE_SIZE : PAGE_SIZE
 
   useEffect(() => {
     fetchSeasons()
@@ -111,7 +113,7 @@ export default function RankingPage() {
       position: position || undefined,
       competition_id: competition,
       page: page + 1,
-      limit: PAGE_SIZE,
+      limit: pageSize,
       name: debouncedSearch || undefined,
       bonus_label: bonusFilter || undefined,
     })
@@ -125,7 +127,7 @@ export default function RankingPage() {
         setError(e.message ?? 'Error al cargar el ranking')
         setLoadingRanking(false)
       })
-  }, [position, competition, season, page, debouncedSearch, bonusFilter])
+  }, [position, competition, season, page, pageSize, debouncedSearch, bonusFilter])
 
   const bonusFilteredPlayers = players.filter((p) => matchesBonusFilter(p, bonusFilter))
   const showHero = page === 0 && !debouncedSearch && bonusFilteredPlayers.length >= 3
