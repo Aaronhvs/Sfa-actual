@@ -11540,9 +11540,9 @@ body.mode-tournament .main-content {
   .wm-bracket-mobile {
     position: relative;
     margin-inline: auto;
-    padding: 16px 12px 20px;
+    padding: 16px 10px 18px;
     display: grid;
-    gap: 18px;
+    gap: 0;
     overflow: hidden;
     background:
       linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
@@ -11553,73 +11553,18 @@ body.mode-tournament .main-content {
     border-radius: 0 0 14px 14px;
   }
 
-  .wm-bracket-lines--mobile {
-    inset: 16px 8px 18px;
-    width: calc(100% - 16px);
-    height: calc(100% - 34px);
-    color: rgba(255,255,255,0.38);
-  }
-
-  .wm-bracket-lines--mobile path {
-    stroke-width: 1.15;
-  }
-
-  .wm-bracket-mobile__side {
+  .wm-bracket-mobile__flow {
     position: relative;
     z-index: 1;
     display: grid;
     justify-items: center;
-    gap: 12px;
-    padding: 10px 8px 14px;
-    background: rgba(0,0,0,0.14);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px;
-  }
-
-  .wm-bracket-mobile__side-label,
-  .wm-bracket-mobile__round-label {
-    color: var(--tm-sun);
-    font-family: var(--font-mono);
-    font-size: 0.52rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .wm-bracket-mobile__round-label {
-    margin-top: 2px;
-    color: var(--tm-text-dim);
-  }
-
-  .wm-bracket-mobile__pairs {
     width: 100%;
-    display: grid;
-    gap: 12px;
+    padding: 8px 4px 0;
   }
 
-  .wm-bracket-mobile__pair {
-    display: grid;
-    justify-items: center;
-    gap: 6px;
-  }
-
-  .wm-bracket-mobile__pair-seeds {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    justify-items: center;
-    gap: 8px;
-  }
-
-  .wm-bracket-mobile__pair-rail {
-    width: 1px;
-    height: 14px;
-    display: block;
-    background: rgba(255,255,255,0.28);
-  }
-
-  .wm-bracket-mobile__pair-rail--short {
-    height: 12px;
+  .wm-bracket-mobile__flow--bottom {
+    padding-top: 0;
+    padding-bottom: 8px;
   }
 
   .wm-bracket-mobile__row {
@@ -11632,23 +11577,85 @@ body.mode-tournament .main-content {
   }
 
   .wm-bracket-mobile__row--four {
+    width: 100%;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 5px;
   }
 
   .wm-bracket-mobile__row--two {
-    width: min(100%, 220px);
+    width: min(100%, 224px);
     margin-inline: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    column-gap: 34px;
   }
 
   .wm-bracket-mobile__row--one {
+    width: min(100%, 78px);
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wm-bracket-mobile__connector {
+    position: relative;
+    z-index: 0;
+    width: min(100%, 292px);
+    height: 30px;
+    display: grid;
+    color: rgba(255,255,255,0.32);
+  }
+
+  .wm-bracket-mobile__connector span {
+    position: relative;
+    display: block;
+    justify-self: center;
+    width: 96px;
+    height: 30px;
+  }
+
+  .wm-bracket-mobile__connector span::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 50%;
+    border-left: 1px solid currentColor;
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+  }
+
+  .wm-bracket-mobile__connector span::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    height: 50%;
+    border-left: 1px solid currentColor;
+    transform: translateX(-0.5px);
+  }
+
+  .wm-bracket-mobile__connector--four-to-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wm-bracket-mobile__connector--two-to-one {
+    width: 160px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wm-bracket-mobile__connector--two-to-one span {
+    width: 126px;
+  }
+
+  .wm-bracket-mobile__connector--reverse span::before {
+    inset: 50% 0 0;
+    border-top: 1px solid currentColor;
+    border-bottom: 0;
+  }
+
+  .wm-bracket-mobile__connector--reverse span::after {
+    top: 0;
   }
 
   .wm-bracket-mobile .wm-bracket-node {
     z-index: 1;
-    width: min(74px, 100%);
+    width: min(70px, 100%);
     min-height: 68px;
     padding: 8px 5px 7px;
     border-radius: 7px;
@@ -11681,16 +11688,13 @@ body.mode-tournament .main-content {
   .wm-bracket-mobile__final-zone {
     position: relative;
     z-index: 1;
-    min-height: 86px;
-    padding: 12px 8px;
+    min-height: 116px;
+    padding: 12px 4px 10px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 92px) minmax(0, 92px) minmax(0, 92px);
     align-items: center;
     justify-items: center;
-    gap: 18px;
-    background: linear-gradient(180deg, rgba(201,168,76,0.08), rgba(57,120,246,0.05));
-    border: 1px solid rgba(255,255,255,0.09);
-    border-radius: 12px;
+    column-gap: 8px;
   }
 
   .wm-bracket-mobile__bronze {
@@ -11700,6 +11704,31 @@ body.mode-tournament .main-content {
     display: grid;
     justify-items: center;
     gap: 4px;
+  }
+
+  .wm-bracket-mobile__final-main {
+    position: relative;
+    display: grid;
+    justify-items: center;
+  }
+
+  .wm-bracket-mobile__final-main::before,
+  .wm-bracket-mobile__final-main::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    width: 1px;
+    height: 18px;
+    background: rgba(255,255,255,0.32);
+    transform: translateX(-0.5px);
+  }
+
+  .wm-bracket-mobile__final-main::before {
+    bottom: calc(100% + 2px);
+  }
+
+  .wm-bracket-mobile__final-main::after {
+    top: calc(100% + 2px);
   }
 
   .wm-bracket-mobile__bronze-label {
@@ -11736,7 +11765,6 @@ body.mode-tournament .main-content {
 @media (max-width: 420px) {
   .wm-bracket-mobile {
     padding-inline: 8px;
-    gap: 16px;
   }
 
   .wm-bracket-mobile .wm-bracket-node {
@@ -11744,9 +11772,30 @@ body.mode-tournament .main-content {
     min-height: 66px;
   }
 
+  .wm-bracket-mobile__row--four {
+    column-gap: 4px;
+  }
+
   .wm-bracket-mobile__row--two {
-    width: min(100%, 204px);
-    gap: 10px;
+    width: min(100%, 212px);
+    column-gap: 28px;
+  }
+
+  .wm-bracket-mobile__connector {
+    width: min(100%, 284px);
+  }
+
+  .wm-bracket-mobile__connector span {
+    width: 88px;
+  }
+
+  .wm-bracket-mobile__connector--two-to-one span {
+    width: 118px;
+  }
+
+  .wm-bracket-mobile__final-zone {
+    grid-template-columns: minmax(0, 86px) minmax(0, 86px) minmax(0, 86px);
+    column-gap: 5px;
   }
 }
 
