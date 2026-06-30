@@ -11540,9 +11540,9 @@ body.mode-tournament .main-content {
   .wm-bracket-mobile {
     position: relative;
     margin-inline: auto;
-    padding: 16px 12px 18px;
+    padding: 16px 12px 20px;
     display: grid;
-    gap: 22px;
+    gap: 18px;
     overflow: hidden;
     background:
       linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
@@ -11564,6 +11564,64 @@ body.mode-tournament .main-content {
     stroke-width: 1.15;
   }
 
+  .wm-bracket-mobile__side {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    padding: 10px 8px 14px;
+    background: rgba(0,0,0,0.14);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+  }
+
+  .wm-bracket-mobile__side-label,
+  .wm-bracket-mobile__round-label {
+    color: var(--tm-sun);
+    font-family: var(--font-mono);
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .wm-bracket-mobile__round-label {
+    margin-top: 2px;
+    color: var(--tm-text-dim);
+  }
+
+  .wm-bracket-mobile__pairs {
+    width: 100%;
+    display: grid;
+    gap: 12px;
+  }
+
+  .wm-bracket-mobile__pair {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+  }
+
+  .wm-bracket-mobile__pair-seeds {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
+    gap: 8px;
+  }
+
+  .wm-bracket-mobile__pair-rail {
+    width: 1px;
+    height: 14px;
+    display: block;
+    background: rgba(255,255,255,0.28);
+  }
+
+  .wm-bracket-mobile__pair-rail--short {
+    height: 12px;
+  }
+
   .wm-bracket-mobile__row {
     position: relative;
     z-index: 1;
@@ -11578,10 +11636,10 @@ body.mode-tournament .main-content {
   }
 
   .wm-bracket-mobile__row--two {
-    width: 72%;
+    width: min(100%, 220px);
     margin-inline: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 52px;
+    gap: 14px;
   }
 
   .wm-bracket-mobile__row--one {
@@ -11624,10 +11682,15 @@ body.mode-tournament .main-content {
     position: relative;
     z-index: 1;
     min-height: 86px;
+    padding: 12px 8px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
+    justify-items: center;
     gap: 18px;
+    background: linear-gradient(180deg, rgba(201,168,76,0.08), rgba(57,120,246,0.05));
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 12px;
   }
 
   .wm-bracket-mobile__bronze {
@@ -11673,7 +11736,7 @@ body.mode-tournament .main-content {
 @media (max-width: 420px) {
   .wm-bracket-mobile {
     padding-inline: 8px;
-    gap: 20px;
+    gap: 16px;
   }
 
   .wm-bracket-mobile .wm-bracket-node {
@@ -11682,8 +11745,8 @@ body.mode-tournament .main-content {
   }
 
   .wm-bracket-mobile__row--two {
-    width: 76%;
-    gap: 42px;
+    width: min(100%, 204px);
+    gap: 10px;
   }
 }
 

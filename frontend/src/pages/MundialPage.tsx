@@ -727,7 +727,6 @@ function WorldCupBracketDesktop({ fixtures }: { fixtures: WcFixture[] }) {
 }
 
 function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
-  const boardRef = useRef<HTMLElement>(null)
   const round32 = bracketStageFixtures(fixtures, 'round32', 16)
   const round16 = bracketStageFixtures(fixtures, 'round16', 8)
   const quarters = bracketStageFixtures(fixtures, 'quarter', 4)
@@ -750,86 +749,54 @@ function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
     home: bracketWinnerTeam(semis[0]),
     away: bracketWinnerTeam(semis[1]),
   }
-  const connections = useMemo<BracketConnection[]>(() => [
-    { from: ['m32-0', 'm32-1'], to: 'm16-0', side: 'down' },
-    { from: ['m32-2', 'm32-3'], to: 'm16-1', side: 'down' },
-    { from: ['m32-4', 'm32-5'], to: 'm16-2', side: 'down' },
-    { from: ['m32-6', 'm32-7'], to: 'm16-3', side: 'down' },
-    { from: ['m16-0', 'm16-1'], to: 'mq-0', side: 'down' },
-    { from: ['m16-2', 'm16-3'], to: 'mq-2', side: 'down' },
-    { from: ['mq-0', 'mq-2'], to: 'ms-0', side: 'down' },
-    { from: ['ms-0'], to: 'mfinal', side: 'down' },
-    { from: ['mfinal'], to: 'ms-1', side: 'down' },
-    { from: ['ms-1'], to: 'mq-1', side: 'down' },
-    { from: ['ms-1'], to: 'mq-3', side: 'down' },
-    { from: ['mq-1'], to: 'm16-4', side: 'down' },
-    { from: ['mq-1'], to: 'm16-5', side: 'down' },
-    { from: ['mq-3'], to: 'm16-6', side: 'down' },
-    { from: ['mq-3'], to: 'm16-7', side: 'down' },
-    { from: ['m16-4'], to: 'm32-8', side: 'down' },
-    { from: ['m16-4'], to: 'm32-9', side: 'down' },
-    { from: ['m16-5'], to: 'm32-10', side: 'down' },
-    { from: ['m16-5'], to: 'm32-11', side: 'down' },
-    { from: ['m16-6'], to: 'm32-12', side: 'down' },
-    { from: ['m16-6'], to: 'm32-13', side: 'down' },
-    { from: ['m16-7'], to: 'm32-14', side: 'down' },
-    { from: ['m16-7'], to: 'm32-15', side: 'down' },
-  ], [])
 
   return (
-    <section className="wm-bracket-mobile" aria-label="Cuadro final del Mundial" ref={boardRef}>
-      <BracketLines boardRef={boardRef} connections={connections} variant="mobile" />
+    <section className="wm-bracket-mobile" aria-label="Cuadro final del Mundial">
+      <div className="wm-bracket-mobile__side">
+        <span className="wm-bracket-mobile__side-label">Lado izquierdo</span>
 
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four wm-bracket-mobile__row--seed">
-        {round32.slice(0, 4).map((fixture, index) => (
-          <BracketNode fixture={fixture} dateFallback="Por definir" side="center" nodeId={`m32-${index}`} key={`m32-a-${index}`} />
-        ))}
-      </div>
+        <div className="wm-bracket-mobile__pairs">
+          {round16.slice(0, 4).map((fixture, index) => (
+            <div className="wm-bracket-mobile__pair" key={`m-left-pair-${index}`}>
+              <div className="wm-bracket-mobile__pair-seeds">
+                <BracketNode fixture={round32[index * 2]} dateFallback="Por definir" side="center" />
+                <BracketNode fixture={round32[index * 2 + 1]} dateFallback="Por definir" side="center" />
+              </div>
+              <span className="wm-bracket-mobile__pair-rail" aria-hidden="true" />
+              <BracketNode
+                fixture={fixture}
+                homeTeam={round16Teams[index].home}
+                awayTeam={round16Teams[index].away}
+                dateFallback="Por definir"
+                side="center"
+              />
+            </div>
+          ))}
+        </div>
 
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four wm-bracket-mobile__row--seed">
-        {round32.slice(4, 8).map((fixture, index) => (
-          <BracketNode fixture={fixture} dateFallback="Por definir" side="center" nodeId={`m32-${index + 4}`} key={`m32-b-${index}`} />
-        ))}
-      </div>
-
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four">
-        {round16.slice(0, 4).map((fixture, index) => (
+        <span className="wm-bracket-mobile__round-label">Cuartos</span>
+        <div className="wm-bracket-mobile__row wm-bracket-mobile__row--two">
           <BracketNode
-            fixture={fixture}
-            homeTeam={round16Teams[index].home}
-            awayTeam={round16Teams[index].away}
+            fixture={quarters[0]}
+            homeTeam={quarterTeams[0].home}
+            awayTeam={quarterTeams[0].away}
+            homeFallback="EF1"
+            awayFallback="EF2"
             dateFallback="Por definir"
             side="center"
-            nodeId={`m16-${index}`}
-            key={`m16-top-${index}`}
           />
-        ))}
-      </div>
+          <BracketNode
+            fixture={quarters[1]}
+            homeTeam={quarterTeams[1].home}
+            awayTeam={quarterTeams[1].away}
+            homeFallback="EF3"
+            awayFallback="EF4"
+            dateFallback="Por definir"
+            side="center"
+          />
+        </div>
 
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--two">
-        <BracketNode
-          fixture={quarters[0]}
-          homeTeam={quarterTeams[0].home}
-          awayTeam={quarterTeams[0].away}
-          homeFallback="EF1"
-          awayFallback="EF2"
-          dateFallback="Por definir"
-          side="center"
-          nodeId="mq-0"
-        />
-        <BracketNode
-          fixture={quarters[2]}
-          homeTeam={quarterTeams[2].home}
-          awayTeam={quarterTeams[2].away}
-          homeFallback="EF5"
-          awayFallback="EF6"
-          dateFallback="Por definir"
-          side="center"
-          nodeId="mq-2"
-        />
-      </div>
-
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--one">
+        <span className="wm-bracket-mobile__pair-rail wm-bracket-mobile__pair-rail--short" aria-hidden="true" />
         <BracketNode
           fixture={semis[0]}
           homeTeam={semiTeams[0].home}
@@ -838,15 +805,10 @@ function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
           awayFallback="WQ2"
           dateFallback="Por definir"
           side="center"
-          nodeId="ms-0"
         />
       </div>
 
       <div className="wm-bracket-mobile__final-zone">
-        <div className="wm-bracket-mobile__bronze">
-          <BracketNode fixture={thirdPlace} homeFallback="LS1" awayFallback="LS2" dateFallback="Bronce" side="center" />
-          <span className="wm-bracket-mobile__bronze-label">Final de bronce</span>
-        </div>
         <div className="wm-bracket-mobile__winner">
           <div className="wm-bracket-trophy" aria-hidden="true">
             <svg viewBox="0 0 64 64" role="img">
@@ -857,9 +819,6 @@ function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
           </div>
           <span className="wm-bracket-center__label">Campeon</span>
         </div>
-      </div>
-
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--one">
         <BracketNode
           fixture={final}
           homeTeam={finalTeams.home}
@@ -868,11 +827,16 @@ function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
           awayFallback="WS2"
           dateFallback="Final"
           side="center"
-          nodeId="mfinal"
         />
+        <div className="wm-bracket-mobile__bronze">
+          <BracketNode fixture={thirdPlace} homeFallback="LS1" awayFallback="LS2" dateFallback="Bronce" side="center" />
+          <span className="wm-bracket-mobile__bronze-label">Final de bronce</span>
+        </div>
       </div>
 
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--one">
+      <div className="wm-bracket-mobile__side">
+        <span className="wm-bracket-mobile__side-label">Lado derecho</span>
+
         <BracketNode
           fixture={semis[1]}
           homeTeam={semiTeams[1].home}
@@ -881,57 +845,52 @@ function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
           awayFallback="WQ4"
           dateFallback="Por definir"
           side="center"
-          nodeId="ms-1"
         />
-      </div>
 
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--two">
+        <span className="wm-bracket-mobile__pair-rail wm-bracket-mobile__pair-rail--short" aria-hidden="true" />
+        <span className="wm-bracket-mobile__round-label">Cuartos</span>
+        <div className="wm-bracket-mobile__row wm-bracket-mobile__row--two">
         <BracketNode
-          fixture={quarters[1]}
-          homeTeam={quarterTeams[1].home}
-          awayTeam={quarterTeams[1].away}
-          homeFallback="EF3"
-          awayFallback="EF4"
-          dateFallback="Por definir"
-          side="center"
-          nodeId="mq-1"
-        />
-        <BracketNode
-          fixture={quarters[3]}
-          homeTeam={quarterTeams[3].home}
-          awayTeam={quarterTeams[3].away}
-          homeFallback="EF7"
-          awayFallback="EF8"
-          dateFallback="Por definir"
-          side="center"
-          nodeId="mq-3"
-        />
-      </div>
-
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four">
-        {round16.slice(4, 8).map((fixture, index) => (
-          <BracketNode
-            fixture={fixture}
-            homeTeam={round16Teams[index + 4].home}
-            awayTeam={round16Teams[index + 4].away}
+            fixture={quarters[2]}
+            homeTeam={quarterTeams[2].home}
+            awayTeam={quarterTeams[2].away}
+            homeFallback="EF5"
+            awayFallback="EF6"
             dateFallback="Por definir"
             side="center"
-            nodeId={`m16-${index + 4}`}
-            key={`m16-bottom-${index}`}
           />
-        ))}
-      </div>
+          <BracketNode
+            fixture={quarters[3]}
+            homeTeam={quarterTeams[3].home}
+            awayTeam={quarterTeams[3].away}
+            homeFallback="EF7"
+            awayFallback="EF8"
+            dateFallback="Por definir"
+            side="center"
+          />
+        </div>
 
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four wm-bracket-mobile__row--seed">
-        {round32.slice(8, 12).map((fixture, index) => (
-          <BracketNode fixture={fixture} dateFallback="Por definir" side="center" nodeId={`m32-${index + 8}`} key={`m32-c-${index}`} />
-        ))}
-      </div>
-
-      <div className="wm-bracket-mobile__row wm-bracket-mobile__row--four wm-bracket-mobile__row--seed">
-        {round32.slice(12, 16).map((fixture, index) => (
-          <BracketNode fixture={fixture} dateFallback="Por definir" side="center" nodeId={`m32-${index + 12}`} key={`m32-d-${index}`} />
-        ))}
+        <div className="wm-bracket-mobile__pairs">
+          {round16.slice(4, 8).map((fixture, index) => {
+            const realIndex = index + 4
+            return (
+              <div className="wm-bracket-mobile__pair" key={`m-right-pair-${index}`}>
+                <BracketNode
+                  fixture={fixture}
+                  homeTeam={round16Teams[realIndex].home}
+                  awayTeam={round16Teams[realIndex].away}
+                  dateFallback="Por definir"
+                  side="center"
+                />
+                <span className="wm-bracket-mobile__pair-rail" aria-hidden="true" />
+                <div className="wm-bracket-mobile__pair-seeds">
+                  <BracketNode fixture={round32[realIndex * 2]} dateFallback="Por definir" side="center" />
+                  <BracketNode fixture={round32[realIndex * 2 + 1]} dateFallback="Por definir" side="center" />
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
