@@ -54,6 +54,7 @@ class FakeInferAchievementsRepository(InferAchievementsRepositoryPort):
 class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
     def __init__(self):
         self.upserted: list[CompetitionAchievement] = []
+        self.deleted: list[tuple[int, str]] = []
         self._next_id = 1
 
     async def upsert_achievement(self, achievement: CompetitionAchievement) -> int:
@@ -61,6 +62,11 @@ class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort)
         aid = self._next_id
         self._next_id += 1
         return aid
+
+    async def delete_achievements_for_competition_season(
+        self, competition_id: int, season: str
+    ) -> None:
+        self.deleted.append((competition_id, season))
 
     async def get_achievements_for_season(self, competition_id: int, season: str) -> list[CompetitionAchievement]:
         return []
@@ -167,15 +173,28 @@ async def test_final_winner_assigned_from_shootout_when_regular_time_tied():
 
 
 @pytest.mark.anyio
-async def test_final_winner_fallback_to_lower_id_when_all_tied():
+async def test_final_winner_skips_winner_runner_up_when_all_tied():
     fixtures = [KnockoutFixtureDTO(fixture_id=1, stage="final", home_team_id=10, away_team_id=20)]
     goals = {1: {10: 1, 20: 1}}
     shootout = {1: {10: 3, 20: 3}}
     uc, repo = _make_use_case(fixtures=fixtures, goals=goals, shootout_goals=shootout)
     result = await uc.execute(competition_id=10, season="2025", rules_version_id=3)
-    phases = {a.phase: a.team_id for a in repo.upserted}
-    assert phases["winner"] == 10  # lower id wins as fallback
-    assert phases["runner_up"] == 20
+    assert result.skipped is False
+    assert {a.phase for a in repo.upserted} == {"semi_final"}
+    assert {a.team_id for a in repo.upserted} == {10, 20}
+
+
+@pytest.mark.anyio
+async def test_completed_round_of_32_winner_gets_round_of_16_before_next_fixture_exists():
+    fixtures = [KnockoutFixtureDTO(fixture_id=1, stage="round_of_32", home_team_id=10, away_team_id=20)]
+    goals = {1: {10: 1, 20: 0}}
+    uc, repo = _make_use_case(fixtures=fixtures, goals=goals, competition_name="World Cup")
+    result = await uc.execute(competition_id=350, season="2026", rules_version_id=3)
+
+    assert result.skipped is False
+    phases = {(a.team_id, a.phase) for a in repo.upserted}
+    assert (10, "round_of_16") in phases
+    assert (20, "round_of_32") in phases
 
 
 @pytest.mark.anyio

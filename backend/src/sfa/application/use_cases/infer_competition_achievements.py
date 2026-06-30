@@ -58,6 +58,13 @@ STAGE_ORDER: dict[str, int] = {
     "final":        6,
 }
 
+ORDER_TO_PHASE: dict[int, str] = {
+    1: "round_of_32",
+    2: "round_of_16",
+    3: "quarter_final",
+    4: "semi_final",
+}
+
 
 class InferCompetitionAchievementsUseCase:
     def __init__(
@@ -131,8 +138,38 @@ class InferCompetitionAchievementsUseCase:
                 skipped=True, achievements_upserted=0, phases_found=[],
             )
 
-        sorted_stages = sorted(known_stages, key=lambda s: STAGE_ORDER[s], reverse=True)
+        team_reached_order: dict[int, int] = {}
+        terminal_phase_team_ids: set[int] = set()
         phase_teams: dict[str, set[int]] = {}
+
+        for fx in fixtures:
+            if fx.stage not in STAGE_ORDER:
+                continue
+            current_order = min(STAGE_ORDER[fx.stage], max(ORDER_TO_PHASE))
+            for team_id in (fx.home_team_id, fx.away_team_id):
+                team_reached_order[team_id] = max(
+                    team_reached_order.get(team_id, 0),
+                    current_order,
+                )
+
+        for fx in fixtures:
+            if fx.stage not in STAGE_ORDER or fx.stage in {"final", "third_place"}:
+                continue
+
+            winner_id, loser_id = await self._resolve_fixture_winner(fx)
+            if winner_id is None or loser_id is None:
+                continue
+
+            current_order = STAGE_ORDER[fx.stage]
+            next_order = min(current_order + 1, max(ORDER_TO_PHASE))
+            team_reached_order[winner_id] = max(
+                team_reached_order.get(winner_id, 0),
+                next_order,
+            )
+            team_reached_order[loser_id] = max(
+                team_reached_order.get(loser_id, 0),
+                min(current_order, max(ORDER_TO_PHASE)),
+            )
 
         if "final" in teams_at_stage:
             final_fixtures = [fx for fx in fixtures if fx.stage == "final"]
@@ -140,6 +177,7 @@ class InferCompetitionAchievementsUseCase:
             if winner_id is not None and runner_up_id is not None:
                 phase_teams["winner"] = {winner_id}
                 phase_teams["runner_up"] = {runner_up_id}
+                terminal_phase_team_ids.update({winner_id, runner_up_id})
             else:
                 logger.info(
                     "[InferCompetitionAchievementsUseCase] competition_id=%d season=%s: "
@@ -147,19 +185,19 @@ class InferCompetitionAchievementsUseCase:
                     competition_id, season,
                 )
 
-        for stage in sorted_stages:
-            if stage == "final":
+        if "third_place" in teams_at_stage:
+            for fx in [fx for fx in fixtures if fx.stage == "third_place"]:
+                winner_id, _ = await self._resolve_fixture_winner(fx)
+                if winner_id is not None:
+                    phase_teams.setdefault("third_place", set()).add(winner_id)
+                    terminal_phase_team_ids.add(winner_id)
+
+        for team_id, reached_order in team_reached_order.items():
+            if team_id in terminal_phase_team_ids:
                 continue
-            # Find the immediately next higher stage (minimum order still greater than current)
-            next_higher = min(
-                (s for s in known_stages if STAGE_ORDER[s] > STAGE_ORDER[stage]),
-                key=lambda s: STAGE_ORDER[s],
-                default=None,
-            )
-            next_teams = teams_at_stage.get(next_higher, set()) if next_higher else set()
-            eliminated = teams_at_stage[stage] - next_teams
-            phase = STAGE_TO_PHASE[stage]
-            phase_teams.setdefault(phase, set()).update(eliminated)
+            phase = ORDER_TO_PHASE.get(reached_order)
+            if phase is not None:
+                phase_teams.setdefault(phase, set()).add(team_id)
 
         await self._achievement_repo.delete_achievements_for_competition_season(
             competition_id, season
@@ -214,6 +252,39 @@ class InferCompetitionAchievementsUseCase:
             achievements_upserted=achievements_upserted,
             phases_found=phases_found,
         )
+
+    async def _resolve_fixture_winner(
+        self,
+        fixture: KnockoutFixtureDTO,
+    ) -> tuple[int | None, int | None]:
+        team_a = fixture.home_team_id
+        team_b = fixture.away_team_id
+        scores: dict[int, int] = {team_a: 0, team_b: 0}
+
+        goals = await self._infer_repo.get_goals_for_fixture(fixture.fixture_id)
+        for team_id, count in goals.items():
+            if team_id in scores:
+                scores[team_id] = scores[team_id] + count
+
+        if scores[team_a] != scores[team_b]:
+            winner = team_a if scores[team_a] > scores[team_b] else team_b
+            loser = team_b if winner == team_a else team_a
+            return winner, loser
+
+        shootout: dict[int, int] = {team_a: 0, team_b: 0}
+        shootout_goals = await self._infer_repo.get_shootout_goals_for_fixture(
+            fixture.fixture_id
+        )
+        for team_id, count in shootout_goals.items():
+            if team_id in shootout:
+                shootout[team_id] = shootout[team_id] + count
+
+        if shootout[team_a] != shootout[team_b]:
+            winner = team_a if shootout[team_a] > shootout[team_b] else team_b
+            loser = team_b if winner == team_a else team_a
+            return winner, loser
+
+        return None, None
 
     async def _resolve_final_winner(
         self, final_fixtures: list[KnockoutFixtureDTO]
