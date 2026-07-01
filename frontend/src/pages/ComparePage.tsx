@@ -675,7 +675,7 @@ function PosicionBlock({
       fmt: n => fmtDec(n, 1),
     })
     rows.push({
-      label: 'Tackles + intercep. / 90\'',
+      label: 'Entradas + intercep. / 90\'',
       aVal: (isMfA || isDfA) ? dA.tacklesPlusInterceptionsPer90 : null,
       bVal: (isMfB || isDfB) ? dB.tacklesPlusInterceptionsPer90 : null,
       fmt: n => fmtDec(n, 1),

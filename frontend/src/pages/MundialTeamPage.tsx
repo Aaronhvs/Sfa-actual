@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchWcFixtures, fetchWcStandings, fetchWcTeamProfile } from '../api/client'
 import type { WcFixture, WcFixturesResponse, WcStanding, WcStandingsResponse, WcTeam, WcTeamProfileResponse, WcTopPlayer } from '../types'
 import { formatLocalDateTimeShort, localTimeZoneLabel } from '../utils/localTime'
-import { worldCupTeamName, worldCupTeamNameFromString } from '../utils/worldCupTeams'
+import { worldCupStageLabel, worldCupTeamName, worldCupTeamNameFromString } from '../utils/worldCupTeams'
 
 const TEAM_LOGO = (externalId: number | null) =>
   externalId ? `https://media.api-sports.io/football/teams/${externalId}.png` : null
@@ -25,7 +25,7 @@ function TeamFixtureRow({ fixture, teamId }: { fixture: WcFixture; teamId: numbe
 
   return (
     <Link to={`/mundial/partido/${fixture.external_id}`} className="wmt-fixture">
-      <span className="wmt-fixture__stage">{fixture.stage.replace('Group Stage', 'Fase de grupos')}</span>
+      <span className="wmt-fixture__stage">{worldCupStageLabel(fixture.stage)}</span>
       <span className="wmt-fixture__opponent">
         {opponentLogo && <img src={opponentLogo} alt="" loading="lazy" decoding="async" />}
         <strong>{worldCupTeamName(opponent)}</strong>

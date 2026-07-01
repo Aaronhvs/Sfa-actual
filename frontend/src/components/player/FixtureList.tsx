@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import type { PlayerEvent, PlayerFixture } from '../../types'
 import FixtureRow from './FixtureRow'
 import HighlightsView from './HighlightsView'
+import { competitionLabel } from '../../utils/footballLabels'
 import { normalizeSearchText, teamMatchesSearch } from '../../utils/teamSearch'
 
 interface Props {
@@ -18,7 +19,7 @@ const COMP_ABBR: Record<string, string> = {
 }
 
 function compLabel(name: string): string {
-  return COMP_ABBR[name] ?? name
+  return COMP_ABBR[name] ?? competitionLabel(name)
 }
 
 export default function FixtureList({ fixtures, events }: Props) {

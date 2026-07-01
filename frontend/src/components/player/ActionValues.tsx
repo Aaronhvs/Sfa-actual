@@ -25,7 +25,7 @@ const ACTIONS: Array<{ name: string; pts: Record<PositionGroup, number>; note?: 
   { name: 'Pase clave',        pts: { FW: 150,  MF: 260,  DF: 190  } },
   { name: 'Bloqueo',           pts: { FW: 150,  MF: 100,  DF: 130  } },
   { name: 'Interceptación',    pts: { FW: 90,   MF: 150,  DF: 200  } },
-  { name: 'Tackle',            pts: { FW: 110,  MF: 110,  DF: 150  } },
+  { name: 'Entrada',           pts: { FW: 110,  MF: 110,  DF: 150  } },
   { name: 'Regate',            pts: { FW: 100,  MF: 100,  DF: 130  } },
   { name: 'Pases completados', pts: { FW: 0,    MF: 8,    DF: 2    }, note: 'por pase' },
   { name: 'Falta recibida',    pts: { FW: 50,   MF: 35,   DF: 20   } },

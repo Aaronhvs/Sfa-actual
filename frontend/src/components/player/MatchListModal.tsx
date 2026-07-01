@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { PlayerEvent, PlayerFixture } from '../../types'
+import { competitionLabel, stageLabel } from '../../utils/footballLabels'
 
 export interface ModalFixtureItem {
   type: 'fixture'
@@ -65,7 +66,7 @@ export default function MatchListModal({ title, subtitle, items, onClose }: Prop
                 <div key={i} className="modal__item">
                   <div className="modal__item-main">
                     <span className="modal__item-match">{f.home_team} vs {f.away_team}</span>
-                    <span className="modal__item-meta">{f.competition} · {f.stage} · {formatDate(f.played_at)}</span>
+                    <span className="modal__item-meta">{competitionLabel(f.competition)} · {stageLabel(f.stage)} · {formatDate(f.played_at)}</span>
                   </div>
                   <div className="modal__item-right">
                     {goals > 0 && <span className="modal__chip modal__chip--gold">{goals}G</span>}
@@ -83,7 +84,7 @@ export default function MatchListModal({ title, subtitle, items, onClose }: Prop
                 <div className="modal__item-main">
                   <span className="modal__item-match">{f.home_team} vs {f.away_team}</span>
                   <span className="modal__item-meta">
-                    {f.competition} · {formatDate(f.played_at)}
+                    {competitionLabel(f.competition)} · {formatDate(f.played_at)}
                     {ev.minute ? ` · min ${ev.minute}'` : ''}
                     {ev.score_diff !== null ? ` · ${scoreContext(ev.score_diff)}` : ''}
                   </span>

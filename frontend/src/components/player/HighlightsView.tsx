@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { PlayerEvent, PlayerFixture } from '../../types'
+import { competitionLabel, stageLabel } from '../../utils/footballLabels'
 import MatchListModal, { type ModalItem } from './MatchListModal'
 
 interface Props {
@@ -56,23 +57,6 @@ const TEAM_NAMES_ES: Record<string, string> = {
   USA: 'Estados Unidos',
   Qatar: 'Catar',
   Czechia: 'Chequia',
-}
-
-function competitionLabel(value: string): string {
-  const normalized = value.trim().toLowerCase()
-  if (normalized === 'world cup' || normalized === 'fifa world cup') return 'Mundial'
-  return value
-}
-
-function stageLabel(value: string): string {
-  const normalized = value.trim().toLowerCase()
-  if (normalized === 'group' || normalized === 'group stage') return 'Fase de grupos'
-  if (normalized === 'round of 32') return 'Dieciseisavos'
-  if (normalized === 'round of 16') return 'Octavos'
-  if (normalized === 'quarter-finals' || normalized === 'quarterfinals') return 'Cuartos'
-  if (normalized === 'semi-finals' || normalized === 'semifinals') return 'Semifinales'
-  if (normalized === 'final') return 'Final'
-  return value
 }
 
 function teamLabel(value: string): string {
@@ -137,10 +121,10 @@ export default function HighlightsView({ fixtures, events }: Props) {
         stat: count > 1 ? `${count}` : `${maxGoals} GOLES`,
         chips: count > 1
           ? [`Mejor: ${maxGoals} goles`, formatDate(best.played_at)]
-          : [best.competition, formatDate(best.played_at)],
+          : [competitionLabel(best.competition), formatDate(best.played_at)],
         context: count > 1
           ? `Mejor: ${matchup(best)} · ${formatDate(best.played_at)} (${maxGoals} goles)`
-          : `${matchup(best)} · ${best.competition} · ${formatDate(best.played_at)}`,
+          : `${matchup(best)} · ${competitionLabel(best.competition)} · ${formatDate(best.played_at)}`,
         tag: 'HISTÓRICO',
         variant: 'gold',
         modal: count > 1 ? {
@@ -163,10 +147,10 @@ export default function HighlightsView({ fixtures, events }: Props) {
         fixture: best,
         headline: count > 1 ? 'DOBLETES EN LA TEMP.' : 'DOBLETE',
         stat: count > 1 ? `${count}` : '1 DOBLETE',
-        chips: [best.competition, formatDate(best.played_at)],
+        chips: [competitionLabel(best.competition), formatDate(best.played_at)],
         context: count > 1
           ? `Mejor: ${matchup(best)} · ${formatDate(best.played_at)}`
-          : `${matchup(best)} · ${best.competition} · ${formatDate(best.played_at)}`,
+          : `${matchup(best)} · ${competitionLabel(best.competition)} · ${formatDate(best.played_at)}`,
         variant: 'gold',
         modal: count > 1 ? {
           title: 'Dobletes en la temporada',
@@ -197,7 +181,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
         headline: 'GOL MÁS VALIOSO',
         stat: `+${fmt(Math.round(best.pts))} pts`,
         chips,
-        context: `${matchup(bf)} · ${bf.competition} · ${formatDate(bf.played_at)}`,
+        context: `${matchup(bf)} · ${competitionLabel(bf.competition)} · ${formatDate(bf.played_at)}`,
         tag: 'TOP GOL',
         variant: 'gold',
       })
@@ -219,7 +203,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
         headline: 'ASISTENCIA MÁS VALIOSA',
         stat: `+${fmt(Math.round(best.pts))} pts`,
         chips,
-        context: `${matchup(bf)} · ${bf.competition} · ${formatDate(bf.played_at)}`,
+        context: `${matchup(bf)} · ${competitionLabel(bf.competition)} · ${formatDate(bf.played_at)}`,
         tag: 'TOP ASIST.',
         variant: 'accent',
       })
@@ -237,10 +221,10 @@ export default function HighlightsView({ fixtures, events }: Props) {
         fixture: best,
         headline: count > 1 ? 'GOL + ASIST. EN UN PARTIDO' : 'NOCHE PERFECTA',
         stat: count > 1 ? `${count} VECES` : `${goalCount(best)}G + ${assistCount(best)}A`,
-        chips: [best.competition, formatDate(best.played_at)],
+        chips: [competitionLabel(best.competition), formatDate(best.played_at)],
         context: count > 1
           ? `Mejor: ${matchup(best)} · ${formatDate(best.played_at)}`
-          : `${matchup(best)} · ${best.competition} · ${formatDate(best.played_at)}`,
+          : `${matchup(best)} · ${competitionLabel(best.competition)} · ${formatDate(best.played_at)}`,
         tag: count > 1 ? undefined : 'GOL + ASIST.',
         variant: 'gold',
         modal: count > 1 ? {
@@ -314,7 +298,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
         fixture: topPen,
         headline: 'PENALES GANADOS',
         stat: `${totalPenalties} EN LA TEMP.`,
-        chips: [topPen.competition, formatDate(topPen.played_at)],
+        chips: [competitionLabel(topPen.competition), formatDate(topPen.played_at)],
         context: `${matchup(topPen)} · ${formatDate(topPen.played_at)}`,
         variant: 'gold',
       })
@@ -363,7 +347,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
         chips: ['M1 ≥ 1.3', `Mejor: +${fmt(Math.round(best.pts))} pts`],
         context: eliteEvents.length > 1
           ? `En la temporada · Mejor: ${matchup(bf)} · ${formatDate(bf.played_at)}`
-          : `${matchup(bf)} · ${bf.competition} · ${formatDate(bf.played_at)}`,
+          : `${matchup(bf)} · ${competitionLabel(bf.competition)} · ${formatDate(bf.played_at)}`,
         variant: 'accent',
         modal: eliteEvents.length > 1 ? {
           title: 'Acciones vs Élite',
@@ -414,7 +398,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
         fixture: best,
         headline: a >= 3 ? 'MAESTRO DE ASISTENCIAS' : multiAssistMatches.length > 1 ? 'DOBLES ASISTENCIAS' : 'DOBLE ASISTENCIA',
         stat: multiAssistMatches.length > 1 ? `${multiAssistMatches.length} VECES` : `${a} ASIST.`,
-        chips: [best.competition, formatDate(best.played_at)],
+        chips: [competitionLabel(best.competition), formatDate(best.played_at)],
         context: `${matchup(best)} · ${formatDate(best.played_at)}`,
         variant: 'accent',
         modal: multiAssistMatches.length > 1 ? {
@@ -433,7 +417,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
         fixture: topDribbles,
         headline: 'REY DEL REGATE',
         stat: `${topDribbles.dribbles_won} REGATES`,
-        chips: [topDribbles.competition, formatDate(topDribbles.played_at)],
+        chips: [competitionLabel(topDribbles.competition), formatDate(topDribbles.played_at)],
         context: `${matchup(topDribbles)} · ${formatDate(topDribbles.played_at)}`,
         variant: 'accent',
       })
@@ -448,7 +432,7 @@ export default function HighlightsView({ fixtures, events }: Props) {
         fixture: topDef,
         headline: 'MURO DEFENSIVO',
         stat: `${defValue(topDef)} ACCIONES`,
-        chips: [topDef.competition, formatDate(topDef.played_at)],
+        chips: [competitionLabel(topDef.competition), formatDate(topDef.played_at)],
         context: `${matchup(topDef)} · ${formatDate(topDef.played_at)}`,
         variant: 'accent',
       })

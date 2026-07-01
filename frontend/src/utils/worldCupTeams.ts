@@ -160,7 +160,7 @@ const STAGE_LABELS_ES: Record<string, string> = {
   'Group Stage - 1': 'Fase de grupos',
   'Group Stage - 2': 'Fase de grupos',
   'Group Stage - 3': 'Fase de grupos',
-  'Round of 32': 'Ronda de 32',
+  'Round of 32': 'Dieciseisavos',
   'Round of 16': 'Octavos de final',
   'Quarter-finals': 'Cuartos de final',
   'Semi-finals': 'Semifinales',

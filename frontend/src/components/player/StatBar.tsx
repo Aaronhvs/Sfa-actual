@@ -64,7 +64,7 @@ export default function StatBar({ player, fixtures, seasonStats }: Props) {
     ...(!seasonStats ? [{ label: 'Disparos', value: agg.shots_on }] : []),
     { label: 'Regates',      value: agg.dribbles_won },
     { label: 'Duelos gan.',  value: agg.duels_won },
-    { label: 'Tackles/Int.', value: agg.tackles },
+    { label: 'Entradas/Int.', value: agg.tackles },
     { label: 'Bloqueos',     value: agg.blocks },
     { label: 'Faltas rec.',  value: agg.fouls_drawn },
   ]

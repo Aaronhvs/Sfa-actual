@@ -316,7 +316,7 @@ export default function PointsBreakdown({ player, events, fixtures, seasonStats 
     if (agg.duels_won > 0)
       defensa.push(scoreTile('duels_won', 'Duelos', agg.duels_won, agg.duels_won * base.duels_won, { isEst: true }))
     if (agg.tackles > 0)
-      defensa.push(scoreTile('tackles', 'Tackles', agg.tackles, agg.tackles * base.tackles, { isEst: true }))
+      defensa.push(scoreTile('tackles', 'Entradas', agg.tackles, agg.tackles * base.tackles, { isEst: true }))
     if (agg.interceptions > 0)
       defensa.push(scoreTile('interceptions', 'Interc.', agg.interceptions, agg.interceptions * base.interceptions, { isEst: true }))
     if (agg.blocks > 0)

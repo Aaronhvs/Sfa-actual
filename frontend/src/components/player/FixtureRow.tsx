@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PlayerEvent, PlayerFixture } from '../../types'
+import { competitionLabel, stageLabel } from '../../utils/footballLabels'
 
 const WC_COMPETITION_ID = 350
 
@@ -154,7 +155,7 @@ function ActionBreakdownGrid({ fixture }: { fixture: PlayerFixture }) {
         })}
         {statsPts > 0 && (
           <div className="fac fac--stats-total">
-            <span className="fac__label">Total stats</span>
+            <span className="fac__label">Total estadísticas</span>
             <span className="fac__count fac__count--gold">{fmt(statsPts)}</span>
             <span className="fac__pts">pts</span>
           </div>
@@ -173,7 +174,7 @@ function ActionBreakdownGrid({ fixture }: { fixture: PlayerFixture }) {
           {fixture.dribbles_won > 0 && <StatCard label="Regates" value={fixture.dribbles_won} />}
           {fixture.duels_won > 0 && <StatCard label="Duelos" value={fixture.duels_won} />}
           {(fixture.tackles_won > 0 || fixture.interceptions > 0) && (
-            <StatCard label="Tackles/Int" value={fixture.tackles_won + fixture.interceptions} />
+            <StatCard label="Entradas/Int" value={fixture.tackles_won + fixture.interceptions} />
           )}
           {fixture.blocks > 0 && <StatCard label="Bloqueos" value={fixture.blocks} />}
           {fixture.clearances > 0 && <StatCard label="Despejes" value={fixture.clearances} />}
@@ -419,7 +420,7 @@ export default function FixtureRow({ fixture, events }: Props) {
               {fixture.home_team} vs {fixture.away_team}
             </div>
             <div className="fixture-row__meta">
-              {fixture.competition} &middot; {fixture.stage} &middot; {formatDate(fixture.played_at)}
+              {competitionLabel(fixture.competition)} &middot; {stageLabel(fixture.stage)} &middot; {formatDate(fixture.played_at)}
             </div>
             <SummaryChips fixture={fixture} />
           </div>

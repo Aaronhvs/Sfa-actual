@@ -52,7 +52,7 @@ export default function SeasonActions({ player, fixtures }: Props) {
     { key: 'shots_on',      label: 'Disparos',           count: stats.shots_on },
     { key: 'dribbles_won',  label: 'Regates',            count: stats.dribbles_won },
     { key: 'duels_won',     label: 'Duelos ganados',     count: stats.duels_won },
-    { key: 'tackles',       label: 'Tackles / Interc.',  count: stats.tackles },
+    { key: 'tackles',       label: 'Entradas / Interc.', count: stats.tackles },
     { key: 'blocks',        label: 'Bloqueos',           count: stats.blocks },
     { key: 'fouls_drawn',   label: 'Faltas recibidas',   count: stats.fouls_drawn },
   ]
