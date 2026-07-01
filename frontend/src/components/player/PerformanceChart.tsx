@@ -40,6 +40,10 @@ function fmtDate(iso: string) {
 const ACTION_LABELS: Record<string, [string, string]> = {
   goal: ['gol', 'goles'],
   goal_penalty: ['gol de penal', 'goles de penal'],
+  goal_shootout: ['penal convertido en tanda', 'penales convertidos en tanda'],
+  goal_shootout_decisive: ['penal decisivo convertido', 'penales decisivos convertidos'],
+  missed_shootout: ['penal fallado en tanda', 'penales fallados en tanda'],
+  missed_shootout_decisive: ['penal decisivo fallado', 'penales decisivos fallados'],
   assist: ['asistencia', 'asistencias'],
   corner_assist: ['asistencia de córner', 'asistencias de córner'],
   key_pass: ['pase clave', 'pases clave'],

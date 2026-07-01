@@ -44,6 +44,9 @@ class ActionType(str, Enum):
     GOAL             = "goal"
     GOAL_PENALTY     = "goal_penalty"
     GOAL_SHOOTOUT    = "goal_shootout"
+    GOAL_SHOOTOUT_DECISIVE = "goal_shootout_decisive"
+    MISSED_SHOOTOUT = "missed_shootout"
+    MISSED_SHOOTOUT_DECISIVE = "missed_shootout_decisive"
     ASSIST           = "assist"
     CORNER_ASSIST    = "corner_assist"
     XG_NO_GOAL       = "xg_no_goal"
@@ -216,7 +219,7 @@ class M3MinuteScore:
         is_shootout: bool = False,
     ) -> None:
         if is_shootout:
-            v = 1.5
+            v = 1.0
         elif is_penalty:
             v = 0.6
         elif 80 <= minute <= 90:
@@ -640,7 +643,7 @@ class ScoringConfig:
             m4_clamp=(1.0, 1.8),
             mvisit_bonus=1.3,
             mvisit_eligible_actions=frozenset({
-                ActionType.GOAL, ActionType.GOAL_PENALTY, ActionType.GOAL_SHOOTOUT,
+                ActionType.GOAL, ActionType.GOAL_PENALTY,
                 ActionType.ASSIST, ActionType.CORNER_ASSIST,
             }),
             mrating_thresholds=tuple(_DEFAULT_MRATING_THRESHOLDS_V1),
@@ -668,7 +671,7 @@ class ScoringConfig:
             m4_clamp=(1.0, 1.5),
             mvisit_bonus=1.15,
             mvisit_eligible_actions=frozenset({
-                ActionType.GOAL, ActionType.GOAL_PENALTY, ActionType.GOAL_SHOOTOUT,
+                ActionType.GOAL, ActionType.GOAL_PENALTY,
                 ActionType.ASSIST, ActionType.CORNER_ASSIST,
             }),
             mrating_thresholds=tuple(_DEFAULT_MRATING_THRESHOLDS_V2),
@@ -707,6 +710,16 @@ class ScoringConfig:
             for group_str, actions in raw_bp.items():
                 group = PositionGroup(group_str)
                 base_points[group] = {ActionType(k): int(v) for k, v in actions.items()}
+            for group, defaults in ScoringConfig.default_v2().base_points.items():
+                if group not in base_points:
+                    continue
+                for action in (
+                    ActionType.GOAL_SHOOTOUT,
+                    ActionType.GOAL_SHOOTOUT_DECISIVE,
+                    ActionType.MISSED_SHOOTOUT,
+                    ActionType.MISSED_SHOOTOUT_DECISIVE,
+                ):
+                    base_points[group].setdefault(action, defaults[action])
 
             m1_clamp = tuple(d["m1_clamp"])
             m4_clamp = tuple(d["m4_clamp"])
@@ -714,7 +727,16 @@ class ScoringConfig:
             mrating_thresholds = tuple(
                 (float(t[0]), float(t[1])) for t in d["mrating_thresholds"]
             )
-            mvisit_eligible = frozenset(ActionType(a) for a in d["mvisit_eligible_actions"])
+            mvisit_eligible = frozenset(
+                action
+                for action in (ActionType(a) for a in d["mvisit_eligible_actions"])
+                if action not in {
+                    ActionType.GOAL_SHOOTOUT,
+                    ActionType.GOAL_SHOOTOUT_DECISIVE,
+                    ActionType.MISSED_SHOOTOUT,
+                    ActionType.MISSED_SHOOTOUT_DECISIVE,
+                }
+            )
 
             # v2 optional fields — defaults for backward compat with v1 configs
             dr: dict[ActionType, DiminishingReturnsConfig] = {}

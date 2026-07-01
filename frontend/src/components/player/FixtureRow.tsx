@@ -10,13 +10,22 @@ interface Props {
   events: PlayerEvent[]
 }
 
-const GOAL_TYPES = new Set(['goal', 'goal_penalty', 'goal_shootout'])
+const SHOOTOUT_TYPES = new Set([
+  'goal_shootout',
+  'goal_shootout_decisive',
+  'missed_shootout',
+  'missed_shootout_decisive',
+])
+const GOAL_TYPES = new Set(['goal', 'goal_penalty', ...SHOOTOUT_TYPES])
 const CREATION_TYPES = new Set(['assist', 'corner_assist'])
 
 const EVENT_LABELS: Record<string, string> = {
   goal: 'GOL',
   goal_penalty: 'PENALTI',
   goal_shootout: 'TANDA',
+  goal_shootout_decisive: 'TANDA DEC.',
+  missed_shootout: 'TANDA FALL.',
+  missed_shootout_decisive: 'TANDA DEC. FALL.',
   assist: 'ASIST.',
   corner_assist: 'PRE-ASIST.',
 }
@@ -24,7 +33,10 @@ const EVENT_LABELS: Record<string, string> = {
 const SCORING_ACTIONS = [
   { key: 'goal', label: 'Goles' },
   { key: 'goal_penalty', label: 'Penaltis' },
-  { key: 'goal_shootout', label: 'Tanda' },
+  { key: 'goal_shootout', label: 'Tanda conv.' },
+  { key: 'goal_shootout_decisive', label: 'Tanda decisiva' },
+  { key: 'missed_shootout', label: 'Tanda fallada' },
+  { key: 'missed_shootout_decisive', label: 'Fallo decisivo' },
   { key: 'assist', label: 'Asistencias' },
   { key: 'corner_assist', label: 'Pre-asist.' },
 ]
@@ -33,6 +45,9 @@ const HEADER_CHIPS = [
   { key: 'goal', label: 'GOL', type: 'goal' as const },
   { key: 'goal_penalty', label: 'PEN', type: 'goal' as const },
   { key: 'goal_shootout', label: 'TAN', type: 'goal' as const },
+  { key: 'goal_shootout_decisive', label: 'DEC', type: 'goal' as const },
+  { key: 'missed_shootout', label: 'FAL', type: 'goal' as const },
+  { key: 'missed_shootout_decisive', label: 'FDEC', type: 'goal' as const },
   { key: 'assist', label: 'AST', type: 'assist' as const },
   { key: 'corner_assist', label: 'PRE', type: 'assist' as const },
 ]
@@ -117,7 +132,7 @@ function StatCard({ label, value, pts, zero }: StatCardProps) {
     <div className={`fac${isEmpty && zero ? ' fac--zero' : ''}`}>
       <span className="fac__label">{label}</span>
       <span className="fac__count">{value === 0 && zero ? '0' : value}</span>
-      {pts != null && pts > 0 ? (
+      {pts != null && pts !== 0 ? (
         <span className="fac__pts">{fmt(pts)} pts</span>
       ) : (
         <span className="fac__pts fac__pts--empty">—</span>

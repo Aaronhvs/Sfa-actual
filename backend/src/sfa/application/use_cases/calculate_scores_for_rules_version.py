@@ -48,6 +48,13 @@ _B1_ELIGIBLE_ACTIONS: frozenset[str] = frozenset({
     ActionType.CORNER_ASSIST.value,
 })
 
+_SHOOTOUT_ACTIONS: frozenset[ActionType] = frozenset({
+    ActionType.GOAL_SHOOTOUT,
+    ActionType.GOAL_SHOOTOUT_DECISIVE,
+    ActionType.MISSED_SHOOTOUT,
+    ActionType.MISSED_SHOOTOUT_DECISIVE,
+})
+
 _MC_BONUS_CONTROL = 140      # CONTROL_MIDFIELD_BONUS base pts
 _MC_BONUS_TWO_WAY = 90       # TWO_WAY_MIDFIELD_BONUS base pts
 _MC_BONUS_CREATIVE = 70      # CREATIVE_CONTROL_BONUS base pts
@@ -231,7 +238,7 @@ class CalculateScoresForRulesVersionUseCase:
         minute = max(1, min(90, event.minute))
         score_diff = event.score_diff if event.score_diff is not None else 0
         is_penalty = action == ActionType.GOAL_PENALTY
-        is_shootout = action == ActionType.GOAL_SHOOTOUT
+        is_shootout = action in _SHOOTOUT_ACTIONS
 
         # v2: use team strength when available, fall back to position
         m1 = M1RivalDifficulty(

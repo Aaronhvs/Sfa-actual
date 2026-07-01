@@ -11,7 +11,13 @@ from sfa.domain.ingestion_ports import (
 )
 from sfa.domain.name_matching import name_matches as _name_matches
 from sfa.domain.position_mapping import KNOWN_POSITIONS, map_position
-from sfa.domain.scoring.services import ScoreTimeline
+from sfa.domain.scoring.services import (
+    ScoreTimeline,
+    ShootoutDecider,
+    is_missed_penalty_event,
+    is_penalty_attempt_event,
+    is_shootout_attempt_event,
+)
 from sfa.domain.scoring.value_objects import position_to_group
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 
@@ -214,6 +220,11 @@ class IngestCompetitionUseCase:
                         fixture.away_team_external_id,
                         events,
                     )
+                    decisive_shootout_ids = ShootoutDecider.decisive_event_ids(
+                        fixture.home_team_external_id,
+                        fixture.away_team_external_id,
+                        events,
+                    )
 
                     for proc_team_ext_id in (
                         fixture.home_team_external_id,
@@ -311,9 +322,13 @@ class IngestCompetitionUseCase:
                             player_goals = [
                                 e for e in events
                                 if e.type == "Goal"
-                                and e.detail not in ("Missed Penalty", "Own Goal")
+                                and e.detail not in ("Own Goal",)
                                 and _name_matches(e.player_name, ps.player_name)
                                 and e.team_external_id == proc_team_ext_id
+                                and (
+                                    not is_missed_penalty_event(e)
+                                    or is_shootout_attempt_event(e)
+                                )
                             ]
                             for goal_evt in player_goals:
                                 await self._process_event(
@@ -328,6 +343,7 @@ class IngestCompetitionUseCase:
                                     stage_factor=stage_factor,
                                     is_away=is_away,
                                     is_assist=False,
+                                    is_decisive_shootout=id(goal_evt) in decisive_shootout_ids,
                                 )
 
                             # Assists
@@ -335,6 +351,7 @@ class IngestCompetitionUseCase:
                                 e for e in events
                                 if e.type == "Goal"
                                 and e.detail not in ("Missed Penalty", "Own Goal")
+                                and not is_shootout_attempt_event(e)
                                 and e.assist_name is not None
                                 and _name_matches(e.assist_name, ps.player_name)
                                 and e.team_external_id == proc_team_ext_id
@@ -352,6 +369,7 @@ class IngestCompetitionUseCase:
                                     stage_factor=stage_factor,
                                     is_away=is_away,
                                     is_assist=True,
+                                    is_decisive_shootout=False,
                                 )
 
                             # Match stats — stored raw; pts calculated by scoring pipeline v2
@@ -425,18 +443,23 @@ class IngestCompetitionUseCase:
         stage_factor: float,
         is_away: bool,
         is_assist: bool,
+        is_decisive_shootout: bool = False,
     ) -> None:
         minute = evt.minute + evt.extra_minute
         db_minute = max(1, min(120, minute))   # DB constraint: BETWEEN 1 AND 120
-        clamped = max(1, min(90, minute))      # M3 clamped to 90 for scoring logic
-        is_penalty = evt.detail == "Penalty"
+        is_penalty = is_penalty_attempt_event(evt)
+        is_missed_penalty = is_missed_penalty_event(evt)
         # Tanda de penales: eventos reportados después del minuto 120
-        is_shootout = is_penalty and minute > 120
+        is_shootout = is_shootout_attempt_event(evt)
 
-        transition = score_timeline.transition_for(evt)
-        home_b, away_b = transition.home_before, transition.away_before
-        score_diff = (away_b - home_b) if is_away else (home_b - away_b)
-        score_before_str = f"{home_b}:{away_b}"
+        if is_shootout:
+            score_diff = 0
+            score_before_str = None
+        else:
+            transition = score_timeline.transition_for(evt)
+            home_b, away_b = transition.home_before, transition.away_before
+            score_diff = (away_b - home_b) if is_away else (home_b - away_b)
+            score_before_str = f"{home_b}:{away_b}"
 
         if is_assist:
             is_corner = "corner" in evt.detail.lower()
@@ -444,7 +467,18 @@ class IngestCompetitionUseCase:
             event_type = EventType.CORNER_ASSIST if is_corner else EventType.ASSIST
         elif is_shootout:
             psxg = None
-            event_type = EventType.GOAL_SHOOTOUT
+            if is_missed_penalty:
+                event_type = (
+                    EventType.MISSED_SHOOTOUT_DECISIVE
+                    if is_decisive_shootout
+                    else EventType.MISSED_SHOOTOUT
+                )
+            else:
+                event_type = (
+                    EventType.GOAL_SHOOTOUT_DECISIVE
+                    if is_decisive_shootout
+                    else EventType.GOAL_SHOOTOUT
+                )
         else:
             psxg = None
             event_type = EventType.GOAL_PENALTY if is_penalty else EventType.GOAL

@@ -65,7 +65,10 @@ class InferAchievementsRepository(InferAchievementsRepositoryPort):
             select(PlayerEvent.team_id)
             .where(
                 PlayerEvent.fixture_id == fixture_id,
-                PlayerEvent.event_type == EventType.GOAL_SHOOTOUT,
+                PlayerEvent.event_type.in_([
+                    EventType.GOAL_SHOOTOUT,
+                    EventType.GOAL_SHOOTOUT_DECISIVE,
+                ]),
             )
         )
         rows = (await self._session.execute(stmt)).all()

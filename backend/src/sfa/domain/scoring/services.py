@@ -30,7 +30,10 @@ BASE_POINTS_TABLE: dict[PositionGroup, dict[ActionType, int]] = {
     PositionGroup.FW: {
         ActionType.GOAL: 500,
         ActionType.GOAL_PENALTY: 300,
-        ActionType.GOAL_SHOOTOUT: 300,
+        ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300,
+        ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 500,
         ActionType.CORNER_ASSIST: 250,
         ActionType.XG_NO_GOAL: 70,
@@ -51,7 +54,10 @@ BASE_POINTS_TABLE: dict[PositionGroup, dict[ActionType, int]] = {
     PositionGroup.MF: {
         ActionType.GOAL: 700,
         ActionType.GOAL_PENALTY: 380,
-        ActionType.GOAL_SHOOTOUT: 380,
+        ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300,
+        ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 520,
         ActionType.CORNER_ASSIST: 280,
         ActionType.XG_NO_GOAL: 50,
@@ -72,7 +78,10 @@ BASE_POINTS_TABLE: dict[PositionGroup, dict[ActionType, int]] = {
     PositionGroup.DF: {
         ActionType.GOAL: 850,
         ActionType.GOAL_PENALTY: 380,
-        ActionType.GOAL_SHOOTOUT: 380,
+        ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300,
+        ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 640,
         ActionType.CORNER_ASSIST: 320,
         ActionType.XG_NO_GOAL: 30,
@@ -98,7 +107,9 @@ BASE_POINTS_TABLE: dict[PositionGroup, dict[ActionType, int]] = {
 
 BASE_POINTS_TABLE_V2: dict[PositionGroup, dict[ActionType, int]] = {
     PositionGroup.DEL: {
-        ActionType.GOAL: 650, ActionType.GOAL_PENALTY: 390, ActionType.GOAL_SHOOTOUT: 390,
+        ActionType.GOAL: 650, ActionType.GOAL_PENALTY: 390, ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300, ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 500, ActionType.CORNER_ASSIST: 250,
         ActionType.XG_NO_GOAL: 60, ActionType.XA_NO_ASSIST: 60,
         ActionType.DRIBBLES_WON: 70, ActionType.DUELS_WON: 18,
@@ -108,7 +119,9 @@ BASE_POINTS_TABLE_V2: dict[PositionGroup, dict[ActionType, int]] = {
         ActionType.PENALTY_WON: 220, ActionType.DRIBBLES_PAST: 0,
     },
     PositionGroup.EXT: {
-        ActionType.GOAL: 550, ActionType.GOAL_PENALTY: 300, ActionType.GOAL_SHOOTOUT: 300,
+        ActionType.GOAL: 550, ActionType.GOAL_PENALTY: 300, ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300, ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 480, ActionType.CORNER_ASSIST: 260,
         ActionType.XG_NO_GOAL: 65, ActionType.XA_NO_ASSIST: 85,
         ActionType.DRIBBLES_WON: 110, ActionType.DUELS_WON: 18,
@@ -118,7 +131,9 @@ BASE_POINTS_TABLE_V2: dict[PositionGroup, dict[ActionType, int]] = {
         ActionType.PENALTY_WON: 220, ActionType.DRIBBLES_PAST: 0,
     },
     PositionGroup.MCO: {
-        ActionType.GOAL: 600, ActionType.GOAL_PENALTY: 310, ActionType.GOAL_SHOOTOUT: 310,
+        ActionType.GOAL: 600, ActionType.GOAL_PENALTY: 310, ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300, ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 520, ActionType.CORNER_ASSIST: 260,
         ActionType.XG_NO_GOAL: 70, ActionType.XA_NO_ASSIST: 90,
         ActionType.DRIBBLES_WON: 110, ActionType.DUELS_WON: 10,
@@ -128,7 +143,9 @@ BASE_POINTS_TABLE_V2: dict[PositionGroup, dict[ActionType, int]] = {
         ActionType.PENALTY_WON: 180, ActionType.DRIBBLES_PAST: -15,
     },
     PositionGroup.MF: {
-        ActionType.GOAL: 720, ActionType.GOAL_PENALTY: 350, ActionType.GOAL_SHOOTOUT: 350,
+        ActionType.GOAL: 720, ActionType.GOAL_PENALTY: 350, ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300, ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 550, ActionType.CORNER_ASSIST: 280,
         ActionType.XG_NO_GOAL: 55, ActionType.XA_NO_ASSIST: 95,
         ActionType.DRIBBLES_WON: 80, ActionType.DUELS_WON: 18,
@@ -138,7 +155,9 @@ BASE_POINTS_TABLE_V2: dict[PositionGroup, dict[ActionType, int]] = {
         ActionType.PENALTY_WON: 180, ActionType.DRIBBLES_PAST: -20,
     },
     PositionGroup.LAT: {
-        ActionType.GOAL: 850, ActionType.GOAL_PENALTY: 350, ActionType.GOAL_SHOOTOUT: 350,
+        ActionType.GOAL: 850, ActionType.GOAL_PENALTY: 350, ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300, ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 620, ActionType.CORNER_ASSIST: 300,
         ActionType.XG_NO_GOAL: 45, ActionType.XA_NO_ASSIST: 90,
         ActionType.DRIBBLES_WON: 95, ActionType.DUELS_WON: 18,
@@ -148,7 +167,9 @@ BASE_POINTS_TABLE_V2: dict[PositionGroup, dict[ActionType, int]] = {
         ActionType.PENALTY_WON: 120, ActionType.DRIBBLES_PAST: -45,
     },
     PositionGroup.DC: {
-        ActionType.GOAL: 1000, ActionType.GOAL_PENALTY: 350, ActionType.GOAL_SHOOTOUT: 350,
+        ActionType.GOAL: 1000, ActionType.GOAL_PENALTY: 350, ActionType.GOAL_SHOOTOUT: 180,
+        ActionType.GOAL_SHOOTOUT_DECISIVE: 300, ActionType.MISSED_SHOOTOUT: -120,
+        ActionType.MISSED_SHOOTOUT_DECISIVE: -220,
         ActionType.ASSIST: 850, ActionType.CORNER_ASSIST: 450,
         ActionType.XG_NO_GOAL: 50, ActionType.XA_NO_ASSIST: 120,
         ActionType.DRIBBLES_WON: 40, ActionType.DUELS_WON: 25,
@@ -165,6 +186,27 @@ _GOAL_OR_ASSIST_ACTIONS = {
     ActionType.ASSIST,
     ActionType.CORNER_ASSIST,
 }
+
+_SHOOTOUT_ACTIONS = {
+    ActionType.GOAL_SHOOTOUT,
+    ActionType.GOAL_SHOOTOUT_DECISIVE,
+    ActionType.MISSED_SHOOTOUT,
+    ActionType.MISSED_SHOOTOUT_DECISIVE,
+}
+
+
+def is_penalty_attempt_event(event: FixtureEventRawDTO) -> bool:
+    return event.type == "Goal" and "penalty" in event.detail.lower()
+
+
+def is_missed_penalty_event(event: FixtureEventRawDTO) -> bool:
+    return is_penalty_attempt_event(event) and "missed penalty" in event.detail.lower()
+
+
+def is_shootout_attempt_event(event: FixtureEventRawDTO) -> bool:
+    if not is_penalty_attempt_event(event):
+        return False
+    return event.minute > 120 or (event.minute == 120 and event.extra_minute > 0)
 
 
 @dataclass(frozen=True)
@@ -252,6 +294,67 @@ class ScoreTimeline:
             ) from exc
 
 
+class ShootoutDecider:
+    """Determine which penalty event mathematically closes a shootout."""
+
+    @staticmethod
+    def decisive_event_ids(
+        home_team_external_id: int,
+        away_team_external_id: int,
+        events: list[FixtureEventRawDTO],
+    ) -> set[int]:
+        indexed_events = list(enumerate(events))
+        shootout_events = [
+            (idx, event)
+            for idx, event in indexed_events
+            if (
+                is_shootout_attempt_event(event)
+                and event.team_external_id in (home_team_external_id, away_team_external_id)
+            )
+        ]
+        shootout_events.sort(
+            key=lambda item: (
+                item[1].minute,
+                item[1].extra_minute,
+                item[1].source_sequence if item[1].source_sequence is not None else item[0],
+            )
+        )
+
+        attempts = {home_team_external_id: 0, away_team_external_id: 0}
+        scored = {home_team_external_id: 0, away_team_external_id: 0}
+        decisive: set[int] = set()
+
+        for _, event in shootout_events:
+            team = event.team_external_id
+            other = away_team_external_id if team == home_team_external_id else home_team_external_id
+            attempts[team] += 1
+            if not is_missed_penalty_event(event):
+                scored[team] += 1
+
+            home_attempts = attempts[home_team_external_id]
+            away_attempts = attempts[away_team_external_id]
+            home_score = scored[home_team_external_id]
+            away_score = scored[away_team_external_id]
+
+            home_remaining = max(0, 5 - home_attempts)
+            away_remaining = max(0, 5 - away_attempts)
+            closed_in_first_five = (
+                home_score > away_score + away_remaining
+                or away_score > home_score + home_remaining
+            )
+            closed_in_sudden_death = (
+                home_attempts >= 5
+                and away_attempts >= 5
+                and home_attempts == away_attempts
+                and home_score != away_score
+            )
+            if closed_in_first_five or closed_in_sudden_death:
+                decisive.add(id(event))
+                break
+
+        return decisive
+
+
 class SFAScoringService:
     """
     Single entry-point for all SFA scoring calculations.
@@ -296,7 +399,7 @@ class SFAScoringService:
 
         m1 = M1RivalDifficulty(player_team_pos, rival_team_pos)
         m2 = M2CompetitionStage(stage_factor)
-        m3 = M3MinuteScore(minute, score_diff, is_penalty)
+        m3 = M3MinuteScore(minute, score_diff, is_penalty, is_shootout=action in _SHOOTOUT_ACTIONS)
         m4 = M4ShotDifficulty(psxg if is_goal_or_assist else None)
         mvisit = MvisitFactor(is_away, is_goal_or_assist)
         combined = CombinedMultiplier(m1, m2, m3, m4, mvisit)

@@ -69,9 +69,11 @@ function deriveCmpStats(
 
   const goalsJugada = bd.goal?.count ?? 0
   const goalsPenalti = bd.goal_penalty?.count ?? 0
-  const goalsTanda = bd.goal_shootout?.count ?? 0
-  const totalGoals = goalsJugada + goalsPenalti + goalsTanda
-  const goalsPenaltiPct = totalGoals > 0 ? (goalsPenalti + goalsTanda) / totalGoals * 100 : 0
+  const goalsTanda =
+    (bd.goal_shootout?.count ?? 0)
+    + (bd.goal_shootout_decisive?.count ?? 0)
+  const totalGoals = goalsJugada + goalsPenalti
+  const goalsPenaltiPct = totalGoals > 0 ? goalsPenalti / totalGoals * 100 : 0
   const totalMinutes = fixtures.reduce((s, f) => s + (f.minutes ?? 0), 0)
   const goalsJugadaPer90 = totalMinutes >= 90 ? goalsJugada / totalMinutes * 90 : null
   const minutesPerGoal = totalGoals > 0 && totalMinutes > 0 ? totalMinutes / totalGoals : null
@@ -110,7 +112,7 @@ function deriveCmpStats(
   const scoringFids = new Set(
     events
       .filter(e =>
-        ['goal', 'goal_penalty', 'goal_shootout', 'assist', 'corner_assist'].includes(
+        ['goal', 'goal_penalty', 'goal_shootout', 'goal_shootout_decisive', 'assist', 'corner_assist'].includes(
           e.event_type,
         ),
       )

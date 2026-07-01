@@ -218,6 +218,58 @@ class TestCalculateScoresForRulesVersionUseCase:
         assert score.rules_version_id == 1
 
     @pytest.mark.anyio
+    async def test_decisive_shootout_goal_uses_direct_impact_model(self):
+        version = _make_rules_version(config=ScoringConfig.default_v2())
+        event = replace(
+            _make_goal_event(event_type="goal_shootout_decisive"),
+            stage_factor=1.15,
+            player_team_strength=50.0,
+            rival_team_strength=95.0,
+            player_position="MC",
+        )
+        events_repo = FakePlayerEventScoreRepository(events=[event])
+        use_case = CalculateScoresForRulesVersionUseCase(
+            FakeScoringRulesVersionRepository(version), events_repo,
+        )
+
+        result = await use_case.execute(rules_version_id=1, season="2024")
+
+        assert result.status == "completed"
+        score = events_repo.upserted[0]
+        assert score.action_type == "goal_shootout_decisive"
+        assert score.base_points == 300
+        assert score.m1 == 1.45
+        assert score.m2 == 1.15
+        assert score.m3 == 1.0
+        assert score.final_points == 500.25
+
+    @pytest.mark.anyio
+    async def test_decisive_shootout_miss_can_subtract_points(self):
+        version = _make_rules_version(config=ScoringConfig.default_v2())
+        event = replace(
+            _make_goal_event(event_type="missed_shootout_decisive"),
+            stage_factor=1.15,
+            player_team_strength=50.0,
+            rival_team_strength=95.0,
+            player_position="MC",
+        )
+        events_repo = FakePlayerEventScoreRepository(events=[event])
+        use_case = CalculateScoresForRulesVersionUseCase(
+            FakeScoringRulesVersionRepository(version), events_repo,
+        )
+
+        result = await use_case.execute(rules_version_id=1, season="2024")
+
+        assert result.status == "completed"
+        score = events_repo.upserted[0]
+        assert score.action_type == "missed_shootout_decisive"
+        assert score.base_points == -220
+        assert score.m1 == 1.45
+        assert score.m2 == 1.15
+        assert score.m3 == 1.0
+        assert score.final_points == -366.85
+
+    @pytest.mark.anyio
     async def test_stats_event_recalculated_with_config(self):
         version = _make_rules_version()
         event = _make_stats_event()

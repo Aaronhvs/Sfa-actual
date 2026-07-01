@@ -194,10 +194,11 @@ export default function PointsBreakdown({ player, events, fixtures, seasonStats 
     // Contar desde events (cubre TODAS las competiciones, no solo la primaria del breakdown)
     const regularGoals  = events.filter(e => e.event_type === 'goal').length
     const penaltyGoals  = events.filter(e => e.event_type === 'goal_penalty').length
-    const shootoutGoals = events.filter(e => e.event_type === 'goal_shootout').length
-    const totalGoals    = regularGoals + penaltyGoals + shootoutGoals
+    const shootoutGoals = events.filter(e => ['goal_shootout', 'goal_shootout_decisive'].includes(e.event_type)).length
+    const shootoutMisses = events.filter(e => ['missed_shootout', 'missed_shootout_decisive'].includes(e.event_type)).length
+    const totalGoals    = regularGoals + penaltyGoals
     const totalGoalPts  = events
-      .filter(e => ['goal', 'goal_penalty', 'goal_shootout'].includes(e.event_type))
+      .filter(e => ['goal', 'goal_penalty'].includes(e.event_type))
       .reduce((sum, e) => sum + e.pts, 0)
 
     const directAssists = events.filter(e => e.event_type === 'assist').length
@@ -209,10 +210,10 @@ export default function PointsBreakdown({ player, events, fixtures, seasonStats 
     // ── Sección 1: Creación y ataque (scoring tiles) ─────────────
     const ataque: TileRow[] = []
 
-    if (regularGoals + shootoutGoals > 0) {
-      const playGoals = regularGoals + shootoutGoals
+    if (regularGoals > 0) {
+      const playGoals = regularGoals
       const playPts   = events
-        .filter(e => e.event_type === 'goal' || e.event_type === 'goal_shootout')
+        .filter(e => e.event_type === 'goal')
         .reduce((sum, e) => sum + e.pts, 0)
       ataque.push({
         key:          'goal',
@@ -233,6 +234,19 @@ export default function PointsBreakdown({ player, events, fixtures, seasonStats 
         displayValue: String(penaltyGoals),
         pct:          Math.min(1, penaltyGoals / 8),
         pts:          penPts,
+      })
+    }
+
+    if (shootoutGoals + shootoutMisses > 0) {
+      const shootoutPts = events
+        .filter(e => ['goal_shootout', 'goal_shootout_decisive', 'missed_shootout', 'missed_shootout_decisive'].includes(e.event_type))
+        .reduce((sum, e) => sum + e.pts, 0)
+      ataque.push({
+        key:          'shootout',
+        label:        'Tanda',
+        displayValue: `${shootoutGoals}/${shootoutGoals + shootoutMisses}`,
+        pct:          Math.min(1, (shootoutGoals + shootoutMisses) / 5),
+        pts:          shootoutPts,
       })
     }
 

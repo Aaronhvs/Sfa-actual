@@ -9,7 +9,13 @@ from sfa.domain.ingestion_ports import (
     IngestionRepositoryPort,
 )
 from sfa.domain.name_matching import name_matches
-from sfa.domain.scoring.services import ScoreTimeline
+from sfa.domain.scoring.services import (
+    ScoreTimeline,
+    ShootoutDecider,
+    is_missed_penalty_event,
+    is_penalty_attempt_event,
+    is_shootout_attempt_event,
+)
 from sfa.domain.scoring_ports import ScoringRulesVersionRepositoryPort
 from sfa.infrastructure.models.enums import EventType
 
@@ -134,17 +140,27 @@ class ReingestPlayerUseCase:
                 row.away_team_external_id,
                 raw_events,
             )
+            decisive_shootout_ids = ShootoutDecider.decisive_event_ids(
+                row.home_team_external_id,
+                row.away_team_external_id,
+                raw_events,
+            )
             pending_events: list[tuple[FixtureEventRawDTO, bool, bool]] = []
 
             for evt in raw_events:
                 is_goal_for_player = (
                     evt.type == "Goal"
-                    and evt.detail not in ("Missed Penalty", "Own Goal")
+                    and evt.detail not in ("Own Goal",)
                     and name_matches(evt.player_name, player_name)
+                    and (
+                        not is_missed_penalty_event(evt)
+                        or is_shootout_attempt_event(evt)
+                    )
                 )
                 is_assist_for_player = (
                     evt.type == "Goal"
                     and evt.detail not in ("Missed Penalty", "Own Goal")
+                    and not is_shootout_attempt_event(evt)
                     and evt.assist_name is not None
                     and name_matches(evt.assist_name, player_name)
                 )
@@ -163,16 +179,32 @@ class ReingestPlayerUseCase:
                 minute = evt.minute + evt.extra_minute
                 db_minute = max(1, min(120, minute))
 
-                transition = score_timeline.transition_for(evt)
-                home_b, away_b = transition.home_before, transition.away_before
-                score_diff = (away_b - home_b) if is_away else (home_b - away_b)
-                score_before_str = f"{home_b}:{away_b}"
-
                 if is_goal_for_player:
-                    is_penalty = evt.detail == "Penalty"
-                    is_shootout = is_penalty and minute > 120
+                    is_penalty = is_penalty_attempt_event(evt)
+                    is_missed_penalty = is_missed_penalty_event(evt)
+                    is_shootout = is_shootout_attempt_event(evt)
                     if is_shootout:
-                        event_type = EventType.GOAL_SHOOTOUT
+                        score_diff = 0
+                        score_before_str = None
+                    else:
+                        transition = score_timeline.transition_for(evt)
+                        home_b, away_b = transition.home_before, transition.away_before
+                        score_diff = (away_b - home_b) if is_away else (home_b - away_b)
+                        score_before_str = f"{home_b}:{away_b}"
+                    if is_shootout:
+                        is_decisive = id(evt) in decisive_shootout_ids
+                        if is_missed_penalty:
+                            event_type = (
+                                EventType.MISSED_SHOOTOUT_DECISIVE
+                                if is_decisive
+                                else EventType.MISSED_SHOOTOUT
+                            )
+                        else:
+                            event_type = (
+                                EventType.GOAL_SHOOTOUT_DECISIVE
+                                if is_decisive
+                                else EventType.GOAL_SHOOTOUT
+                            )
                         psxg: float | None = None
                     elif is_penalty:
                         event_type = EventType.GOAL_PENALTY
@@ -181,6 +213,10 @@ class ReingestPlayerUseCase:
                         event_type = EventType.GOAL
                         psxg = None
                 else:
+                    transition = score_timeline.transition_for(evt)
+                    home_b, away_b = transition.home_before, transition.away_before
+                    score_diff = (away_b - home_b) if is_away else (home_b - away_b)
+                    score_before_str = f"{home_b}:{away_b}"
                     is_corner = "corner" in evt.detail.lower()
                     event_type = EventType.CORNER_ASSIST if is_corner else EventType.ASSIST
                     psxg = None

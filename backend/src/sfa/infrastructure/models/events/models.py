@@ -14,7 +14,7 @@ class PlayerEvent(Base):
     team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
     minute: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     event_type: Mapped[EventType] = mapped_column(
-        Enum(EventType, native_enum=False), nullable=False
+        Enum(EventType, native_enum=False, length=32), nullable=False
     )
     score_before: Mapped[str | None] = mapped_column(String(10), nullable=True)
     score_diff: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
