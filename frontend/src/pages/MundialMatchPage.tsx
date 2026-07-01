@@ -10,6 +10,7 @@ import type {
   WcTeamLineup,
 } from '../types'
 import MatchTimeline from '../components/mundial/MatchTimeline'
+import { formatLocalDateLong, formatLocalTime, localTimeZoneLabel } from '../utils/localTime'
 import { worldCupTeamName, worldCupStageLabel } from '../utils/worldCupTeams'
 
 type DetailTab = 'lineups' | 'statistics' | 'performance'
@@ -37,22 +38,6 @@ const STAT_LABELS_ES: Record<string, string> = {
   'Total passes': 'Pases',
   'Passes accurate': 'Pases completados',
   'Passes %': 'Precisión de pase',
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function TeamIdentity({ team, asLink = false }: { team: WcTeam; asLink?: boolean }) {
@@ -91,7 +76,7 @@ function matchStatus(fixture: WcFixture): string {
     return fixture.status === 'HT' ? 'Descanso' : `${fixture.elapsed ?? ''}' En vivo`
   }
   if (FINISHED_STATUSES.has(fixture.status)) return 'Finalizado'
-  return `${formatDate(fixture.played_at)} · ${formatTime(fixture.played_at)}`
+  return `${formatLocalDateLong(fixture.played_at)} · ${formatLocalTime(fixture.played_at)} ${localTimeZoneLabel()}`
 }
 
 function PlayerRow({ player, color }: { player: WcLineupPlayer; color: string }) {

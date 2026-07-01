@@ -2,21 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchWcFixtures, fetchWcStandings, fetchWcTeamProfile } from '../api/client'
 import type { WcFixture, WcFixturesResponse, WcStanding, WcStandingsResponse, WcTeam, WcTeamProfileResponse, WcTopPlayer } from '../types'
+import { formatLocalDateTimeShort, localTimeZoneLabel } from '../utils/localTime'
 import { worldCupTeamName, worldCupTeamNameFromString } from '../utils/worldCupTeams'
 
 const TEAM_LOGO = (externalId: number | null) =>
   externalId ? `https://media.api-sports.io/football/teams/${externalId}.png` : null
 
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN'])
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function fixtureIncludesTeam(fixture: WcFixture, teamId: number): boolean {
   return fixture.home_team.external_id === teamId || fixture.away_team.external_id === teamId
@@ -40,7 +32,7 @@ function TeamFixtureRow({ fixture, teamId }: { fixture: WcFixture; teamId: numbe
       </span>
       <span className="wmt-fixture__score">
         {hasScore ? `${fixture.home_goals} - ${fixture.away_goals}` : 'vs'}
-        <small>{finished ? 'Final' : fixture.is_live ? `${fixture.elapsed ?? ''}'` : formatDate(fixture.played_at)}</small>
+        <small>{finished ? 'Final' : fixture.is_live ? `${fixture.elapsed ?? ''}'` : `${formatLocalDateTimeShort(fixture.played_at)} ${localTimeZoneLabel()}`}</small>
       </span>
       <span className="wmt-fixture__full">{homeName} vs {awayName}</span>
     </Link>

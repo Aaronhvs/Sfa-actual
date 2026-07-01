@@ -2,18 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchWcFixtures, fetchWcLive } from '../../api/client'
 import type { WcFixture } from '../../types'
+import { formatLocalDateTimeShort, localTimeZoneLabel } from '../../utils/localTime'
 import { worldCupTeamName } from '../../utils/worldCupTeams'
 
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN'])
-
-function formatMatchTime(iso: string): string {
-  return new Date(iso).toLocaleString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 export default function WcLiveChip() {
   const [fixture, setFixture] = useState<WcFixture | null>(null)
@@ -65,7 +57,7 @@ export default function WcLiveChip() {
     ? 'Descanso'
     : isLive
       ? `${fixture.elapsed ?? ''}'`
-      : formatMatchTime(fixture.played_at)
+      : `${formatLocalDateTimeShort(fixture.played_at)} ${localTimeZoneLabel()}`
   const homeFlag = fixture.home_team.external_id
     ? `https://media.api-sports.io/football/teams/${fixture.home_team.external_id}.png`
     : null

@@ -9,6 +9,13 @@ import type {
   WcTeamSFARankingItem,
 } from '../types'
 import { fetchWcFixtures, fetchWcLive, fetchWcStandings, fetchWcTeamSFARanking } from '../api/client'
+import {
+  compactLocalDateLabel,
+  formatLocalDateShort,
+  formatLocalTime,
+  localDateKey,
+  localTimeZoneLabel,
+} from '../utils/localTime'
 import { worldCupTeamName, worldCupStageLabel } from '../utils/worldCupTeams'
 
 type MundialView = 'matches' | 'standings' | 'bracket' | 'teams'
@@ -98,42 +105,11 @@ const ROUND32_BRACKET_ORDER: Array<[string, string]> = [
   ['COL', 'GHA'],
 ]
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function dateKey(iso: string): string {
-  const date = new Date(iso)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function compactDateLabel(key: string): string {
-  return new Date(`${key}T12:00:00`).toLocaleDateString('es-ES', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
 function uniqueDateOptions(fixtures: WcFixture[], direction: 'asc' | 'desc') {
-  const keys = Array.from(new Set(fixtures.map((fixture) => dateKey(fixture.played_at))))
+  const keys = Array.from(new Set(fixtures.map((fixture) => localDateKey(fixture.played_at))))
   return keys
     .sort((a, b) => direction === 'asc' ? a.localeCompare(b) : b.localeCompare(a))
-    .map((key) => ({ key, label: compactDateLabel(key) }))
+    .map((key) => ({ key, label: compactLocalDateLabel(key) }))
 }
 
 function isKnockout(fixture: WcFixture): boolean {
@@ -208,7 +184,7 @@ function FixtureCard({ fixture, compact = false }: {
         <div className="wm-match__score" aria-label={
           hasScore
             ? `${fixture.home_goals} a ${fixture.away_goals}`
-            : `${formatDate(fixture.played_at)} a las ${formatTime(fixture.played_at)}`
+            : `${formatLocalDateShort(fixture.played_at)} a las ${formatLocalTime(fixture.played_at)} ${localTimeZoneLabel()}`
         }>
           {fixture.is_live ? (
             <>
@@ -225,8 +201,8 @@ function FixtureCard({ fixture, compact = false }: {
             </>
           ) : (
             <>
-              <strong>{formatTime(fixture.played_at)}</strong>
-              <small>{formatDate(fixture.played_at)}</small>
+              <strong>{formatLocalTime(fixture.played_at)}</strong>
+              <small>{formatLocalDateShort(fixture.played_at)} · {localTimeZoneLabel()}</small>
             </>
           )}
         </div>
@@ -330,7 +306,7 @@ function BracketNode({
   side: 'left' | 'right' | 'center'
   nodeId?: string
 }) {
-  const date = fixture ? formatDate(fixture.played_at).replace('.', '') : dateFallback
+  const date = fixture ? formatLocalDateShort(fixture.played_at).replace('.', '') : dateFallback
   const winnerSide = bracketWinnerSide(fixture)
   const displayHomeTeam = homeTeam ?? fixture?.home_team ?? null
   const displayAwayTeam = awayTeam ?? fixture?.away_team ?? null
@@ -939,7 +915,7 @@ function ScorePill({ fixture, tone }: { fixture: WcFixture; tone: MatchTone }) {
     ? fixture.status === 'HT' ? 'Descanso' : `${fixture.elapsed ?? ''}'`
     : finished
       ? 'Final'
-      : formatTime(fixture.played_at)
+      : `${formatLocalTime(fixture.played_at)} ${localTimeZoneLabel()}`
 
   return (
     <Link
@@ -1122,10 +1098,10 @@ export default function MundialPage() {
   const selectedResultDate = resultDate ?? resultDates[0]?.key ?? ''
   const selectedUpcomingDate = upcomingDate ?? upcomingDates[0]?.key ?? ''
   const results = allResults
-    .filter((fixture) => dateKey(fixture.played_at) === selectedResultDate)
+    .filter((fixture) => localDateKey(fixture.played_at) === selectedResultDate)
     .slice(0, 10)
   const upcoming = allUpcoming
-    .filter((fixture) => dateKey(fixture.played_at) === selectedUpcomingDate)
+    .filter((fixture) => localDateKey(fixture.played_at) === selectedUpcomingDate)
     .slice(0, 10)
   const spotlightFixture = live[0] ?? allUpcoming[0] ?? allResults[0] ?? null
   const knockoutFixtures = fixtures.filter(isKnockout)
