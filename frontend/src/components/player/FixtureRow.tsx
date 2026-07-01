@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PlayerEvent, PlayerFixture } from '../../types'
 import { competitionLabel, stageLabel } from '../../utils/footballLabels'
+import { worldCupTeamNameFromString } from '../../utils/worldCupTeams'
 
 const WC_COMPETITION_ID = 350
 
@@ -420,19 +421,22 @@ export default function FixtureRow({ fixture, events }: Props) {
   const [open, setOpen] = useState(false)
   const fixtureEvents = events.filter((e) => e.event_type !== 'stats')
   const isExcellent = fixture.sfa_pts >= EXCELLENT_THRESHOLD
+  const isWorldCup = fixture.competition_id === WC_COMPETITION_ID
+  const homeTeamName = isWorldCup ? worldCupTeamNameFromString(fixture.home_team) : fixture.home_team
+  const awayTeamName = isWorldCup ? worldCupTeamNameFromString(fixture.away_team) : fixture.away_team
 
   return (
     <div className={`fixture-row${isExcellent ? ' fixture-row--excellent' : ''}`}>
       <button className="fixture-row__header" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <div className="fixture-row__match">
           <div className="fixture-row__shield">
-            <TeamLogo name={fixture.home_team} logo={fixture.home_team_logo} />
+            <TeamLogo name={homeTeamName} logo={fixture.home_team_logo} />
             <span className="fixture-row__vs">vs</span>
-            <TeamLogo name={fixture.away_team} logo={fixture.away_team_logo} />
+            <TeamLogo name={awayTeamName} logo={fixture.away_team_logo} />
           </div>
           <div className="fixture-row__teams">
             <div className="fixture-row__matchup">
-              {fixture.home_team} vs {fixture.away_team}
+              {homeTeamName} vs {awayTeamName}
             </div>
             <div className="fixture-row__meta">
               {competitionLabel(fixture.competition)} &middot; {stageLabel(fixture.stage)} &middot; {formatDate(fixture.played_at)}
