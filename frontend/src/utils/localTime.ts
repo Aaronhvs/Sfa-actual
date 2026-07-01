@@ -1,8 +1,9 @@
 const LOCALE = 'es-ES'
 const MATCH_TIME_ZONE = 'America/Santiago'
+const WORLD_CUP_API_OFFSET_MS = 60 * 60 * 1000
 
 function localDate(iso: string): Date {
-  return new Date(iso)
+  return new Date(new Date(iso).getTime() + WORLD_CUP_API_OFFSET_MS)
 }
 
 export function formatLocalDateShort(iso: string): string {
