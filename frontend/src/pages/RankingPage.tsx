@@ -12,7 +12,7 @@ import WcLiveChip from '../components/shared/WcLiveChip'
 import { useCountUp } from '../hooks/useCountUp'
 import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 15
 const WORLD_CUP_PAGE_SIZE = 15
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
