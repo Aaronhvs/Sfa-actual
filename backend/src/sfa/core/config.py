@@ -26,6 +26,20 @@ class Settings(BaseSettings):
     # In production, must be set or all /admin requests are blocked
     ADMIN_API_KEY: str = ""
 
+    # AI ranking explanations. If disabled or no API key is configured, SFA
+    # writes deterministic Spanish explanations from the same evidence package.
+    AI_EXPLANATIONS_ENABLED: bool = False
+    AI_EXPLANATIONS_PROVIDER: str = "deterministic"
+    AI_EXPLANATIONS_API_KEY: str = ""
+    AI_EXPLANATIONS_BASE_URL: str = ""
+    AI_EXPLANATIONS_MODEL: str = "gpt-5-nano"
+    AI_EXPLANATIONS_TIMEOUT_SECONDS: int = 20
+    AI_EXPLANATIONS_TOP_N: int = 10
+    AI_EXPLANATIONS_PROMPT_VERSION: str = "ranking-explanation-v1"
+    AI_EXPLANATIONS_MAX_INPUT_TOKENS_PER_PLAYER: int = 1800
+    AI_EXPLANATIONS_MAX_OUTPUT_TOKENS_PER_PLAYER: int = 700
+    AI_EXPLANATIONS_DAILY_BUDGET_USD: float = 2.0
+
     # CORS — comma-separated origins allowed to call the API
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 

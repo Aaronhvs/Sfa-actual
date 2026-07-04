@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { Competition, RankedPlayer, RankingPagination, SeasonItem } from '../types'
-import { fetchRanking, fetchCompetitions, fetchSeasons } from '../api/client'
+import type { Competition, RankedPlayer, RankingPagination, RankingPlayerExplanation, SeasonItem } from '../types'
+import { fetchRanking, fetchCompetitions, fetchRankingExplanations, fetchSeasons } from '../api/client'
 import FilterBar from '../components/ranking/FilterBar'
 import RankingCard from '../components/ranking/RankingCard'
+import RankingExplanationModal from '../components/ranking/RankingExplanationModal'
 import ShowcaseCard from '../components/ranking/ShowcaseCard'
+import TopRankingNarrativeCarousel from '../components/ranking/TopRankingNarrativeCarousel'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
 import WorldCupBanner from '../components/shared/WorldCupBanner'
 import WorldCupPageHeader from '../components/shared/WorldCupPageHeader'
@@ -14,6 +16,7 @@ import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 
 const PAGE_SIZE = 15
 const WORLD_CUP_PAGE_SIZE = 15
+const WORLD_CUP_COMPETITION_ID = 350
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
 const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
@@ -34,6 +37,8 @@ export default function RankingPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [players, setPlayers] = useState<RankedPlayer[]>([])
+  const [rankingExplanations, setRankingExplanations] = useState<RankingPlayerExplanation[]>([])
+  const [selectedAnalysis, setSelectedAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [totalPlayers, setTotalPlayers] = useState(0)
   const [pagination, setPagination] = useState<RankingPagination | null>(null)
   const [loadingRanking, setLoadingRanking] = useState(true)
@@ -128,6 +133,30 @@ export default function RankingPage() {
         setLoadingRanking(false)
       })
   }, [position, competition, season, page, pageSize, debouncedSearch, bonusFilter])
+
+  useEffect(() => {
+    const shouldLoadNarratives = (
+      isWcSeason
+      && page === 0
+      && !debouncedSearch
+      && !position
+      && !bonusFilter
+      && players.length >= 3
+    )
+    if (!shouldLoadNarratives) {
+      setRankingExplanations([])
+      return
+    }
+    fetchRankingExplanations({
+      season,
+      competition_id: WORLD_CUP_COMPETITION_ID,
+      scope: 'world_cup',
+      limit: 10,
+      use_total: true,
+    })
+      .then((data) => setRankingExplanations(data.explanations))
+      .catch(() => setRankingExplanations([]))
+  }, [isWcSeason, page, debouncedSearch, position, bonusFilter, players.length, season])
 
   const bonusFilteredPlayers = players.filter((p) => matchesBonusFilter(p, bonusFilter))
   const showHero = page === 0 && !debouncedSearch && bonusFilteredPlayers.length >= 3
@@ -285,6 +314,13 @@ export default function RankingPage() {
 
       {!loadingRanking && !error && (
         <>
+          {showHero && isWcSeason && rankingExplanations.length > 0 && (
+            <TopRankingNarrativeCarousel
+              players={top3}
+              explanations={rankingExplanations}
+              onOpenAnalysis={setSelectedAnalysis}
+            />
+          )}
           {showHero && (
             <section
               className={`rp-podium${isWcSeason ? ' rp-podium--wc' : ''}`}
@@ -487,6 +523,10 @@ export default function RankingPage() {
               </>
             )}
           </div>
+          <RankingExplanationModal
+            explanation={selectedAnalysis}
+            onClose={() => setSelectedAnalysis(null)}
+          />
         </>
       )}
     </div>

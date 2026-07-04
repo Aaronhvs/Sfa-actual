@@ -1,0 +1,365 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import aliased
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from sfa.domain.ports import RankedPlayerDTO
+from sfa.domain.ranking_explanation_ports import (
+    RankingExplanationEvidenceDTO,
+    RankingExplanationRequestDTO,
+    RankingExplanationWriteResultDTO,
+    RankingPlayerExplanationDTO,
+)
+from sfa.infrastructure.models import Competition, Fixture, Player, PlayerEvent, PlayerEventScore, SFASeasonScore, Team
+from sfa.infrastructure.models.ranking_explanations.models import RankingPlayerExplanation
+
+
+PUBLIC_STATUSES = ("generated", "fallback")
+
+
+class RankingExplanationRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def build_evidence(
+        self,
+        request: RankingExplanationRequestDTO,
+        ranked_players: list[RankedPlayerDTO],
+    ) -> list[RankingExplanationEvidenceDTO]:
+        if not ranked_players:
+            return []
+
+        comparison = self._comparison(ranked_players)
+        evidence_items: list[RankingExplanationEvidenceDTO] = []
+        for ranked in ranked_players:
+            score_rows = await self._score_rows(ranked.player_id, request)
+            top_events = await self._top_events(ranked.player_id, request)
+            score_total = round(float(ranked.total_pts or 0), 2)
+            achievement_bonus = round(
+                sum(float(row.get("achievement_bonus_pts") or 0) for row in score_rows),
+                2,
+            )
+            breakdown = self._merge_breakdown(score_rows)
+            evidence = {
+                "scope": {
+                    "season": request.season,
+                    "competition_id": request.competition_id,
+                    "rules_version_id": request.rules_version_id,
+                    "scope": request.scope,
+                    "use_total": request.use_total,
+                },
+                "player": {
+                    "id": ranked.player_id,
+                    "name": ranked.player_name,
+                    "team": ranked.team_name,
+                    "team_logo_url": ranked.team_logo_url,
+                    "position": ranked.position,
+                    "competition": ranked.competition_name,
+                    "rank": ranked.rank,
+                    "total_pts": score_total,
+                    "matches": int(ranked.matches_played or 0),
+                    "goals": int(ranked.goals or 0),
+                    "assists": int(ranked.assists or 0),
+                    "dribbles_won": int(ranked.dribbles_won or 0),
+                    "duels_won": int(ranked.duels_won or 0),
+                    "b1_bonus_pts": round(float(ranked.b1_bonus_pts or 0), 2),
+                    "b1_bonus_label": ranked.b1_bonus_label,
+                    "achievement_bonus_pts": achievement_bonus,
+                },
+                "breakdown": breakdown,
+                "score_rows": score_rows,
+                "top_events": top_events,
+                "comparison": comparison.get(ranked.player_id, {}),
+            }
+            source_hash = self._source_hash(evidence)
+            evidence_items.append(
+                RankingExplanationEvidenceDTO(
+                    player_id=ranked.player_id,
+                    season=request.season,
+                    competition_id=request.competition_id,
+                    rules_version_id=request.rules_version_id,
+                    scope=request.scope,
+                    rank=ranked.rank,
+                    source_hash=source_hash,
+                    evidence=evidence,
+                )
+            )
+        return evidence_items
+
+    async def get_cached_for_scope(
+        self,
+        request: RankingExplanationRequestDTO,
+    ) -> list[RankingPlayerExplanationDTO]:
+        stmt = (
+            select(RankingPlayerExplanation)
+            .where(
+                RankingPlayerExplanation.season == request.season,
+                RankingPlayerExplanation.scope == request.scope,
+                RankingPlayerExplanation.status.in_(PUBLIC_STATUSES),
+            )
+            .order_by(RankingPlayerExplanation.rank.asc())
+            .limit(request.limit)
+        )
+        stmt = self._apply_scope_filters(stmt, request)
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [self._to_dto(row) for row in rows]
+
+    async def get_cached_for_player(
+        self,
+        player_id: int,
+        request: RankingExplanationRequestDTO,
+    ) -> RankingPlayerExplanationDTO | None:
+        stmt = select(RankingPlayerExplanation).where(
+            RankingPlayerExplanation.player_id == player_id,
+            RankingPlayerExplanation.season == request.season,
+            RankingPlayerExplanation.scope == request.scope,
+            RankingPlayerExplanation.status.in_(PUBLIC_STATUSES),
+        )
+        stmt = self._apply_scope_filters(stmt, request)
+        row = (await self._session.execute(stmt)).scalars().first()
+        return self._to_dto(row) if row else None
+
+    async def get_source_hash(
+        self,
+        player_id: int,
+        request: RankingExplanationRequestDTO,
+    ) -> str | None:
+        stmt = select(RankingPlayerExplanation.source_hash).where(
+            RankingPlayerExplanation.player_id == player_id,
+            RankingPlayerExplanation.season == request.season,
+            RankingPlayerExplanation.scope == request.scope,
+        )
+        stmt = self._apply_scope_filters(stmt, request)
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def upsert_explanation(
+        self,
+        evidence: RankingExplanationEvidenceDTO,
+        result: RankingExplanationWriteResultDTO,
+        prompt_version: str,
+    ) -> None:
+        values = {
+            "player_id": evidence.player_id,
+            "season": evidence.season,
+            "competition_id": evidence.competition_id,
+            "rules_version_id": evidence.rules_version_id,
+            "scope": evidence.scope,
+            "rank": evidence.rank,
+            "variant": result.variant,
+            "status": result.status,
+            "short_text": result.short_text[:280],
+            "long_text": result.long_text[:1800],
+            "bullets": result.bullets,
+            "evidence_json": evidence.evidence,
+            "model_name": result.model_name,
+            "prompt_version": prompt_version,
+            "input_tokens": result.input_tokens,
+            "output_tokens": result.output_tokens,
+            "cost_estimate_usd": result.cost_estimate_usd,
+            "source_hash": evidence.source_hash,
+            "generated_at": datetime.now(timezone.utc),
+            "error": result.error,
+        }
+        stmt = insert(RankingPlayerExplanation).values(**values)
+        update_values = {key: getattr(stmt.excluded, key) for key in values if key not in {"player_id"}}
+        if evidence.competition_id is None:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["player_id", "season", "rules_version_id", "scope"],
+                index_where=RankingPlayerExplanation.competition_id.is_(None),
+                set_=update_values,
+            )
+        else:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["player_id", "season", "competition_id", "rules_version_id", "scope"],
+                index_where=RankingPlayerExplanation.competition_id.is_not(None),
+                set_=update_values,
+            )
+        await self._session.execute(stmt)
+
+    async def mark_stale_for_scope(
+        self,
+        request: RankingExplanationRequestDTO,
+        fresh_hashes: dict[int, str],
+    ) -> int:
+        if not fresh_hashes:
+            return 0
+        stale_conditions = [
+            RankingPlayerExplanation.player_id.in_(list(fresh_hashes)),
+            RankingPlayerExplanation.season == request.season,
+            RankingPlayerExplanation.scope == request.scope,
+            RankingPlayerExplanation.status.in_(PUBLIC_STATUSES),
+        ]
+        if request.competition_id is None:
+            stale_conditions.append(RankingPlayerExplanation.competition_id.is_(None))
+        else:
+            stale_conditions.append(RankingPlayerExplanation.competition_id == request.competition_id)
+        if request.rules_version_id is None:
+            stale_conditions.append(RankingPlayerExplanation.rules_version_id.is_(None))
+        else:
+            stale_conditions.append(RankingPlayerExplanation.rules_version_id == request.rules_version_id)
+
+        updated = 0
+        for player_id, source_hash in fresh_hashes.items():
+            stmt = (
+                update(RankingPlayerExplanation)
+                .where(*stale_conditions)
+                .where(RankingPlayerExplanation.player_id == player_id)
+                .where(RankingPlayerExplanation.source_hash != source_hash)
+                .values(status="stale")
+            )
+            result = await self._session.execute(stmt)
+            updated += int(result.rowcount or 0)
+        return updated
+
+    async def _score_rows(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
+        stmt = (
+            select(
+                SFASeasonScore.competition_id,
+                Competition.name.label("competition"),
+                Team.name.label("team"),
+                SFASeasonScore.total_pts,
+                SFASeasonScore.achievement_bonus_pts,
+                SFASeasonScore.matches_played,
+                SFASeasonScore.breakdown,
+            )
+            .join(Competition, Competition.id == SFASeasonScore.competition_id)
+            .outerjoin(Team, Team.id == SFASeasonScore.team_id)
+            .where(
+                SFASeasonScore.player_id == player_id,
+                SFASeasonScore.season == request.season,
+            )
+        )
+        stmt = self._apply_score_scope(stmt, request)
+        rows = (await self._session.execute(stmt)).mappings().all()
+        return [self._clean(dict(row)) for row in rows]
+
+    async def _top_events(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
+        home = aliased(Team)
+        away = aliased(Team)
+        stmt = (
+            select(
+                PlayerEventScore.final_points,
+                PlayerEventScore.action_type,
+                PlayerEventScore.base_points,
+                PlayerEventScore.m1,
+                PlayerEventScore.m2,
+                PlayerEventScore.m3,
+                PlayerEventScore.mvisit,
+                PlayerEvent.minute,
+                PlayerEvent.score_before,
+                PlayerEvent.score_diff,
+                Fixture.external_id.label("fixture_external_id"),
+                Fixture.stage,
+                Fixture.played_at,
+                home.name.label("home_team"),
+                away.name.label("away_team"),
+            )
+            .join(PlayerEvent, PlayerEvent.id == PlayerEventScore.event_id)
+            .join(Fixture, Fixture.id == PlayerEventScore.fixture_id)
+            .join(home, home.id == Fixture.home_team_id)
+            .join(away, away.id == Fixture.away_team_id)
+            .where(
+                PlayerEventScore.player_id == player_id,
+                PlayerEventScore.season == request.season,
+            )
+            .order_by(PlayerEventScore.final_points.desc())
+            .limit(5)
+        )
+        if request.competition_id is not None:
+            stmt = stmt.where(PlayerEventScore.competition_id == request.competition_id)
+        if request.rules_version_id is not None:
+            stmt = stmt.where(PlayerEventScore.rules_version_id == request.rules_version_id)
+        rows = (await self._session.execute(stmt)).mappings().all()
+        return [self._clean(dict(row)) for row in rows]
+
+    def _apply_scope_filters(self, stmt: Any, request: RankingExplanationRequestDTO) -> Any:
+        if request.competition_id is None:
+            stmt = stmt.where(RankingPlayerExplanation.competition_id.is_(None))
+        else:
+            stmt = stmt.where(RankingPlayerExplanation.competition_id == request.competition_id)
+        if request.rules_version_id is not None:
+            stmt = stmt.where(RankingPlayerExplanation.rules_version_id == request.rules_version_id)
+        return stmt
+
+    def _apply_score_scope(self, stmt: Any, request: RankingExplanationRequestDTO) -> Any:
+        if request.competition_id is not None:
+            stmt = stmt.where(SFASeasonScore.competition_id == request.competition_id)
+        if request.rules_version_id is None:
+            stmt = stmt.where(SFASeasonScore.rules_version_id.is_(None))
+        else:
+            stmt = stmt.where(SFASeasonScore.rules_version_id == request.rules_version_id)
+        return stmt
+
+    def _to_dto(self, row: RankingPlayerExplanation) -> RankingPlayerExplanationDTO:
+        evidence = row.evidence_json or {}
+        player = evidence.get("player", {})
+        return RankingPlayerExplanationDTO(
+            id=row.id,
+            player_id=row.player_id,
+            player_name=player.get("name"),
+            team_name=player.get("team"),
+            team_logo_url=player.get("team_logo_url"),
+            season=row.season,
+            competition_id=row.competition_id,
+            rules_version_id=row.rules_version_id,
+            scope=row.scope,
+            rank=row.rank,
+            variant=row.variant,
+            status=row.status,
+            short_text=row.short_text,
+            long_text=row.long_text,
+            bullets=list(row.bullets or []),
+            evidence=evidence,
+            model_name=row.model_name,
+            prompt_version=row.prompt_version,
+            generated_at=row.generated_at,
+        )
+
+    def _merge_breakdown(self, score_rows: list[dict[str, Any]]) -> dict[str, dict[str, float | int]]:
+        merged: dict[str, dict[str, float | int]] = {}
+        for row in score_rows:
+            breakdown = row.get("breakdown") or {}
+            for action, data in breakdown.items():
+                slot = merged.setdefault(action, {"count": 0, "pts": 0.0})
+                slot["count"] = int(slot["count"]) + int(data.get("count") or 0)
+                slot["pts"] = round(float(slot["pts"]) + float(data.get("pts") or 0), 2)
+        return merged
+
+    def _comparison(self, ranked_players: list[RankedPlayerDTO]) -> dict[int, dict[str, Any]]:
+        if not ranked_players:
+            return {}
+        leader_pts = float(ranked_players[0].total_pts or 0)
+        return {
+            player.player_id: {
+                "gap_to_leader": round(leader_pts - float(player.total_pts or 0), 2),
+                "points_per_match": round(
+                    float(player.total_pts or 0) / max(int(player.matches_played or 0), 1),
+                    2,
+                ),
+                "top_10_size": len(ranked_players),
+            }
+            for player in ranked_players
+        }
+
+    def _source_hash(self, evidence: dict[str, Any]) -> str:
+        payload = json.dumps(self._clean(evidence), sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _clean(self, value: Any) -> Any:
+        if isinstance(value, Decimal):
+            return float(value)
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, dict):
+            return {str(k): self._clean(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._clean(v) for v in value]
+        return value

@@ -46,6 +46,34 @@ export interface RankingResponse {
   pagination: RankingPagination
 }
 
+export interface RankingPlayerExplanation {
+  id: number
+  player_id: number
+  player_name: string | null
+  team_name: string | null
+  team_logo_url: string | null
+  season: string
+  competition_id: number | null
+  rules_version_id: number | null
+  scope: string
+  rank: number
+  variant: string
+  status: string
+  short_text: string
+  long_text: string
+  bullets: string[]
+  evidence: Record<string, unknown>
+  model_name: string | null
+  prompt_version: string
+  generated_at: string
+}
+
+export interface RankingExplanationsResponse {
+  season: string
+  scope: string
+  explanations: RankingPlayerExplanation[]
+}
+
 export interface RankingPagination {
   page: number
   limit: number

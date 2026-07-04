@@ -9,6 +9,7 @@ from .player_event_repository import PlayerEventRepository
 from .player_event_score_repository import PlayerEventScoreRepository
 from .player_repository import PlayerRepository
 from .player_tm_id_repository import PlayerTmIdRepository
+from .ranking_explanation_repository import RankingExplanationRepository
 from .scoring_repository import ScoringRepository
 from .scoring_rules_version_repository import ScoringRulesVersionRepository
 from .season_repository import SeasonRepository
@@ -29,6 +30,7 @@ __all__ = [
     "PlayerEventRepository",
     "PlayerEventScoreRepository",
     "PlayerTmIdRepository",
+    "RankingExplanationRepository",
     "PlayerRepository",
     "ScoringRepository",
     "ScoringRulesVersionRepository",

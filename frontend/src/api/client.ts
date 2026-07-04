@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -149,6 +149,30 @@ export async function fetchWcLive(): Promise<WcLiveResponse> {
   return data
 }
 
+export async function fetchRankingExplanations(params: {
+  season: string
+  competition_id?: number
+  rules_version_id?: number
+  scope?: string
+  limit?: number
+  use_total?: boolean
+}): Promise<RankingExplanationsResponse> {
+  const q = new URLSearchParams()
+  q.set('season', params.season)
+  if (params.competition_id != null) q.set('competition_id', String(params.competition_id))
+  if (params.rules_version_id != null) q.set('rules_version_id', String(params.rules_version_id))
+  if (params.scope) q.set('scope', params.scope)
+  if (params.limit != null) q.set('limit', String(params.limit))
+  q.set('use_total', params.use_total === false ? 'false' : 'true')
+  const qs = q.toString()
+  const key = `ranking-explanations:${qs}`
+  const cached = getCached<RankingExplanationsResponse>(key)
+  if (cached) return cached
+  const data = await get<RankingExplanationsResponse>(`/ranking/explanations?${qs}`)
+  setCache(key, data)
+  return data
+}
+
 export async function fetchWcStandings(): Promise<WcStandingsResponse> {
   const key = 'wc:standings'
   const cached = getCached<WcStandingsResponse>(key)
@@ -204,4 +228,31 @@ export async function fetchPlayerAchievements(
   )
   setCache(key, data)
   return data
+}
+
+export async function fetchPlayerExplanation(params: {
+  player_id: number
+  season: string
+  competition_id?: number
+  rules_version_id?: number
+  scope?: string
+  use_total?: boolean
+}): Promise<RankingPlayerExplanation | null> {
+  const q = new URLSearchParams()
+  q.set('season', params.season)
+  if (params.competition_id != null) q.set('competition_id', String(params.competition_id))
+  if (params.rules_version_id != null) q.set('rules_version_id', String(params.rules_version_id))
+  if (params.scope) q.set('scope', params.scope)
+  q.set('use_total', params.use_total === false ? 'false' : 'true')
+  const qs = q.toString()
+  const key = `player-explanation:${params.player_id}:${qs}`
+  const cached = getCached<RankingPlayerExplanation>(key)
+  if (cached) return cached
+  try {
+    const data = await get<RankingPlayerExplanation>(`/players/${params.player_id}/explanation?${qs}`)
+    setCache(key, data)
+    return data
+  } catch {
+    return null
+  }
 }

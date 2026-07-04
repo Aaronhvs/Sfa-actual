@@ -14,6 +14,7 @@ from .enrichment_tasks import (
 from .ingest_fixture_events_task import ingest_fixture_events_task
 from .ingestion_tasks import ingest_all_competitions_task, ingest_competition_task
 from .ingest_today_task import ingest_today_task
+from .generate_ranking_explanations_task import generate_ranking_explanations_task
 from .reingest_player_task import reingest_player_task
 from .run_full_recalculation_task import run_full_recalculation_task
 
@@ -33,6 +34,7 @@ __all__ = [
     "ingest_competition_task",
     "ingest_all_competitions_task",
     "ingest_today_task",
+    "generate_ranking_explanations_task",
     "backfill_fixture_stats_task",
     "enrich_all_task",
     "enrich_player_positions_task",

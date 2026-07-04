@@ -13,6 +13,7 @@ from sfa.api.v1.elo_router import router as elo_router
 from sfa.api.v1.health import router as health_router
 from sfa.api.v1.players import router as players_router
 from sfa.api.v1.ranking import router as ranking_router
+from sfa.api.v1.ranking_explanations import router as ranking_explanations_router
 from sfa.api.v1.scoring_rules_router import router as scoring_rules_router
 from sfa.api.v1.seasons import router as seasons_router
 from sfa.api.v1.status import router as status_router
@@ -85,6 +86,7 @@ app.add_middleware(
 
 app.include_router(health_router, prefix="/api/v1", tags=["health"])
 app.include_router(ranking_router, prefix="/api/v1", tags=["ranking"])
+app.include_router(ranking_explanations_router, prefix="/api/v1", tags=["ranking"])
 app.include_router(seasons_router, prefix="/api/v1", tags=["seasons"])
 app.include_router(players_router, prefix="/api/v1", tags=["players"])
 app.include_router(competitions_router, prefix="/api/v1", tags=["competitions"])

@@ -1,0 +1,20 @@
+### Ranking explanations for World Cup Top 10
+GET http://localhost:8000/api/v1/ranking/explanations?season=2026&competition_id=350&rules_version_id=4&scope=world_cup&limit=10&use_total=true
+
+### Player explanation
+GET http://localhost:8000/api/v1/players/1206425/explanation?season=2026&competition_id=350&rules_version_id=4&scope=world_cup&use_total=true
+
+### Generate deterministic/fallback explanations
+POST http://localhost:8000/api/v1/admin/ranking-explanations/generate
+Content-Type: application/json
+X-Admin-Key: change-me
+
+{
+  "season": "2026",
+  "competition_id": 350,
+  "rules_version_id": 4,
+  "scope": "world_cup",
+  "limit": 10,
+  "force": true,
+  "use_total": true
+}

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, SeasonItem } from '../types'
-import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerFixtures, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
+import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingPlayerExplanation, SeasonItem } from '../types'
+import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerExplanation, fetchPlayerFixtures, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
 import PlayerHeader from '../components/player/PlayerHeader'
+import PlayerNarrativeAnalysis from '../components/player/PlayerNarrativeAnalysis'
 import StatBar from '../components/player/StatBar'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
 import { isWorldCupSeason } from '../utils/season'
@@ -27,11 +28,15 @@ export default function PlayerPage() {
   const [fixtures, setFixtures] = useState<PlayerFixture[]>([])
   const [seasonStats, setSeasonStats] = useState<PlayerSeasonStats | null>(null)
   const [achievements, setAchievements] = useState<PlayerCompetitionAchievement[]>([])
+  const [analysis, setAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [loading, setLoading] = useState(true)
   const [seasonChanging, setSeasonChanging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const initialSeasonRef = useRef('')
   const isWcSeason = isWorldCupSeason(season, seasonItems)
+  const explanationScope = isWcSeason ? 'world_cup' : 'ranking'
+  const explanationCompetitionId = isWcSeason ? 350 : undefined
+  const isExplanationWorldCup = (value: string) => isWorldCupSeason(value, seasonItems) || value === '2026'
   const playerSeasonItems: SeasonItem[] = (player?.available_seasons ?? []).map((item) => {
     const metadata = seasonItems.find((seasonItem) => seasonItem.season === item)
     return metadata ?? { season: item, is_latest: false }
@@ -68,13 +73,20 @@ export default function PlayerPage() {
           fetchPlayerFixtures(playerId, initialSeason || undefined),
           statsRequest,
           fetchPlayerAchievements(playerId, initialSeason),
+          fetchPlayerExplanation({
+            player_id: playerId,
+            season: initialSeason,
+            competition_id: isExplanationWorldCup(initialSeason) ? 350 : undefined,
+            scope: isExplanationWorldCup(initialSeason) ? 'world_cup' : 'ranking',
+          }),
         ])
       })
-      .then(([ev, fx, stats, playerAchievements]) => {
+      .then(([ev, fx, stats, playerAchievements, playerAnalysis]) => {
         setEvents(ev)
         setFixtures(fx)
         setSeasonStats(stats)
         setAchievements(playerAchievements)
+        setAnalysis(playerAnalysis)
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
       .finally(() => setLoading(false))
@@ -110,13 +122,20 @@ export default function PlayerPage() {
       fetchPlayerFixtures(playerId, season),
       statsRequest,
       fetchPlayerAchievements(playerId, season),
+      fetchPlayerExplanation({
+        player_id: playerId,
+        season,
+        competition_id: explanationCompetitionId,
+        scope: explanationScope,
+      }),
     ])
-      .then(([p, ev, fx, stats, playerAchievements]) => {
+      .then(([p, ev, fx, stats, playerAchievements, playerAnalysis]) => {
         setPlayer(p)
         setEvents(ev)
         setFixtures(fx)
         setSeasonStats(stats)
         setAchievements(playerAchievements)
+        setAnalysis(playerAnalysis)
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
       .finally(() => setSeasonChanging(false))
@@ -184,6 +203,8 @@ export default function PlayerPage() {
         aria-busy={seasonChanging}
       >
         <StatBar player={player} fixtures={fixtures} seasonStats={seasonStats} />
+
+        <PlayerNarrativeAnalysis explanation={analysis} />
 
         <CompetitionJourney achievements={achievements} historical={season === 'all'} />
 
