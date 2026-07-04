@@ -42,7 +42,7 @@ def _make_mc_stats_event(**overrides) -> PlayerEventRawContextDTO:
         shots_on=0,
         passes_key=3,
         passes_total=80,
-        passes_accuracy=73,     # 73 completed / 80 = 91.25% accuracy
+        passes_accuracy=91,
         dribbles_won=1,
         duels_won=3,
         tackles_won=2,
@@ -159,7 +159,7 @@ async def test_two_way_midfield_bonus_applied():
     """TWO_WAY_MIDFIELD_BONUS applies when conditions are met (not CONTROL)."""
     # passes_accuracy=55 (55/65=84.6% < 90%→no CONTROL); defensive=4≥3→TWO_WAY; key=1<2→no CREATIVE
     event = _make_mc_stats_event(
-        passes_total=65, passes_accuracy=55, passes_key=1,
+        passes_total=65, passes_accuracy=85, passes_key=1,
         tackles_won=2, interceptions=2, rating=7.5,
     )
     scores = await _run_use_case([event], _make_v2_rules_version())
@@ -177,7 +177,7 @@ async def test_creative_control_bonus_applied():
     # passes_accuracy=57 (57/65=87.7%≥85%); 57≥55; key=3≥2; rating=7.7≥7.7 → CREATIVE
     # CONTROL: 57<65 → NO; TWO_WAY: defensive=0<3 → NO
     event = _make_mc_stats_event(
-        passes_total=65, passes_accuracy=57, passes_key=3,
+        passes_total=65, passes_accuracy=88, passes_key=3,
         tackles_won=0, interceptions=0, rating=7.7,
     )
     scores = await _run_use_case([event], _make_v2_rules_version())
@@ -235,7 +235,7 @@ async def test_bonus_not_applied_when_minutes_below_60():
 async def test_bonus_not_applied_when_passes_completed_too_low():
     """No bonus when passes_completed < 50 (all three require >= 50 or >= 65)."""
     # passes_accuracy=40 = 40 completed / 50 total = 80% — 40 < 50 (all thresholds fail)
-    event = _make_mc_stats_event(passes_total=50, passes_accuracy=40, rating=8.0)
+    event = _make_mc_stats_event(passes_total=50, passes_accuracy=80, rating=8.0)
     scores = await _run_use_case([event], _make_v2_rules_version())
     mb = scores[0].calculation_details["midfield_bonuses"]
     assert mb["enabled"] is True
@@ -249,7 +249,7 @@ async def test_control_bonus_not_applied_when_accuracy_below_90():
     """CONTROL requires passes_accuracy >= 90; below that it does not fire."""
     # passes_accuracy=66 (66/75=88% < 90% → CONTROL not earned); 66≥65 ✓
     event = _make_mc_stats_event(
-        passes_total=75, passes_accuracy=66,
+        passes_total=75, passes_accuracy=88,
         tackles_won=0, interceptions=0, passes_key=0, rating=7.8,
     )
     scores = await _run_use_case([event], _make_v2_rules_version())
@@ -277,7 +277,7 @@ async def test_m2_and_mrating_applied_correctly():
     # CONTROL: 57<65 → NO; TWO_WAY: defensive=0<3 → NO
     event = _make_mc_stats_event(
         stage_factor=1.5,
-        passes_total=65, passes_accuracy=57, passes_key=3,
+        passes_total=65, passes_accuracy=88, passes_key=3,
         tackles_won=0, interceptions=0, rating=8.5,
     )
     scores = await _run_use_case([event], _make_v2_rules_version())
@@ -301,7 +301,7 @@ async def test_m1_m3_m4_mvisit_not_applied_to_bonus():
         is_away=True,
         player_team_pos=15, rival_team_pos=1,  # high M1
         stage_factor=1.0,
-        passes_total=80, passes_accuracy=73, passes_key=3,
+        passes_total=80, passes_accuracy=91, passes_key=3,
         tackles_won=0, interceptions=0, rating=7.8,
     )
     scores = await _run_use_case([event], _make_v2_rules_version())

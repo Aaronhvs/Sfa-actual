@@ -58,6 +58,7 @@ class ActionType(str, Enum):
     BLOCKS           = "blocks"
     FOULS_DRAWN      = "fouls_drawn"
     PASSES_COMPLETED = "passes_completed"
+    PASS_ACCURACY_BONUS = "pass_accuracy_bonus"
     FOULS_COMMITTED  = "fouls_committed"
     YELLOW_CARD      = "yellow_card"
     RED_CARD         = "red_card"

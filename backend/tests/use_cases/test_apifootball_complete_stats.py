@@ -329,6 +329,7 @@ def test_base_points_table_covers_all_new_action_types():
     """Los 6 nuevos ActionType deben estar en la tabla para cada grupo de BASE_POINTS_TABLE."""
     new_actions = [
         ActionType.PASSES_COMPLETED,
+        ActionType.PASS_ACCURACY_BONUS,
         ActionType.FOULS_COMMITTED,
         ActionType.YELLOW_CARD,
         ActionType.RED_CARD,

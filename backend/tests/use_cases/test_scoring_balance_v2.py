@@ -161,7 +161,7 @@ async def test_mc_bonus_control_new_value_140():
     """CONTROL_MIDFIELD_BONUS base is 140."""
     assert _MC_BONUS_CONTROL == 140
     # passes_accuracy=73 = 73 completed / 80 total = 91.25% ≥ 90% → CONTROL earned
-    event = _make_mc_event(passes_total=80, passes_accuracy=73, passes_key=0,
+    event = _make_mc_event(passes_total=80, passes_accuracy=91, passes_key=0,
                            tackles_won=0, interceptions=0, rating=7.8)
     scores = await _run_scoring([event], _make_v2_rv())
     mb = scores[0].calculation_details["midfield_bonuses"]
@@ -174,7 +174,7 @@ async def test_mc_bonus_two_way_new_value_90():
     """TWO_WAY_MIDFIELD_BONUS base is 90."""
     assert _MC_BONUS_TWO_WAY == 90
     # passes_accuracy=55 = 55/65 = 84.6% < 90% → no CONTROL; TWO_WAY: defensive=4 ✓
-    event = _make_mc_event(passes_total=65, passes_accuracy=55, passes_key=0,
+    event = _make_mc_event(passes_total=65, passes_accuracy=85, passes_key=0,
                            tackles_won=2, interceptions=2, rating=7.5)
     scores = await _run_scoring([event], _make_v2_rv())
     mb = scores[0].calculation_details["midfield_bonuses"]
@@ -189,7 +189,7 @@ async def test_mc_bonus_creative_new_value_70():
     assert _MC_BONUS_CREATIVE == 70
     # passes_accuracy=57 = 57/65 = 87.7% ≥ 85% ✓; 57 ≥ 55 ✓; key=3 ≥ 2 ✓
     # CONTROL: 57 < 65 → NO; TWO_WAY: defensive=0 < 3 → NO
-    event = _make_mc_event(passes_total=65, passes_accuracy=57, passes_key=3,
+    event = _make_mc_event(passes_total=65, passes_accuracy=88, passes_key=3,
                            tackles_won=0, interceptions=0, rating=7.7)
     scores = await _run_scoring([event], _make_v2_rv())
     mb = scores[0].calculation_details["midfield_bonuses"]
@@ -202,7 +202,7 @@ async def test_mc_bonus_creative_new_value_70():
 async def test_mc_creative_not_applied_when_accuracy_below_85():
     """CREATIVE requires passes_accuracy >= 85."""
     # passes_accuracy=57 (57/70=81.4% < 85%) → CREATIVE NOT earned
-    event = _make_mc_event(passes_total=70, passes_accuracy=57, passes_key=3,
+    event = _make_mc_event(passes_total=70, passes_accuracy=81, passes_key=3,
                            tackles_won=0, interceptions=0, rating=7.8)
     scores = await _run_scoring([event], _make_v2_rv())
     mb = scores[0].calculation_details["midfield_bonuses"]
@@ -213,7 +213,7 @@ async def test_mc_creative_not_applied_when_accuracy_below_85():
 async def test_mc_creative_not_applied_when_rating_below_7_7():
     """CREATIVE requires rating >= 7.7."""
     # passes_accuracy=57 (57/65=87.7% ≥ 85%) but rating=7.6 < 7.7 → NOT earned
-    event = _make_mc_event(passes_total=65, passes_accuracy=57, passes_key=3,
+    event = _make_mc_event(passes_total=65, passes_accuracy=88, passes_key=3,
                            tackles_won=0, interceptions=0, rating=7.6)
     scores = await _run_scoring([event], _make_v2_rv())
     mb = scores[0].calculation_details["midfield_bonuses"]
@@ -224,7 +224,7 @@ async def test_mc_creative_not_applied_when_rating_below_7_7():
 async def test_mc_cap_new_value_180():
     """Cap is 180 (140+90+70=300 > 180 → capped to 180)."""
     # passes_accuracy=73 (73/80=91.25% ≥ 90%); all three earned
-    event = _make_mc_event(passes_total=80, passes_accuracy=73, passes_key=3,
+    event = _make_mc_event(passes_total=80, passes_accuracy=91, passes_key=3,
                            tackles_won=2, interceptions=2, rating=7.8)
     scores = await _run_scoring([event], _make_v2_rv())
     mb = scores[0].calculation_details["midfield_bonuses"]
@@ -239,7 +239,7 @@ async def test_mc_bonus_includes_competition_weight():
     comp_name_map = {1: "Premier League"}
     # CREATIVE only: passes_accuracy=57 (57/65=87.7%≥85%), 57≥55, key=3≥2, rating=7.7≥7.7
     # CONTROL: 57<65 → NO; TWO_WAY: defensive=0<3 → NO
-    event = _make_mc_event(competition_id=1, passes_total=65, passes_accuracy=57,
+    event = _make_mc_event(competition_id=1, passes_total=65, passes_accuracy=88,
                            passes_key=3, tackles_won=0, interceptions=0, rating=7.7,
                            stage_factor=1.0)
     scores = await _run_scoring([event], _make_v2_rv(), competition_name_map=comp_name_map)
@@ -253,7 +253,7 @@ async def test_mc_bonus_includes_competition_weight():
 @pytest.mark.anyio
 async def test_mc_bonus_defaults_weight_1_when_competition_unknown():
     """Unknown competition_id defaults competition_weight to 1.0."""
-    event = _make_mc_event(competition_id=999, passes_total=80, passes_accuracy=73,
+    event = _make_mc_event(competition_id=999, passes_total=80, passes_accuracy=91,
                            passes_key=0, tackles_won=0, interceptions=0, rating=7.8)
     scores = await _run_scoring([event], _make_v2_rv(), competition_name_map={})
     mb = scores[0].calculation_details["midfield_bonuses"]
@@ -284,6 +284,14 @@ def test_base_points_mf_ballon_dor_midfield_values():
     assert config.passes_avg_by_position[PositionGroup.MF] == 42
     assert config.base_points[PositionGroup.MF][ActionType.TACKLES] == 95
     assert config.base_points[PositionGroup.MF][ActionType.INTERCEPTIONS] == 130
+
+
+def test_base_points_defender_pass_control_values():
+    config = ScoringConfig.default_v2()
+    assert config.base_points[PositionGroup.DC][ActionType.PASSES_COMPLETED] == 2
+    assert config.base_points[PositionGroup.LAT][ActionType.PASSES_COMPLETED] == 2
+    assert config.base_points[PositionGroup.DC][ActionType.PASS_ACCURACY_BONUS] == 1
+    assert config.base_points[PositionGroup.LAT][ActionType.PASS_ACCURACY_BONUS] == 1
 
 
 # ─── Tests: achievement phase bonuses ────────────────────────────────────────

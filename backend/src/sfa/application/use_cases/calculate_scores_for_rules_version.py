@@ -72,6 +72,21 @@ _MC_CREATIVE_MIN_PASSES = 55
 _MC_CREATIVE_MIN_PASSES_ACCURACY = 85.0
 _MC_CREATIVE_MIN_PASSES_KEY = 2
 
+_PASS_CONTROL_GROUPS: frozenset[PositionGroup] = frozenset({
+    PositionGroup.MCO,
+    PositionGroup.MF,
+    PositionGroup.LAT,
+    PositionGroup.DC,
+})
+_PASS_CONTROL_MIN_MINUTES = 45
+_PASS_CONTROL_MIN_TOTAL = 40
+_PASS_CONTROL_THRESHOLDS: tuple[tuple[float, int], ...] = (
+    (95.0, 180),
+    (90.0, 140),
+    (80.0, 80),
+    (70.0, 40),
+)
+
 
 def _build_b1_contributions_map(
     events: list[PlayerEventRawContextDTO],
@@ -87,6 +102,30 @@ def _build_b1_contributions_map(
 
 def _b1_enabled_for_competition(config: ScoringConfig, competition_id: int) -> bool:
     return config.b1_enabled and competition_id in config.b1_competition_ids
+
+
+def _passes_completed_from_accuracy(passes_total: int, passes_accuracy: float) -> int:
+    if passes_total <= 0 or passes_accuracy <= 0:
+        return 0
+    pct = max(0.0, min(100.0, float(passes_accuracy)))
+    return int(round(passes_total * pct / 100.0))
+
+
+def _pass_accuracy_bonus_base(
+    *,
+    group: PositionGroup,
+    minutes: int,
+    passes_total: int,
+    passes_accuracy_pct: float,
+) -> int:
+    if group not in _PASS_CONTROL_GROUPS:
+        return 0
+    if minutes < _PASS_CONTROL_MIN_MINUTES or passes_total < _PASS_CONTROL_MIN_TOTAL:
+        return 0
+    for threshold, bonus in _PASS_CONTROL_THRESHOLDS:
+        if passes_accuracy_pct >= threshold:
+            return bonus
+    return 0
 
 
 @dataclass(frozen=True)
@@ -376,8 +415,11 @@ class CalculateScoresForRulesVersionUseCase:
 
         g = event.goals or 0
         a = event.assists or 0
-        # passes_accuracy from API-Football stores completed passes COUNT, not percentage
-        passes_completed_raw = int(event.passes_accuracy or 0)
+        passes_total = int(event.passes_total or 0)
+        passes_accuracy_pct = float(event.passes_accuracy or 0.0)
+        passes_completed_raw = _passes_completed_from_accuracy(
+            passes_total, passes_accuracy_pct,
+        )
 
         # v2: PASSES_COMPLETED uses above-average threshold
         passes_avg = 0
@@ -387,6 +429,12 @@ class CalculateScoresForRulesVersionUseCase:
             except (KeyError, TypeError):
                 passes_avg = 0
         passes_puntuables = max(0, passes_completed_raw - passes_avg)
+        pass_accuracy_bonus_base = _pass_accuracy_bonus_base(
+            group=group,
+            minutes=minutes,
+            passes_total=passes_total,
+            passes_accuracy_pct=passes_accuracy_pct,
+        )
 
         raw_stats: dict[ActionType, float] = {
             ActionType.DUELS_WON:        float(event.duels_won or 0),
@@ -398,6 +446,7 @@ class CalculateScoresForRulesVersionUseCase:
             ActionType.XG_NO_GOAL:       float(max(0, (event.shots_on or 0) - g)),
             ActionType.FOULS_DRAWN:      float(event.fouls_drawn or 0),
             ActionType.PASSES_COMPLETED: float(passes_puntuables),
+            ActionType.PASS_ACCURACY_BONUS: float(pass_accuracy_bonus_base),
             ActionType.FOULS_COMMITTED:  float(event.fouls_committed or 0),
             ActionType.YELLOW_CARD:      float(event.cards_yellow or 0),
             ActionType.RED_CARD:         float(event.cards_red or 0),
@@ -479,7 +528,11 @@ class CalculateScoresForRulesVersionUseCase:
             "minutes": minutes,
             "minutes_penalty_applied": minutes_penalty_applied,
             "passes_threshold": passes_avg,
+            "passes_total": passes_total,
+            "passes_accuracy_pct": round(passes_accuracy_pct, 1),
+            "passes_completed": passes_completed_raw,
             "passes_puntuables": passes_puntuables,
+            "pass_accuracy_bonus_base": pass_accuracy_bonus_base,
             "strength_used": strength_used,
             "diminishing_applied": dr_applied,
             "stats_breakdown": {
@@ -544,9 +597,10 @@ class CalculateScoresForRulesVersionUseCase:
         interceptions = event.interceptions or 0
         duels_won = event.duels_won or 0
 
-        # passes_accuracy stores completed passes COUNT (not percentage)
-        passes_completed = int(event.passes_accuracy or 0)
-        passes_accuracy_pct = (passes_completed / passes_total * 100.0) if passes_total > 0 else 0.0
+        passes_accuracy_pct = float(event.passes_accuracy or 0.0)
+        passes_completed = _passes_completed_from_accuracy(
+            passes_total, passes_accuracy_pct,
+        )
         defensive_actions = tackles_won + interceptions
 
         control_earned = (
