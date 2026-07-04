@@ -19,7 +19,16 @@ from sfa.domain.ranking_explanation_ports import (
     RankingPlayerExplanationDTO,
 )
 from sfa.infrastructure.models.enums import EventType
-from sfa.infrastructure.models import Competition, Fixture, Player, PlayerEvent, PlayerEventScore, SFASeasonScore, Team
+from sfa.infrastructure.models import (
+    Competition,
+    Fixture,
+    Player,
+    PlayerEvent,
+    PlayerEventScore,
+    PlayerStats,
+    SFASeasonScore,
+    Team,
+)
 from sfa.infrastructure.models.ranking_explanations.models import RankingPlayerExplanation
 
 
@@ -64,6 +73,7 @@ class RankingExplanationRepository:
             score_rows = await self._score_rows(ranked.player_id, request)
             top_events = await self._top_events(ranked.player_id, request)
             match_summaries = await self._match_summaries(ranked.player_id, request)
+            stat_profile = await self._stat_profile(ranked.player_id, request)
             score_total = round(float(ranked.total_pts or 0), 2)
             achievement_bonus = round(
                 sum(float(row.get("achievement_bonus_pts") or 0) for row in score_rows),
@@ -101,6 +111,7 @@ class RankingExplanationRepository:
                 "score_rows": score_rows,
                 "top_events": top_events,
                 "match_summaries": match_summaries,
+                "stat_profile": stat_profile,
                 "comparison": comparison.get(ranked.player_id, {}),
             }
             source_hash = self._source_hash(evidence)
@@ -265,6 +276,93 @@ class RankingExplanationRepository:
         rows = (await self._session.execute(stmt)).mappings().all()
         return [self._clean(dict(row)) for row in rows]
 
+    async def _stat_profile(self, player_id: int, request: RankingExplanationRequestDTO) -> dict[str, Any]:
+        stmt = (
+            select(
+                func.coalesce(func.sum(PlayerStats.minutes), 0).label("minutes"),
+                func.count(PlayerStats.fixture_id.distinct()).label("matches"),
+                func.coalesce(func.sum(PlayerStats.goals), 0).label("goals"),
+                func.coalesce(func.sum(PlayerStats.assists), 0).label("assists"),
+                func.coalesce(func.sum(PlayerStats.corner_assists), 0).label("corner_assists"),
+                func.coalesce(func.sum(PlayerStats.shots_on), 0).label("shots_on"),
+                func.coalesce(func.sum(PlayerStats.shots_total), 0).label("shots_total"),
+                func.coalesce(func.sum(PlayerStats.passes_key), 0).label("passes_key"),
+                func.coalesce(func.sum(PlayerStats.passes_total), 0).label("passes_total"),
+                func.avg(PlayerStats.passes_accuracy).label("passes_accuracy_avg"),
+                func.coalesce(func.sum(PlayerStats.dribbles_won), 0).label("dribbles_won"),
+                func.coalesce(func.sum(PlayerStats.dribbles_attempts), 0).label("dribbles_attempts"),
+                func.coalesce(func.sum(PlayerStats.duels_won), 0).label("duels_won"),
+                func.coalesce(func.sum(PlayerStats.duels_total), 0).label("duels_total"),
+                func.coalesce(func.sum(PlayerStats.tackles_won), 0).label("tackles_won"),
+                func.coalesce(func.sum(PlayerStats.interceptions), 0).label("interceptions"),
+                func.coalesce(func.sum(PlayerStats.blocks), 0).label("blocks"),
+                func.avg(PlayerStats.rating).label("rating_avg"),
+            )
+            .join(Fixture, Fixture.id == PlayerStats.fixture_id)
+            .where(
+                PlayerStats.player_id == player_id,
+                PlayerStats.season == request.season,
+            )
+        )
+        if request.competition_id is not None:
+            stmt = stmt.where(Fixture.competition_id == request.competition_id)
+        row = (await self._session.execute(stmt)).mappings().first()
+        if not row:
+            return {}
+
+        data = dict(row)
+        shots_total = int(data.get("shots_total") or 0)
+        shots_on = int(data.get("shots_on") or 0)
+        goals = int(data.get("goals") or 0)
+        passes_total = int(data.get("passes_total") or 0)
+        passes_accuracy = round(float(data.get("passes_accuracy_avg") or 0), 2)
+        dribbles_attempts = int(data.get("dribbles_attempts") or 0)
+        dribbles_won = int(data.get("dribbles_won") or 0)
+        duels_total = int(data.get("duels_total") or 0)
+        duels_won = int(data.get("duels_won") or 0)
+        defensive_actions = (
+            int(data.get("tackles_won") or 0)
+            + int(data.get("interceptions") or 0)
+            + int(data.get("blocks") or 0)
+        )
+        offensive_contributions = (
+            goals
+            + int(data.get("assists") or 0)
+            + int(data.get("corner_assists") or 0)
+        )
+        profile = {
+            "minutes": int(data.get("minutes") or 0),
+            "matches": int(data.get("matches") or 0),
+            "goals": goals,
+            "assists": int(data.get("assists") or 0),
+            "corner_assists": int(data.get("corner_assists") or 0),
+            "offensive_contributions": offensive_contributions,
+            "shots_on": shots_on,
+            "shots_total": shots_total,
+            "shot_accuracy_pct": round((shots_on / shots_total) * 100, 2) if shots_total else None,
+            "goal_conversion_pct": round((goals / shots_total) * 100, 2) if shots_total else None,
+            "passes_key": int(data.get("passes_key") or 0),
+            "passes_total": passes_total,
+            "passes_accuracy_avg": passes_accuracy if passes_total else None,
+            "estimated_completed_passes": round(passes_total * passes_accuracy / 100, 2) if passes_total else 0,
+            "dribbles_won": dribbles_won,
+            "dribbles_attempts": dribbles_attempts,
+            "dribble_success_pct": (
+                round((dribbles_won / dribbles_attempts) * 100, 2)
+                if dribbles_attempts
+                else None
+            ),
+            "duels_won": duels_won,
+            "duels_total": duels_total,
+            "duel_win_pct": round((duels_won / duels_total) * 100, 2) if duels_total else None,
+            "tackles_won": int(data.get("tackles_won") or 0),
+            "interceptions": int(data.get("interceptions") or 0),
+            "blocks": int(data.get("blocks") or 0),
+            "defensive_actions": defensive_actions,
+            "rating_avg": round(float(data["rating_avg"]), 2) if data.get("rating_avg") is not None else None,
+        }
+        return self._clean(profile)
+
     async def _top_events(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
         home = aliased(Team)
         away = aliased(Team)
@@ -414,6 +512,8 @@ class RankingExplanationRepository:
                 "La dificultad del rival puede restar o elevar el valor de una accion.",
                 "El recorrido del equipo y los perfiles especiales, como veterano o promesa, son contexto adicional.",
                 "El bonus de perfil no debe presentarse como la unica razon si el rendimiento base ya es alto.",
+                "Una participacion de gol vale distinto segun la posicion: en defensas y laterales es mas rara.",
+                "La eficiencia tambien importa: precision de pase, tiros a puerta, conversion, duelos y regates.",
             ],
             "multiplier_glossary": {
                 "m1": "dificultad del rival; menor que 1 castiga si el rival era inferior, mayor que 1 premia rival fuerte",
@@ -427,6 +527,21 @@ class RankingExplanationRepository:
                 "Usa dieciseisavos, octavos, cuartos, semifinal o final cuando corresponda.",
                 "No uses palabras como scope, ranking peers, knockout, score, stage o bonus label.",
             ],
+            "positional_lens": {
+                "DC": (
+                    "central: recalca aportes de gol/asistencia si aparecen, "
+                    "porque son diferenciales para un defensor"
+                ),
+                "LAT": "lateral: valora ida y vuelta, pases clave, asistencias, duelos y acciones defensivas",
+                "GK": "arquero: prioriza atajadas, goles evitados, seguridad y contexto defensivo",
+                "MC": "mediocampista: valora control, precision de pase, duelos, pases clave y ritmo del partido",
+                "MCO": "mediapunta: valora creatividad, pases clave, asistencias y llegada al area",
+                "EXT": "extremo: valora regates, goles, asistencias, tiros a puerta y desequilibrio",
+                "DEL": (
+                    "delantero: valora goles, conversion, tiros a puerta "
+                    "y aparicion en momentos decisivos"
+                ),
+            },
         }
 
     def _enrich_event_context(self, row: dict[str, Any]) -> dict[str, Any]:
