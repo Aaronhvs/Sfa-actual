@@ -207,6 +207,9 @@ class M3MinuteScore:
 
     score_diff = player_team_goals − rival_goals at moment of action.
     Negative → losing · Zero → drawing · Positive → winning
+
+    Penalties already use a lower base-points value, so M3 still reflects
+    match pressure instead of applying a second flat penalty discount.
     """
 
     value: float
@@ -220,8 +223,6 @@ class M3MinuteScore:
     ) -> None:
         if is_shootout:
             v = 1.0
-        elif is_penalty:
-            v = 0.6
         elif 80 <= minute <= 90:
             if score_diff <= -2:
                 v = 0.7

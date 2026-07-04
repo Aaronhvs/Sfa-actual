@@ -19,6 +19,7 @@ const SHOOTOUT_TYPES = new Set([
 ])
 const GOAL_TYPES = new Set(['goal', 'goal_penalty', ...SHOOTOUT_TYPES])
 const CREATION_TYPES = new Set(['assist', 'corner_assist'])
+const STATS_TYPE = 'stats'
 
 const EVENT_LABELS: Record<string, string> = {
   goal: 'GOL',
@@ -206,6 +207,35 @@ function multiplierAvg(events: PlayerEvent[], key: 'm1' | 'm2' | 'm3'): number |
   return events.reduce((sum, event) => sum + event[key], 0) / events.length
 }
 
+function ratingContext(rating: number): { title: string; detail: string; tone: 'up' | 'down' | 'flat' } {
+  if (rating >= 8) {
+    return {
+      title: 'Rating alto',
+      detail: 'El rating elevó el bloque de estadísticas del partido.',
+      tone: 'up',
+    }
+  }
+  if (rating >= 7) {
+    return {
+      title: 'Buen rating',
+      detail: 'El rating sostuvo el valor de las estadísticas normales.',
+      tone: 'up',
+    }
+  }
+  if (rating < 6.5) {
+    return {
+      title: 'Rating bajo',
+      detail: 'El rating redujo el valor final del bloque estadístico.',
+      tone: 'down',
+    }
+  }
+  return {
+    title: 'Rating estable',
+    detail: 'El rating dejó las estadísticas cerca de su valor base.',
+    tone: 'flat',
+  }
+}
+
 function rivalContext(avgM1: number): { title: string; detail: string; tone: 'up' | 'down' | 'flat' } {
   if (avgM1 >= 1.4) {
     return {
@@ -266,8 +296,12 @@ function FixtureContextBar({ fixture, events }: { fixture: PlayerFixture; events
   const keyEvents = events.filter(
     (event) => GOAL_TYPES.has(event.event_type) || CREATION_TYPES.has(event.event_type),
   )
-  const avgM1 = multiplierAvg(keyEvents, 'm1')
-  const avgM2 = multiplierAvg(keyEvents, 'm2')
+  const statsEvents = events.filter((event) => event.event_type === STATS_TYPE)
+  const contextEvents = keyEvents.length > 0 ? keyEvents : statsEvents
+  const statsOnly = keyEvents.length === 0 && statsEvents.length > 0
+  const statsPts = statsEvents.reduce((sum, event) => sum + event.pts, 0)
+  const avgM1 = multiplierAvg(contextEvents, 'm1')
+  const avgM2 = multiplierAvg(contextEvents, 'm2')
   const avgM3 = multiplierAvg(keyEvents, 'm3')
   const isVisitor = keyEvents.some((event) => event.mvisit > 1)
   const location = keyEvents.length > 0 ? matchLocationContext(fixture, isVisitor) : null
@@ -289,13 +323,24 @@ function FixtureContextBar({ fixture, events }: { fixture: PlayerFixture; events
     })
   }
 
+  if (statsOnly && statsPts > 0) {
+    cards.push({
+      label: 'Puntaje stats',
+      title: `${fmt(statsPts)} pts`,
+      detail: 'Pases, remates, duelos y faltas fueron valorados como un bloque estadístico.',
+      tone: 'flat',
+    })
+  }
+
   if (avgM1 !== null) {
     const rival = rivalContext(avgM1)
     cards.push({
       label: 'Dificultad rival',
       title: rival.title,
       factor: `M1 ×${avgM1.toFixed(2)}`,
-      detail: rival.detail,
+      detail: statsOnly
+        ? `${rival.detail} En estadísticas se aplica de forma moderada.`
+        : rival.detail,
       tone: rival.tone,
     })
   }
@@ -305,8 +350,21 @@ function FixtureContextBar({ fixture, events }: { fixture: PlayerFixture; events
       label: 'Fase del torneo',
       title: 'Impacto de fase',
       factor: `M2 ×${avgM2.toFixed(2)}`,
-      detail: 'Ajusta el valor según la etapa competitiva del partido.',
+      detail: statsOnly
+        ? 'La fase también ajustó las estadísticas, con menor peso que una acción decisiva.'
+        : 'Ajusta el valor según la etapa competitiva del partido.',
       tone: avgM2 > 1 ? 'up' : 'flat',
+    })
+  }
+
+  if (statsOnly && fixture.rating != null) {
+    const rating = ratingContext(fixture.rating)
+    cards.push({
+      label: 'Rating',
+      title: rating.title,
+      factor: fixture.rating.toFixed(1),
+      detail: rating.detail,
+      tone: rating.tone,
     })
   }
 
@@ -419,7 +477,6 @@ const EXCELLENT_THRESHOLD = 3000
 
 export default function FixtureRow({ fixture, events }: Props) {
   const [open, setOpen] = useState(false)
-  const fixtureEvents = events.filter((e) => e.event_type !== 'stats')
   const isExcellent = fixture.sfa_pts >= EXCELLENT_THRESHOLD
   const isWorldCup = fixture.competition_id === WC_COMPETITION_ID
   const homeTeamName = isWorldCup ? worldCupTeamNameFromString(fixture.home_team) : fixture.home_team
@@ -462,7 +519,7 @@ export default function FixtureRow({ fixture, events }: Props) {
 
       <div className={`fixture-row__panel-wrap${open ? ' fixture-row__panel-wrap--open' : ''}`}>
         <div className="fixture-row__panel-inner">
-          <EventsPanel events={fixtureEvents} fixture={fixture} />
+          <EventsPanel events={events} fixture={fixture} />
         </div>
       </div>
     </div>

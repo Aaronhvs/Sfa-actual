@@ -218,6 +218,26 @@ class TestCalculateScoresForRulesVersionUseCase:
         assert score.rules_version_id == 1
 
     @pytest.mark.anyio
+    async def test_penalty_goal_uses_m3_match_context(self):
+        version = _make_rules_version()
+        event = replace(
+            _make_goal_event(event_type="goal_penalty"),
+            minute=68,
+            score_diff=-1,
+        )
+        events_repo = FakePlayerEventScoreRepository(events=[event])
+        use_case = CalculateScoresForRulesVersionUseCase(
+            FakeScoringRulesVersionRepository(version), events_repo,
+        )
+
+        result = await use_case.execute(rules_version_id=1, season="2024")
+
+        assert result.status == "completed"
+        score = events_repo.upserted[0]
+        assert score.action_type == "goal_penalty"
+        assert score.m3 == 1.3
+
+    @pytest.mark.anyio
     async def test_decisive_shootout_goal_uses_direct_impact_model(self):
         version = _make_rules_version(config=ScoringConfig.default_v2())
         event = replace(
