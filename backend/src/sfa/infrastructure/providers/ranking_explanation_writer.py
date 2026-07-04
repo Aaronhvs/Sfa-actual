@@ -166,7 +166,8 @@ class OpenAICompatibleRankingExplanationWriter:
             "model": self._model,
             "instructions": prompt,
             "input": json.dumps(evidence.evidence, ensure_ascii=False, sort_keys=True),
-            "max_output_tokens": self._max_output_tokens,
+            "reasoning": {"effort": "low"},
+            "max_output_tokens": max(self._max_output_tokens, 1200),
         }
         async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
             response = await client.post(
