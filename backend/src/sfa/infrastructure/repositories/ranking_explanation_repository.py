@@ -18,6 +18,7 @@ from sfa.domain.ranking_explanation_ports import (
     RankingExplanationWriteResultDTO,
     RankingPlayerExplanationDTO,
 )
+from sfa.infrastructure.models.enums import EventType
 from sfa.infrastructure.models import Competition, Fixture, Player, PlayerEvent, PlayerEventScore, SFASeasonScore, Team
 from sfa.infrastructure.models.ranking_explanations.models import RankingPlayerExplanation
 
@@ -42,6 +43,7 @@ class RankingExplanationRepository:
         for ranked in ranked_players:
             score_rows = await self._score_rows(ranked.player_id, request)
             top_events = await self._top_events(ranked.player_id, request)
+            match_summaries = await self._match_summaries(ranked.player_id, request)
             score_total = round(float(ranked.total_pts or 0), 2)
             achievement_bonus = round(
                 sum(float(row.get("achievement_bonus_pts") or 0) for row in score_rows),
@@ -77,6 +79,7 @@ class RankingExplanationRepository:
                 "breakdown": breakdown,
                 "score_rows": score_rows,
                 "top_events": top_events,
+                "match_summaries": match_summaries,
                 "comparison": comparison.get(ranked.player_id, {}),
             }
             source_hash = self._source_hash(evidence)
@@ -279,6 +282,87 @@ class RankingExplanationRepository:
             stmt = stmt.where(PlayerEventScore.rules_version_id == request.rules_version_id)
         rows = (await self._session.execute(stmt)).mappings().all()
         return [self._clean(dict(row)) for row in rows]
+
+    async def _match_summaries(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
+        home = aliased(Team)
+        away = aliased(Team)
+        stmt = (
+            select(
+                Fixture.id.label("fixture_id"),
+                Fixture.external_id.label("fixture_external_id"),
+                Fixture.stage,
+                Fixture.played_at,
+                home.name.label("home_team"),
+                away.name.label("away_team"),
+                PlayerEvent.event_type,
+                PlayerEvent.minute,
+                PlayerEvent.score_before,
+                PlayerEventScore.action_type,
+                PlayerEventScore.final_points,
+            )
+            .join(PlayerEvent, PlayerEvent.id == PlayerEventScore.event_id)
+            .join(Fixture, Fixture.id == PlayerEventScore.fixture_id)
+            .join(home, home.id == Fixture.home_team_id)
+            .join(away, away.id == Fixture.away_team_id)
+            .where(
+                PlayerEventScore.player_id == player_id,
+                PlayerEventScore.season == request.season,
+            )
+            .order_by(Fixture.played_at.asc(), PlayerEvent.minute.asc())
+        )
+        if request.competition_id is not None:
+            stmt = stmt.where(PlayerEventScore.competition_id == request.competition_id)
+        if request.rules_version_id is not None:
+            stmt = stmt.where(PlayerEventScore.rules_version_id == request.rules_version_id)
+
+        rows = (await self._session.execute(stmt)).mappings().all()
+        by_fixture: dict[int, dict[str, Any]] = {}
+        goal_types = {EventType.GOAL, EventType.GOAL_PENALTY}
+        assist_types = {EventType.ASSIST, EventType.CORNER_ASSIST}
+        for row in rows:
+            fixture_id = int(row["fixture_id"])
+            item = by_fixture.setdefault(
+                fixture_id,
+                {
+                    "fixture_external_id": row["fixture_external_id"],
+                    "stage": row["stage"],
+                    "played_at": row["played_at"],
+                    "home_team": row["home_team"],
+                    "away_team": row["away_team"],
+                    "goals": 0,
+                    "assists": 0,
+                    "total_points": 0.0,
+                    "top_action": None,
+                    "impact_minutes": [],
+                },
+            )
+            event_type = row["event_type"]
+            final_points = round(float(row["final_points"] or 0), 2)
+            item["total_points"] = round(float(item["total_points"]) + final_points, 2)
+            if event_type in goal_types:
+                item["goals"] += 1
+            elif event_type in assist_types:
+                item["assists"] += 1
+            if final_points > float((item["top_action"] or {}).get("points") or 0):
+                item["top_action"] = {
+                    "type": row["action_type"],
+                    "minute": row["minute"],
+                    "score_before": row["score_before"],
+                    "points": final_points,
+                }
+            if event_type in goal_types or event_type in assist_types:
+                item["impact_minutes"].append(
+                    {
+                        "type": row["action_type"],
+                        "minute": row["minute"],
+                        "score_before": row["score_before"],
+                        "points": final_points,
+                    }
+                )
+
+        summaries = list(by_fixture.values())
+        summaries.sort(key=lambda item: float(item.get("total_points") or 0), reverse=True)
+        return [self._clean(item) for item in summaries[:6]]
 
     def _apply_scope_filters(self, stmt: Any, request: RankingExplanationRequestDTO) -> Any:
         if request.competition_id is None:
