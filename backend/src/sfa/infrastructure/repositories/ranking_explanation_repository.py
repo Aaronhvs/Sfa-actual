@@ -24,6 +24,26 @@ from sfa.infrastructure.models.ranking_explanations.models import RankingPlayerE
 
 
 PUBLIC_STATUSES = ("generated", "fallback")
+STAGE_LABELS_ES = {
+    "group": "fase de grupos",
+    "group_stage": "fase de grupos",
+    "round_of_32": "dieciseisavos",
+    "round_of_16": "octavos",
+    "quarter_final": "cuartos de final",
+    "semi_final": "semifinal",
+    "third_place": "tercer puesto",
+    "final": "final",
+}
+ACTION_LABELS_ES = {
+    "goal": "gol",
+    "goal_penalty": "gol de penal",
+    "goal_shootout": "penal convertido en tanda",
+    "goal_shootout_decisive": "penal decisivo convertido en tanda",
+    "assist": "asistencia",
+    "corner_assist": "asistencia de corner",
+    "stats": "estadisticas",
+    "key_pass": "pase clave",
+}
 
 
 class RankingExplanationRepository:
@@ -51,6 +71,7 @@ class RankingExplanationRepository:
             )
             breakdown = self._merge_breakdown(score_rows)
             evidence = {
+                "methodology": self._methodology_context(),
                 "scope": {
                     "season": request.season,
                     "competition_id": request.competition_id,
@@ -281,7 +302,7 @@ class RankingExplanationRepository:
         if request.rules_version_id is not None:
             stmt = stmt.where(PlayerEventScore.rules_version_id == request.rules_version_id)
         rows = (await self._session.execute(stmt)).mappings().all()
-        return [self._clean(dict(row)) for row in rows]
+        return [self._enrich_event_context(dict(row)) for row in rows]
 
     async def _match_summaries(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
         home = aliased(Team)
@@ -297,6 +318,7 @@ class RankingExplanationRepository:
                 PlayerEvent.event_type,
                 PlayerEvent.minute,
                 PlayerEvent.score_before,
+                PlayerEvent.score_diff,
                 PlayerEventScore.action_type,
                 PlayerEventScore.final_points,
                 PlayerEventScore.base_points,
@@ -331,6 +353,7 @@ class RankingExplanationRepository:
                 {
                     "fixture_external_id": row["fixture_external_id"],
                     "stage": row["stage"],
+                    "stage_label": self._stage_label(row["stage"]),
                     "played_at": row["played_at"],
                     "home_team": row["home_team"],
                     "away_team": row["away_team"],
@@ -351,21 +374,27 @@ class RankingExplanationRepository:
             if final_points > float((item["top_action"] or {}).get("points") or 0):
                 item["top_action"] = {
                     "type": row["action_type"],
+                    "label": self._action_label(row["action_type"]),
                     "minute": row["minute"],
                     "score_before": row["score_before"],
+                    "score_context": self._score_context(row["score_diff"]),
                     "points": final_points,
                     "base_points": row["base_points"],
                     "m1": row["m1"],
                     "m2": row["m2"],
                     "m3": row["m3"],
                     "mvisit": row["mvisit"],
+                    "m1_context": self._m1_context(row["m1"]),
+                    "m3_context": self._m3_context(row["m3"]),
                 }
             if event_type in goal_types or event_type in assist_types:
                 item["impact_minutes"].append(
                     {
                         "type": row["action_type"],
+                        "label": self._action_label(row["action_type"]),
                         "minute": row["minute"],
                         "score_before": row["score_before"],
+                        "score_context": self._score_context(row["score_diff"]),
                         "points": final_points,
                     }
                 )
@@ -373,6 +402,76 @@ class RankingExplanationRepository:
         summaries = list(by_fixture.values())
         summaries.sort(key=lambda item: float(item.get("total_points") or 0), reverse=True)
         return [self._clean(item) for item in summaries[:6]]
+
+    def _methodology_context(self) -> dict[str, Any]:
+        return {
+            "product_thesis": (
+                "SFA no mide solo cuanto juega un futbolista; mide cuanto pesa cuando juega."
+            ),
+            "principles": [
+                "El volumen de partidos suma, pero la eficiencia por partido puede explicar un liderato.",
+                "Los goles y asistencias pesan mas cuando llegan con el partido abierto o en momentos clave.",
+                "La dificultad del rival puede restar o elevar el valor de una accion.",
+                "El recorrido del equipo y los perfiles especiales, como veterano o promesa, son contexto adicional.",
+                "El bonus de perfil no debe presentarse como la unica razon si el rendimiento base ya es alto.",
+            ],
+            "multiplier_glossary": {
+                "m1": "dificultad del rival; menor que 1 castiga si el rival era inferior, mayor que 1 premia rival fuerte",
+                "m2": "importancia de la fase o torneo",
+                "m3": "contexto del marcador; sube si la accion llega con tension o cambia el partido",
+                "mvisit": "bono por jugar fuera cuando aplica",
+            },
+            "language_rules": [
+                "Escribe todo en espanol.",
+                "Usa Mundial en lugar de World Cup.",
+                "Usa dieciseisavos, octavos, cuartos, semifinal o final cuando corresponda.",
+                "No uses palabras como scope, ranking peers, knockout, score, stage o bonus label.",
+            ],
+        }
+
+    def _enrich_event_context(self, row: dict[str, Any]) -> dict[str, Any]:
+        row["action_label"] = self._action_label(row.get("action_type"))
+        row["stage_label"] = self._stage_label(row.get("stage"))
+        row["score_context"] = self._score_context(row.get("score_diff"))
+        row["m1_context"] = self._m1_context(row.get("m1"))
+        row["m3_context"] = self._m3_context(row.get("m3"))
+        return self._clean(row)
+
+    def _action_label(self, action_type: Any) -> str:
+        return ACTION_LABELS_ES.get(str(action_type or ""), str(action_type or "accion"))
+
+    def _stage_label(self, stage: Any) -> str:
+        return STAGE_LABELS_ES.get(str(stage or ""), str(stage or "fase").replace("_", " "))
+
+    def _score_context(self, score_diff: Any) -> str:
+        if score_diff is None:
+            return "contexto de marcador no disponible"
+        diff = int(score_diff)
+        if diff < 0:
+            return f"su equipo iba perdiendo por {abs(diff)}"
+        if diff == 0:
+            return "el partido estaba empatado"
+        return f"su equipo ganaba por {diff}"
+
+    def _m1_context(self, value: Any) -> str:
+        if value is None:
+            return "dificultad de rival no disponible"
+        m1 = float(value)
+        if m1 < 0.9:
+            return "el rival era inferior y el multiplicador castigo la accion"
+        if m1 > 1.1:
+            return "el rival era fuerte y el multiplicador premio la accion"
+        return "dificultad de rival neutra"
+
+    def _m3_context(self, value: Any) -> str:
+        if value is None:
+            return "contexto de momento no disponible"
+        m3 = float(value)
+        if m3 > 1.1:
+            return "momento de alta tension o impacto en el marcador"
+        if m3 < 0.95:
+            return "momento de menor tension"
+        return "momento de valor normal"
 
     def _apply_scope_filters(self, stmt: Any, request: RankingExplanationRequestDTO) -> Any:
         if request.competition_id is None:
@@ -466,7 +565,12 @@ class RankingExplanationRepository:
         }
 
     def _source_hash(self, evidence: dict[str, Any]) -> str:
-        payload = json.dumps(self._clean(evidence), sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        payload = json.dumps(
+            self._clean(evidence),
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def _clean(self, value: Any) -> Any:
