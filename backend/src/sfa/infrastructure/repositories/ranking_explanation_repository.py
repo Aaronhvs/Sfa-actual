@@ -299,6 +299,11 @@ class RankingExplanationRepository:
                 PlayerEvent.score_before,
                 PlayerEventScore.action_type,
                 PlayerEventScore.final_points,
+                PlayerEventScore.base_points,
+                PlayerEventScore.m1,
+                PlayerEventScore.m2,
+                PlayerEventScore.m3,
+                PlayerEventScore.mvisit,
             )
             .join(PlayerEvent, PlayerEvent.id == PlayerEventScore.event_id)
             .join(Fixture, Fixture.id == PlayerEventScore.fixture_id)
@@ -349,6 +354,11 @@ class RankingExplanationRepository:
                     "minute": row["minute"],
                     "score_before": row["score_before"],
                     "points": final_points,
+                    "base_points": row["base_points"],
+                    "m1": row["m1"],
+                    "m2": row["m2"],
+                    "m3": row["m3"],
+                    "mvisit": row["mvisit"],
                 }
             if event_type in goal_types or event_type in assist_types:
                 item["impact_minutes"].append(
@@ -421,6 +431,20 @@ class RankingExplanationRepository:
         if not ranked_players:
             return {}
         leader_pts = float(ranked_players[0].total_pts or 0)
+        peers = [
+            {
+                "rank": player.rank,
+                "name": player.player_name,
+                "matches": int(player.matches_played or 0),
+                "total_pts": round(float(player.total_pts or 0), 2),
+                "points_per_match": round(
+                    float(player.total_pts or 0) / max(int(player.matches_played or 0), 1),
+                    2,
+                ),
+            }
+            for player in ranked_players[:10]
+        ]
+        best_ppg = max(peers, key=lambda item: float(item["points_per_match"]))
         return {
             player.player_id: {
                 "gap_to_leader": round(leader_pts - float(player.total_pts or 0), 2),
@@ -429,6 +453,14 @@ class RankingExplanationRepository:
                     2,
                 ),
                 "top_10_size": len(ranked_players),
+                "top_peers": peers,
+                "best_points_per_match": best_ppg,
+                "players_with_more_matches_ahead_or_near": [
+                    peer
+                    for peer in peers
+                    if int(peer["matches"]) > int(player.matches_played or 0)
+                    and int(peer["rank"]) > int(player.rank or 0)
+                ][:4],
             }
             for player in ranked_players
         }

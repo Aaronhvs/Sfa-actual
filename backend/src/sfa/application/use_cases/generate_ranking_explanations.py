@@ -64,7 +64,7 @@ class GenerateRankingExplanationsUseCase:
             await self._explanation_repo.upsert_explanation(
                 evidence=evidence,
                 result=result,
-                prompt_version="ranking-explanation-v2",
+                prompt_version="ranking-explanation-v3",
             )
             if result.status == "generated":
                 generated += 1
