@@ -70,7 +70,6 @@ interface Pt {
   logoY: number
   fx: PlayerFixture
   kind: Kind
-  season: string
   goals: number; assists: number
   opponent: string
   oppLogo: string | null
@@ -109,10 +108,21 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
 
     const toY = (v: number) => PT + IH - (v / maxY) * IH
     const seasons = sorted.map((fixture) => fixtureSeason(fixture.played_at))
-    const seasonBreaks = seasons.reduce<number[]>((breaks, currentSeason, index) => {
-      if (index > 0 && currentSeason !== seasons[index - 1]) breaks.push(index)
-      return breaks
-    }, [])
+
+    // A visual break should only appear on a real off-season gap. Using the season
+    // label alone breaks mid-tournament: short competitions like a World Cup span
+    // the Jun/Jul season cutoff with matches days apart, which isn't an actual gap.
+    const DAY_MS = 24 * 60 * 60 * 1000
+    const OFF_SEASON_GAP_DAYS = 45
+    const breakSet = new Set(
+      sorted.reduce<number[]>((breaks, fixture, index) => {
+        if (index === 0) return breaks
+        const gapDays = (new Date(fixture.played_at).getTime() - new Date(sorted[index - 1].played_at).getTime()) / DAY_MS
+        if (seasons[index] !== seasons[index - 1] && gapDays > OFF_SEASON_GAP_DAYS) breaks.push(index)
+        return breaks
+      }, []),
+    )
+    const seasonBreaks = [...breakSet]
     const gapUnits = 2.5
     const totalUnits = Math.max(sorted.length - 1 + seasonBreaks.length * gapUnits, 1)
     const xUnits = sorted.map((_, index) => {
@@ -121,7 +131,7 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
     })
     const rolling = sorted.map((_, index) => {
       let seasonStart = index
-      while (seasonStart > 0 && seasons[seasonStart - 1] === seasons[index]) {
+      while (seasonStart > 0 && !breakSet.has(seasonStart)) {
         seasonStart -= 1
       }
       const window = sorted.slice(Math.max(seasonStart, index - 4), index + 1)
@@ -140,7 +150,6 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
         logoY: toY(f.sfa_pts),
         fx: f,
         kind: detectKind(f),
-        season: seasons[index],
         goals: (f.breakdown?.['goal']?.count ?? 0) + (f.breakdown?.['goal_penalty']?.count ?? 0),
         assists: f.breakdown?.['assist']?.count ?? 0,
         opponent: isHome ? f.away_team : isAway ? f.home_team : fallbackIsHome ? f.away_team : f.home_team,
@@ -169,9 +178,9 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
     }
 
     const bY = (PT + IH).toFixed(1)
-    const seasonGroups = pts.reduce<Pt[][]>((groups, point) => {
+    const seasonGroups = pts.reduce<Pt[][]>((groups, point, index) => {
       const current = groups[groups.length - 1]
-      if (!current || current[0].season !== point.season) groups.push([point])
+      if (!current || breakSet.has(index)) groups.push([point])
       else current.push(point)
       return groups
     }, [])
@@ -200,9 +209,11 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
 
     const best = sorted.reduce((b, f) => f.sfa_pts > b.sfa_pts ? f : b, sorted[0])
     const recent = rolling[rolling.length - 1]
-    const currentSeasonFixtures = sorted.filter(
-      (fixture) => fixtureSeason(fixture.played_at) === seasons[seasons.length - 1],
-    )
+    let currentGroupStart = sorted.length - 1
+    while (currentGroupStart > 0 && !breakSet.has(currentGroupStart)) {
+      currentGroupStart -= 1
+    }
+    const currentSeasonFixtures = sorted.slice(currentGroupStart)
     const previousFixtures = currentSeasonFixtures.slice(-10, -5)
     const previous = previousFixtures.length > 0
       ? previousFixtures.reduce((sum, fixture) => sum + fixture.sfa_pts, 0) / previousFixtures.length
