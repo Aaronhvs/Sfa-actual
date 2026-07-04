@@ -9,7 +9,17 @@ SET config_json = jsonb_set(
             jsonb_set(
                 jsonb_set(
                     jsonb_set(
-                        config_json,
+                        jsonb_set(
+                            jsonb_set(
+                                config_json,
+                                '{base_points,DEL,pass_accuracy_bonus}',
+                                '0'::jsonb,
+                                true
+                            ),
+                            '{base_points,EXT,pass_accuracy_bonus}',
+                            '0'::jsonb,
+                            true
+                        ),
                         '{base_points,LAT,passes_completed}',
                         '2'::jsonb,
                         true

@@ -469,7 +469,7 @@ class CalculateScoresForRulesVersionUseCase:
             )
             return None
         for action, count in raw_stats.items():
-            base_per_unit = group_points[action]
+            base_per_unit = group_points.get(action, 0)
             if base_per_unit == 0 or count == 0:
                 continue
             if action in dr_map:
