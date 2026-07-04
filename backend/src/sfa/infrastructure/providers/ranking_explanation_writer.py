@@ -167,7 +167,35 @@ class OpenAICompatibleRankingExplanationWriter:
             "instructions": prompt,
             "input": json.dumps(evidence.evidence, ensure_ascii=False, sort_keys=True),
             "reasoning": {"effort": "low"},
-            "max_output_tokens": max(self._max_output_tokens, 1200),
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "ranking_explanation",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "short_text": {
+                                "type": "string",
+                                "description": "Frase editorial breve para el banner.",
+                            },
+                            "long_text": {
+                                "type": "string",
+                                "description": "Analisis en 2 o 3 parrafos breves.",
+                            },
+                            "bullets": {
+                                "type": "array",
+                                "minItems": 3,
+                                "maxItems": 4,
+                                "items": {"type": "string"},
+                            },
+                        },
+                        "required": ["short_text", "long_text", "bullets"],
+                    },
+                }
+            },
+            "max_output_tokens": max(self._max_output_tokens, 2000),
         }
         async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
             response = await client.post(
