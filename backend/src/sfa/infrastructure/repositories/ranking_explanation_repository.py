@@ -374,6 +374,7 @@ class RankingExplanationRepository:
                 PlayerEventScore.m1,
                 PlayerEventScore.m2,
                 PlayerEventScore.m3,
+                PlayerEventScore.m4,
                 PlayerEventScore.mvisit,
                 PlayerEvent.minute,
                 PlayerEvent.score_before,
@@ -423,6 +424,7 @@ class RankingExplanationRepository:
                 PlayerEventScore.m1,
                 PlayerEventScore.m2,
                 PlayerEventScore.m3,
+                PlayerEventScore.m4,
                 PlayerEventScore.mvisit,
             )
             .join(PlayerEvent, PlayerEvent.id == PlayerEventScore.event_id)
@@ -481,9 +483,11 @@ class RankingExplanationRepository:
                     "m1": row["m1"],
                     "m2": row["m2"],
                     "m3": row["m3"],
+                    "m4": row["m4"],
                     "mvisit": row["mvisit"],
                     "m1_context": self._m1_context(row["m1"]),
                     "m3_context": self._m3_context(row["m3"]),
+                    "m4_context": self._m4_context(row["m4"]),
                 }
             if event_type in goal_types or event_type in assist_types:
                 item["impact_minutes"].append(
@@ -519,6 +523,7 @@ class RankingExplanationRepository:
                 "m1": "dificultad del rival; menor que 1 castiga si el rival era inferior, mayor que 1 premia rival fuerte",
                 "m2": "importancia de la fase o torneo",
                 "m3": "contexto del marcador; sube si la accion llega con tension o cambia el partido",
+                "m4": "dificultad tecnica de la accion; sube si la definicion o jugada fue mas compleja",
                 "mvisit": "bono por jugar fuera cuando aplica",
             },
             "language_rules": [
@@ -535,7 +540,10 @@ class RankingExplanationRepository:
                 "LAT": "lateral: valora ida y vuelta, pases clave, asistencias, duelos y acciones defensivas",
                 "GK": "arquero: prioriza atajadas, goles evitados, seguridad y contexto defensivo",
                 "MC": "mediocampista: valora control, precision de pase, duelos, pases clave y ritmo del partido",
-                "MCO": "mediapunta: valora creatividad, pases clave, asistencias y llegada al area",
+                "MCO": (
+                    "mediapunta: valora creatividad, pases clave, asistencias "
+                    "y llegada al area"
+                ),
                 "EXT": "extremo: valora regates, goles, asistencias, tiros a puerta y desequilibrio",
                 "DEL": (
                     "delantero: valora goles, conversion, tiros a puerta "
@@ -550,6 +558,7 @@ class RankingExplanationRepository:
         row["score_context"] = self._score_context(row.get("score_diff"))
         row["m1_context"] = self._m1_context(row.get("m1"))
         row["m3_context"] = self._m3_context(row.get("m3"))
+        row["m4_context"] = self._m4_context(row.get("m4"))
         return self._clean(row)
 
     def _action_label(self, action_type: Any) -> str:
@@ -587,6 +596,16 @@ class RankingExplanationRepository:
         if m3 < 0.95:
             return "momento de menor tension"
         return "momento de valor normal"
+
+    def _m4_context(self, value: Any) -> str:
+        if value is None:
+            return "dificultad tecnica no disponible"
+        m4 = float(value)
+        if m4 > 1.2:
+            return "accion de dificultad tecnica alta"
+        if m4 > 1.05:
+            return "accion de dificultad tecnica media"
+        return "accion de dificultad tecnica normal"
 
     def _apply_scope_filters(self, stmt: Any, request: RankingExplanationRequestDTO) -> Any:
         if request.competition_id is None:
