@@ -204,7 +204,11 @@ class RankingExplanationRepository:
             "error": result.error,
         }
         stmt = insert(RankingPlayerExplanation).values(**values)
-        update_values = {key: getattr(stmt.excluded, key) for key in values if key not in {"player_id"}}
+        update_values = {
+            getattr(RankingPlayerExplanation, key): getattr(stmt.excluded, key)
+            for key in values
+            if key not in {"player_id"}
+        }
         if evidence.competition_id is None:
             stmt = stmt.on_conflict_do_update(
                 index_elements=["player_id", "season", "rules_version_id", "scope"],
