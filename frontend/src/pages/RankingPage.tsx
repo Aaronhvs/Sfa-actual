@@ -20,11 +20,7 @@ const WORLD_CUP_COMPETITION_ID = 350
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
 const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
-const BONUS_FILTER_OPTIONS = ['Promesa', 'Veterano']
-
-function matchesBonusFilter(player: RankedPlayer, bonusFilter: string): boolean {
-  return !bonusFilter || player.b1_bonus_label === bonusFilter
-}
+const BONUS_FILTER_OPTIONS = ['Promesa', 'Veterano', 'Goleador', 'Asistidor']
 
 export default function RankingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -158,10 +154,9 @@ export default function RankingPage() {
       .catch(() => setRankingExplanations([]))
   }, [isWcSeason, page, debouncedSearch, position, bonusFilter, players.length, season])
 
-  const bonusFilteredPlayers = players.filter((p) => matchesBonusFilter(p, bonusFilter))
-  const showHero = page === 0 && !debouncedSearch && bonusFilteredPlayers.length >= 3
-  const top3 = showHero ? bonusFilteredPlayers.slice(0, 3) : []
-  const currentPagePlayers = showHero ? bonusFilteredPlayers.slice(3) : bonusFilteredPlayers
+  const showHero = page === 0 && !debouncedSearch && players.length >= 3
+  const top3 = showHero ? players.slice(0, 3) : []
+  const currentPagePlayers = showHero ? players.slice(3) : players
   const totalPages = pagination?.total_pages ?? 0
 
   const mainCompetitions = competitions
