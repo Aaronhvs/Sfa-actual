@@ -143,7 +143,8 @@ class OpenAICompatibleRankingExplanationWriter:
             "discutirlo. No vendes stats: cuentas el rendimiento real del jugador y muestras por "
             "que el sistema lo valora. El criterio de fondo se dice una sola vez: SFA mide impacto "
             "real, no volumen de minutos. Espanol neutro. Directo, seguro, premium. Nunca sonar a "
-            "robot ni a lista de datos. "
+            "robot ni a lista de datos. La salida tiene 3 capas para lectura rapida: hook, 3 datos "
+            "escaneables y remate corto expandible. "
             "Usa solo el JSON de evidencia. No inventes goles, rivales, minutos, marcadores, records "
             "ni resultados. La distribucion de goles debe salir de top_events, match_summaries o "
             "impact_minutes. Consecuencias como clasifico, remonto o sentencio solo pueden aparecer "
@@ -173,12 +174,16 @@ class OpenAICompatibleRankingExplanationWriter:
             "Giro de honestidad: si un factor jugo en contra (rival inferior, local, fase temprana) "
             "y aun asi puntua alto, dilo. Si rindio contra rivales fuertes, ese debe ser el gancho. "
             "El texto no explica la formula; demuestra el principio en accion. "
-            "short_text: una frase de 20 a 30 palabras, gancho puro, sin jerga. "
-            "long_text: maximo 2 parrafos cortos, 90 a 120 palabras totales, sin encabezados ni "
-            "vinetas. Parrafo 1: trayectoria y situacion, con una escena real si aplica. Parrafo 2: "
-            "criterio, giro de honestidad si aplica y cierre discutible. "
-            "bullets existe solo por compatibilidad tecnica: devuelve siempre un arreglo vacio. "
-            "Devuelve exclusivamente JSON valido con keys: short_text, long_text, bullets."
+            "short_text: una frase de maximo 18 palabras. Debe ser el dato-gancho mas fuerte: "
+            "promedio por partido, central sin goles arriba, rinde contra rivales duros, o un "
+            "contraste parecido. "
+            "bullets: exactamente 3, maximo 7 palabras cada uno. Solo hechos y numeros, no argumentos "
+            "ni tesis. Salen de stats, comparison y match_summaries. Ejemplos de forma: '7 goles en "
+            "4 partidos', 'Marco en todos los que jugo', 'Mejor promedio del top 3'. "
+            "long_text: maximo 2 frases, unas 35 palabras. Va detras de leer mas: aqui va el argumento, "
+            "la tesis una vez, el giro de honestidad si aplica y un cierre que invite a debatir. "
+            "No repitas los datos que ya estan en bullets. "
+            "Devuelve exclusivamente JSON valido con keys: short_text, bullets, long_text."
         )
         payload = {
             "model": self._model,
@@ -196,16 +201,16 @@ class OpenAICompatibleRankingExplanationWriter:
                         "properties": {
                             "short_text": {
                                 "type": "string",
-                                "description": "Frase editorial breve para el banner.",
+                                "description": "Hook breve, maximo 18 palabras.",
                             },
                             "long_text": {
                                 "type": "string",
-                                "description": "Analisis editorial en maximo 2 parrafos breves.",
+                                "description": "Remate editorial en maximo 2 frases.",
                             },
                             "bullets": {
                                 "type": "array",
-                                "minItems": 0,
-                                "maxItems": 0,
+                                "minItems": 3,
+                                "maxItems": 3,
                                 "items": {"type": "string"},
                             },
                         },
@@ -213,7 +218,7 @@ class OpenAICompatibleRankingExplanationWriter:
                     },
                 }
             },
-            "max_output_tokens": max(self._max_output_tokens, 1200),
+            "max_output_tokens": max(self._max_output_tokens, 900),
         }
         async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
             response = await client.post(

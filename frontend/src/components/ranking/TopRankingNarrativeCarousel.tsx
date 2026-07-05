@@ -42,6 +42,13 @@ export default function TopRankingNarrativeCarousel({ players, explanations, onO
   const goals = evidenceNumber(explanation, 'goals')
   const assists = evidenceNumber(explanation, 'assists')
   const points = evidenceNumber(explanation, 'total_pts')
+  const bullets = explanation.bullets.length > 0
+    ? explanation.bullets.slice(0, 3)
+    : [
+        points != null ? `${Math.round(points).toLocaleString('es-ES')} pts` : null,
+        goals != null ? `${goals} goles` : null,
+        assists != null ? `${assists} asistencias` : null,
+      ].filter((item): item is string => Boolean(item)).slice(0, 3)
 
   return (
     <section
@@ -60,18 +67,20 @@ export default function TopRankingNarrativeCarousel({ players, explanations, onO
       <div className="top-narrative__body">
         <span className="top-narrative__eyebrow">Por que esta arriba</span>
         <h3>{slide.player.name}</h3>
-        <p>{explanation.short_text}</p>
-        <div className="top-narrative__chips" aria-label="Evidencia principal">
-          {points != null && <span>{Math.round(points).toLocaleString('es-ES')} pts</span>}
-          {goals != null && <span>{goals} G</span>}
-          {assists != null && <span>{assists} A</span>}
-        </div>
+        <p className="top-narrative__hook">{explanation.short_text}</p>
+        {bullets.length > 0 && (
+          <ul className="top-narrative__bullets" aria-label="Datos clave">
+            {bullets.map((bullet) => (
+              <li key={bullet}>{bullet}</li>
+            ))}
+          </ul>
+        )}
         <button
           type="button"
           className="top-narrative__link"
           onClick={() => onOpenAnalysis(explanation)}
         >
-          Ver analisis
+          Leer mas
         </button>
       </div>
       <div className="top-narrative__dots" aria-hidden="true">
