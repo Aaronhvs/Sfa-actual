@@ -112,3 +112,14 @@ async def test_fixture_detail_accepts_missing_optional_sections() -> None:
     assert detail.referee is None
     assert detail.lineups == []
     assert detail.statistics == []
+
+
+def test_world_cup_knockout_rounds_map_to_scoring_stages() -> None:
+    provider = APIFootballProvider("test", "https://example.test")
+
+    assert provider.get_stage("Round of 32 - 1", "World Cup") == "round_of_32"
+    assert provider.get_stage("Round of 16 - 2", "World Cup") == "round_of_16"
+    assert provider.get_stage("Quarter-finals", "World Cup") == "quarter"
+    assert provider.get_stage("Semi-finals", "World Cup") == "semi"
+    assert provider.get_stage("3rd Place Final", "World Cup") == "third_place"
+    assert provider.get_stage("Final", "World Cup") == "final"
