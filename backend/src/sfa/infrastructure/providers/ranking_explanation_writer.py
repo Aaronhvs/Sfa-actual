@@ -9,6 +9,58 @@ from sfa.domain.ranking_explanation_ports import (
     RankingExplanationWriteResultDTO,
 )
 
+TEXT_REPLACEMENTS_ES = {
+    "World Cup": "Mundial",
+    "FIFA World Cup 2026": "Mundial 2026",
+    "Algeria": "Argelia",
+    "Belgium": "Bélgica",
+    "Brazil": "Brasil",
+    "Canada": "Canadá",
+    "Cape Verde": "Cabo Verde",
+    "Congo DR": "R.D. Congo",
+    "Croatia": "Croacia",
+    "Czechia": "Chequia",
+    "Ecuador": "Ecuador",
+    "Egypt": "Egipto",
+    "England": "Inglaterra",
+    "France": "Francia",
+    "Germany": "Alemania",
+    "Haiti": "Haití",
+    "Iran": "Irán",
+    "Iraq": "Irak",
+    "Ivory Coast": "Costa de Marfil",
+    "Japan": "Japón",
+    "Jordan": "Jordania",
+    "Korea Republic": "Corea del Sur",
+    "Mexico": "México",
+    "Morocco": "Marruecos",
+    "Netherlands": "Países Bajos",
+    "New Zealand": "Nueva Zelanda",
+    "Norway": "Noruega",
+    "Panama": "Panamá",
+    "Qatar": "Catar",
+    "Saudi Arabia": "Arabia Saudita",
+    "Scotland": "Escocia",
+    "South Africa": "Sudáfrica",
+    "South Korea": "Corea del Sur",
+    "Spain": "España",
+    "Sweden": "Suecia",
+    "Switzerland": "Suiza",
+    "Tunisia": "Túnez",
+    "Turkey": "Turquía",
+    "Türkiye": "Turquía",
+    "USA": "Estados Unidos",
+    "United States": "Estados Unidos",
+    "Uzbekistan": "Uzbekistán",
+}
+
+
+def _sanitize_output_text(text: str) -> str:
+    result = text
+    for source, target in sorted(TEXT_REPLACEMENTS_ES.items(), key=lambda item: len(item[0]), reverse=True):
+        result = result.replace(source, target)
+    return result
+
 
 class DeterministicRankingExplanationWriter:
     async def write(
@@ -109,9 +161,9 @@ class DeterministicRankingExplanationWriter:
             bullets.append(f"Mayor fuente de puntos: {top_action[0]} ({top_action_points:g} pts).")
 
         return RankingExplanationWriteResultDTO(
-            short_text=short[:280],
-            long_text=long[:1800],
-            bullets=bullets[:4],
+            short_text=_sanitize_output_text(short)[:280],
+            long_text=_sanitize_output_text(long)[:1800],
+            bullets=[_sanitize_output_text(item) for item in bullets[:4]],
             variant="deterministic",
             status="fallback",
             model_name="deterministic-sfa-v1",
@@ -150,6 +202,8 @@ class OpenAICompatibleRankingExplanationWriter:
             "si el JSON trae esa consecuencia de forma explicita. Si no, describe fase, minuto y "
             "marcador, pero no afirmes la consecuencia. Si el evento es goal_penalty, di de penal y "
             "no lo vendas como remate dificil: su valor esta en el momento. "
+            "Solo puedes mencionar nombres propios que aparezcan en allowed_names o player.name. "
+            "Si necesitas nombrar un rival, usa exactamente el nombre en espanol que aparece en el JSON. "
             "Cero jerga interna en el texto final. Prohibido escribir M1, M2, M3, M4, mvisit, xG, "
             "PSxG, multiplicador, puntos base, scope, ranking peers, knockout, score, stage, JSON. "
             "Traduce rival: si el dato indica rival fuerte, habla de rival de jerarquia; si indica "
@@ -228,10 +282,10 @@ class OpenAICompatibleRankingExplanationWriter:
             data = response.json()
 
         parsed = self._parse_output(data)
-        short_text = str(parsed.get("short_text") or "")[:280]
-        long_text = str(parsed.get("long_text") or "")[:1800]
+        short_text = _sanitize_output_text(str(parsed.get("short_text") or ""))[:280]
+        long_text = _sanitize_output_text(str(parsed.get("long_text") or ""))[:1800]
         bullets_raw = parsed.get("bullets") or []
-        bullets = [str(item) for item in bullets_raw if str(item).strip()][:4]
+        bullets = [_sanitize_output_text(str(item)) for item in bullets_raw if str(item).strip()][:4]
         if not short_text or not long_text:
             raise ValueError("AI explanation output missing required text fields")
 

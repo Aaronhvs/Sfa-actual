@@ -53,6 +53,66 @@ ACTION_LABELS_ES = {
     "stats": "estadisticas",
     "key_pass": "pase clave",
 }
+COMPETITION_NAMES_ES = {
+    "World Cup": "Mundial",
+    "FIFA World Cup 2026": "Mundial 2026",
+}
+TEAM_NAMES_ES = {
+    "Algeria": "Argelia",
+    "Argentina": "Argentina",
+    "Australia": "Australia",
+    "Austria": "Austria",
+    "Belgium": "Bélgica",
+    "Bosnia & Herzegovina": "Bosnia y Herzegovina",
+    "Bosnia and Herzegovina": "Bosnia y Herzegovina",
+    "Brazil": "Brasil",
+    "Canada": "Canadá",
+    "Cape Verde": "Cabo Verde",
+    "Colombia": "Colombia",
+    "Congo DR": "R.D. Congo",
+    "Croatia": "Croacia",
+    "Curaçao": "Curazao",
+    "Curacao": "Curazao",
+    "Czechia": "Chequia",
+    "DR Congo": "R.D. Congo",
+    "Ecuador": "Ecuador",
+    "Egypt": "Egipto",
+    "England": "Inglaterra",
+    "France": "Francia",
+    "Germany": "Alemania",
+    "Ghana": "Ghana",
+    "Haiti": "Haití",
+    "Iran": "Irán",
+    "Iraq": "Irak",
+    "Ivory Coast": "Costa de Marfil",
+    "Japan": "Japón",
+    "Jordan": "Jordania",
+    "Korea Republic": "Corea del Sur",
+    "Mexico": "México",
+    "Morocco": "Marruecos",
+    "Netherlands": "Países Bajos",
+    "New Zealand": "Nueva Zelanda",
+    "Norway": "Noruega",
+    "Panama": "Panamá",
+    "Paraguay": "Paraguay",
+    "Portugal": "Portugal",
+    "Qatar": "Catar",
+    "Saudi Arabia": "Arabia Saudita",
+    "Scotland": "Escocia",
+    "Senegal": "Senegal",
+    "South Africa": "Sudáfrica",
+    "South Korea": "Corea del Sur",
+    "Spain": "España",
+    "Sweden": "Suecia",
+    "Switzerland": "Suiza",
+    "Tunisia": "Túnez",
+    "Turkey": "Turquía",
+    "Türkiye": "Turquía",
+    "Uruguay": "Uruguay",
+    "USA": "Estados Unidos",
+    "United States": "Estados Unidos",
+    "Uzbekistan": "Uzbekistán",
+}
 
 
 class RankingExplanationRepository:
@@ -92,10 +152,10 @@ class RankingExplanationRepository:
                 "player": {
                     "id": ranked.player_id,
                     "name": ranked.player_name,
-                    "team": ranked.team_name,
+                    "team": self._localize_name(ranked.team_name),
                     "team_logo_url": ranked.team_logo_url,
                     "position": ranked.position,
-                    "competition": ranked.competition_name,
+                    "competition": self._localize_name(ranked.competition_name),
                     "rank": ranked.rank,
                     "total_pts": score_total,
                     "matches": int(ranked.matches_played or 0),
@@ -114,6 +174,8 @@ class RankingExplanationRepository:
                 "stat_profile": stat_profile,
                 "comparison": comparison.get(ranked.player_id, {}),
             }
+            evidence = self._localize_evidence(evidence)
+            evidence["allowed_names"] = self._allowed_names(evidence)
             source_hash = self._source_hash(evidence)
             evidence_items.append(
                 RankingExplanationEvidenceDTO(
@@ -278,7 +340,7 @@ class RankingExplanationRepository:
         )
         stmt = self._apply_score_scope(stmt, request)
         rows = (await self._session.execute(stmt)).mappings().all()
-        return [self._clean(dict(row)) for row in rows]
+        return [self._clean(self._localize_evidence(dict(row))) for row in rows]
 
     async def _stat_profile(self, player_id: int, request: RankingExplanationRequestDTO) -> dict[str, Any]:
         stmt = (
@@ -405,7 +467,7 @@ class RankingExplanationRepository:
         if request.rules_version_id is not None:
             stmt = stmt.where(PlayerEventScore.rules_version_id == request.rules_version_id)
         rows = (await self._session.execute(stmt)).mappings().all()
-        return [self._enrich_event_context(dict(row)) for row in rows]
+        return [self._enrich_event_context(self._localize_evidence(dict(row))) for row in rows]
 
     async def _match_summaries(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
         home = aliased(Team)
@@ -507,7 +569,7 @@ class RankingExplanationRepository:
 
         summaries = list(by_fixture.values())
         summaries.sort(key=lambda item: float(item.get("total_points") or 0), reverse=True)
-        return [self._clean(item) for item in summaries[:6]]
+        return [self._clean(self._localize_evidence(item)) for item in summaries[:6]]
 
     def _methodology_context(self) -> dict[str, Any]:
         return {
@@ -533,6 +595,8 @@ class RankingExplanationRepository:
             "language_rules": [
                 "Escribe todo en espanol.",
                 "Usa Mundial en lugar de World Cup.",
+                "Usa los nombres localizados del JSON; no traduzcas de vuelta al ingles.",
+                "No menciones equipos o rivales que no aparezcan en allowed_names.",
                 "Usa dieciseisavos, octavos, cuartos, semifinal o final cuando corresponda.",
                 "No uses palabras como scope, ranking peers, knockout, score, stage o bonus label.",
             ],
@@ -564,6 +628,52 @@ class RankingExplanationRepository:
         row["m3_context"] = self._m3_context(row.get("m3"))
         row["m4_context"] = self._m4_context(row.get("m4"))
         return self._clean(row)
+
+    def _localize_name(self, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        if value in TEAM_NAMES_ES:
+            return TEAM_NAMES_ES[value]
+        if value in COMPETITION_NAMES_ES:
+            return COMPETITION_NAMES_ES[value]
+        return value
+
+    def _localize_text(self, value: str) -> str:
+        text = value
+        replacements = {**COMPETITION_NAMES_ES, **TEAM_NAMES_ES}
+        for source, target in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
+            text = text.replace(source, target)
+        return text
+
+    def _localize_evidence(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: self._localize_evidence(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._localize_evidence(item) for item in value]
+        if isinstance(value, str):
+            return self._localize_text(value)
+        return value
+
+    def _allowed_names(self, evidence: dict[str, Any]) -> list[str]:
+        names: set[str] = set()
+        player = evidence.get("player") or {}
+        for key in ("name", "team", "competition"):
+            value = player.get(key)
+            if isinstance(value, str) and value:
+                names.add(value)
+        for event in evidence.get("top_events") or []:
+            if isinstance(event, dict):
+                for key in ("home_team", "away_team"):
+                    value = event.get(key)
+                    if isinstance(value, str) and value:
+                        names.add(value)
+        for match in evidence.get("match_summaries") or []:
+            if isinstance(match, dict):
+                for key in ("home_team", "away_team"):
+                    value = match.get(key)
+                    if isinstance(value, str) and value:
+                        names.add(value)
+        return sorted(names)
 
     def _action_label(self, action_type: Any) -> str:
         return ACTION_LABELS_ES.get(str(action_type or ""), str(action_type or "accion"))
