@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import httpx
 
@@ -16,6 +17,7 @@ TEXT_REPLACEMENTS_ES = {
     "Belgium": "Bélgica",
     "Brazil": "Brasil",
     "Canada": "Canadá",
+    "Cape Verde Islands": "Cabo Verde",
     "Cape Verde": "Cabo Verde",
     "Congo DR": "R.D. Congo",
     "Croatia": "Croacia",
@@ -58,7 +60,8 @@ TEXT_REPLACEMENTS_ES = {
 def _sanitize_output_text(text: str) -> str:
     result = text
     for source, target in sorted(TEXT_REPLACEMENTS_ES.items(), key=lambda item: len(item[0]), reverse=True):
-        result = result.replace(source, target)
+        pattern = rf"(?<!\w){re.escape(source)}(?!\w)"
+        result = re.sub(pattern, target, result)
     return result
 
 
@@ -200,7 +203,9 @@ class OpenAICompatibleRankingExplanationWriter:
             "ni resultados. La distribucion de goles debe salir de top_events, match_summaries o "
             "impact_minutes. Consecuencias como clasifico, remonto o sentencio solo pueden aparecer "
             "si el JSON trae esa consecuencia de forma explicita. Si no, describe fase, minuto y "
-            "marcador, pero no afirmes la consecuencia. Si el evento es goal_penalty, di de penal y "
+            "marcador, pero no afirmes la consecuencia. Tampoco escribas que una accion mantuvo, "
+            "sostuvo, clasifico, cerro o aseguro la posicion del equipo si ese resultado no viene "
+            "explicitamente en el JSON. Si el evento es goal_penalty, di de penal y "
             "no lo vendas como remate dificil: su valor esta en el momento. "
             "Solo puedes mencionar nombres propios que aparezcan en allowed_names o player.name. "
             "Si necesitas nombrar un rival, usa exactamente el nombre en espanol que aparece en el JSON. "

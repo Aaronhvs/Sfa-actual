@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
@@ -67,6 +68,7 @@ TEAM_NAMES_ES = {
     "Bosnia and Herzegovina": "Bosnia y Herzegovina",
     "Brazil": "Brasil",
     "Canada": "Canadá",
+    "Cape Verde Islands": "Cabo Verde",
     "Cape Verde": "Cabo Verde",
     "Colombia": "Colombia",
     "Congo DR": "R.D. Congo",
@@ -113,6 +115,14 @@ TEAM_NAMES_ES = {
     "United States": "Estados Unidos",
     "Uzbekistan": "Uzbekistán",
 }
+
+
+def _replace_full_terms(text: str, replacements: dict[str, str]) -> str:
+    result = text
+    for source, target in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
+        pattern = rf"(?<!\w){re.escape(source)}(?!\w)"
+        result = re.sub(pattern, target, result)
+    return result
 
 
 class RankingExplanationRepository:
@@ -639,11 +649,8 @@ class RankingExplanationRepository:
         return value
 
     def _localize_text(self, value: str) -> str:
-        text = value
         replacements = {**COMPETITION_NAMES_ES, **TEAM_NAMES_ES}
-        for source, target in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
-            text = text.replace(source, target)
-        return text
+        return _replace_full_terms(value, replacements)
 
     def _localize_evidence(self, value: Any) -> Any:
         if isinstance(value, dict):
