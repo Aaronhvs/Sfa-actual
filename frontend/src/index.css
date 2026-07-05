@@ -16808,15 +16808,6 @@ body.mode-tournament .main-content {
   color: #fff;
 }
 
-.analysis-modal__hook,
-.player-analysis__hook {
-  margin-bottom: 14px !important;
-  color: #fff !important;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  line-height: 1.08 !important;
-}
-
 .analysis-modal__panel p,
 .player-analysis p {
   margin: 0;
@@ -16826,24 +16817,29 @@ body.mode-tournament .main-content {
 
 .analysis-modal__panel ul,
 .player-analysis ul {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
-  margin: 14px 0;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .analysis-modal__panel li,
 .player-analysis li {
-  border: 1px solid rgba(230, 194, 90, 0.24);
-  border-radius: 4px;
-  background: rgba(217, 182, 76, 0.08);
-  color: rgba(244, 240, 232, 0.9);
-  padding: 6px 8px;
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  line-height: 1.1;
+  color: rgba(244, 240, 232, 0.82);
+  font-size: 0.92rem;
+}
+
+.analysis-modal__panel li::before,
+.player-analysis li::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: #d9b64c;
+  vertical-align: 0.08em;
 }
 
 .analysis-modal__chips {
@@ -16919,31 +16915,27 @@ body.mode-tournament .main-content {
     line-height: 0.95;
   }
 
-  .top-narrative__hook {
+  .top-narrative__body p {
     margin: 0;
-    color: rgba(255, 255, 255, 0.94);
-    font-family: var(--font-display);
-    font-size: 0.88rem;
-    line-height: 1.08;
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 0.84rem;
+    line-height: 1.35;
   }
 
-  .top-narrative__bullets {
+  .top-narrative__chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     margin-top: 8px;
-    padding: 0;
-    list-style: none;
   }
 
-  .top-narrative__bullets li {
+  .top-narrative__chips span {
     border-radius: 4px;
     background: rgba(255, 255, 255, 0.08);
     padding: 4px 7px;
     color: #d9b64c;
     font-family: var(--font-display);
     font-size: 0.72rem;
-    line-height: 1.05;
   }
 
   .top-narrative__link {

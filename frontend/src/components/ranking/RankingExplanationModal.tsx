@@ -19,7 +19,7 @@ export default function RankingExplanationModal({ explanation, onClose }: Props)
         </button>
         <span className="analysis-modal__eyebrow">Analisis SFA</span>
         <h3>{playerName}</h3>
-        <p className="analysis-modal__hook">{explanation.short_text}</p>
+        <p>{explanation.long_text}</p>
         {explanation.bullets.length > 0 && (
           <ul>
             {explanation.bullets.map((bullet) => (
@@ -27,7 +27,6 @@ export default function RankingExplanationModal({ explanation, onClose }: Props)
             ))}
           </ul>
         )}
-        <p>{explanation.long_text}</p>
         <div className="analysis-modal__chips">
           {typeof player?.total_pts === 'number' && <span>{Math.round(player.total_pts).toLocaleString('es-ES')} pts</span>}
           {typeof player?.matches === 'number' && <span>{player.matches} PJ</span>}

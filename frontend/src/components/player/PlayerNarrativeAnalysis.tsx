@@ -13,7 +13,7 @@ export default function PlayerNarrativeAnalysis({ explanation }: Props) {
         <span>Analisis SFA</span>
         <h2>Por que aparece en el top</h2>
       </div>
-      <p className="player-analysis__hook">{explanation.short_text}</p>
+      <p>{explanation.long_text}</p>
       {explanation.bullets.length > 0 && (
         <ul>
           {explanation.bullets.map((bullet) => (
@@ -21,7 +21,6 @@ export default function PlayerNarrativeAnalysis({ explanation }: Props) {
           ))}
         </ul>
       )}
-      <p>{explanation.long_text}</p>
     </section>
   )
 }
