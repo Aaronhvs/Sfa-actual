@@ -22,7 +22,9 @@ async def get_ranking(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=10, ge=1, le=50),
     name: str | None = Query(default=None, description="Busqueda por nombre de jugador o equipo"),
-    bonus_label: str | None = Query(default=None, description="Filtro de perfil: Promesa o Veterano"),
+    bonus_label: str | None = Query(
+        default=None, description="Filtro de perfil: Promesa, Veterano, Goleador o Asistidor",
+    ),
     rules_version_id: int | None = Query(
         default=None,
         description="ID de version de reglas. Si no se pasa, usa la version activa.",

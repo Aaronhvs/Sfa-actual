@@ -60,6 +60,14 @@ def _bonus_label_filter(bonus_label: str | None, birth_date_col, young_pts_col, 
     )
 
 
+def _stat_profile_filter(profile_label: str | None, goals_col, assists_col):
+    if profile_label == "Goleador":
+        return goals_col >= 1
+    if profile_label == "Asistidor":
+        return assists_col >= 1
+    return None
+
+
 _TEAM_SEARCH_ALIAS_GROUPS: tuple[tuple[str, ...], ...] = (
     ("argentina",),
     ("australia",),
@@ -450,12 +458,15 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         )
         if position is not None:
             stmt = stmt.where(_position_filter(position))
-        bonus_filter = _bonus_label_filter(
-            bonus_label,
-            Player.birth_date,
-            b1_agg.c.b1_young_pts,
-            b1_agg.c.b1_veteran_pts,
-        )
+        if bonus_label in {"Promesa", "Veterano"}:
+            bonus_filter = _bonus_label_filter(
+                bonus_label,
+                Player.birth_date,
+                b1_agg.c.b1_young_pts,
+                b1_agg.c.b1_veteran_pts,
+            )
+        else:
+            bonus_filter = _stat_profile_filter(bonus_label, agg.c.sum_goals, agg.c.sum_assists)
         if bonus_filter is not None:
             stmt = stmt.where(bonus_filter)
 
@@ -552,8 +563,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 )
             )
         b1_agg = None
+        stat_agg = None
         bonus_filter = None
-        if bonus_label is not None:
+        if bonus_label in {"Promesa", "Veterano"}:
             b1_filters = [
                 PlayerEventScore.season == season,
                 PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
@@ -588,6 +600,23 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             )
             if bonus_filter is not None:
                 inner = inner.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
+        elif bonus_label in {"Goleador", "Asistidor"}:
+            def _jint(key: str) -> object:
+                return func.coalesce(cast(SFASeasonScore.breakdown[key]["count"].astext, Integer), 0)
+
+            stat_agg = (
+                select(
+                    SFASeasonScore.player_id,
+                    func.sum(_jint("goal") + _jint("goal_penalty")).label("sum_goals"),
+                    func.sum(_jint("assist") + _jint("corner_assist")).label("sum_assists"),
+                )
+                .where(*score_filters)
+                .group_by(SFASeasonScore.player_id)
+                .subquery()
+            )
+            bonus_filter = _stat_profile_filter(bonus_label, stat_agg.c.sum_goals, stat_agg.c.sum_assists)
+            if bonus_filter is not None:
+                inner = inner.outerjoin(stat_agg, Player.id == stat_agg.c.player_id).where(bonus_filter)
 
         if position is not None:
             exact_stmt = (
@@ -618,6 +647,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 )
             if bonus_filter is not None and b1_agg is not None:
                 exact_stmt = exact_stmt.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
+            elif bonus_filter is not None and stat_agg is not None:
+                exact_stmt = exact_stmt.outerjoin(stat_agg, Player.id == stat_agg.c.player_id).where(bonus_filter)
             rows = (await self._session.execute(exact_stmt)).mappings().all()
             counted: set[int] = set()
             for row in rows:
@@ -895,12 +926,15 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         )
         if position is not None:
             stmt = stmt.where(_position_filter(position))
-        bonus_filter = _bonus_label_filter(
-            bonus_label,
-            Player.birth_date,
-            b1_agg.c.b1_young_pts,
-            b1_agg.c.b1_veteran_pts,
-        )
+        if bonus_label in {"Promesa", "Veterano"}:
+            bonus_filter = _bonus_label_filter(
+                bonus_label,
+                Player.birth_date,
+                b1_agg.c.b1_young_pts,
+                b1_agg.c.b1_veteran_pts,
+            )
+        else:
+            bonus_filter = _stat_profile_filter(bonus_label, agg.c.sum_goals, agg.c.sum_assists)
         if bonus_filter is not None:
             stmt = stmt.where(bonus_filter)
 
@@ -996,8 +1030,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 )
             )
         b1_agg = None
+        stat_agg = None
         bonus_filter = None
-        if bonus_label is not None:
+        if bonus_label in {"Promesa", "Veterano"}:
             b1_filters = [
                 PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
             ]
@@ -1031,6 +1066,23 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             )
             if bonus_filter is not None:
                 inner = inner.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
+        elif bonus_label in {"Goleador", "Asistidor"}:
+            def _jint(key: str) -> object:
+                return func.coalesce(cast(SFASeasonScore.breakdown[key]["count"].astext, Integer), 0)
+
+            stat_agg = (
+                select(
+                    SFASeasonScore.player_id,
+                    func.sum(_jint("goal") + _jint("goal_penalty")).label("sum_goals"),
+                    func.sum(_jint("assist") + _jint("corner_assist")).label("sum_assists"),
+                )
+                .where(*score_filters)
+                .group_by(SFASeasonScore.player_id)
+                .subquery()
+            )
+            bonus_filter = _stat_profile_filter(bonus_label, stat_agg.c.sum_goals, stat_agg.c.sum_assists)
+            if bonus_filter is not None:
+                inner = inner.outerjoin(stat_agg, Player.id == stat_agg.c.player_id).where(bonus_filter)
 
         if position is not None:
             exact_stmt = (
@@ -1061,6 +1113,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 )
             if bonus_filter is not None and b1_agg is not None:
                 exact_stmt = exact_stmt.outerjoin(b1_agg, Player.id == b1_agg.c.player_id).where(bonus_filter)
+            elif bonus_filter is not None and stat_agg is not None:
+                exact_stmt = exact_stmt.outerjoin(stat_agg, Player.id == stat_agg.c.player_id).where(bonus_filter)
             rows = (await self._session.execute(exact_stmt)).mappings().all()
             counted: set[int] = set()
             for row in rows:

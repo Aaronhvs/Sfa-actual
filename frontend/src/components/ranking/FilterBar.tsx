@@ -58,6 +58,8 @@ export default function FilterBar({
           <option value="">Todos los perfiles</option>
           <option value="Promesa">Promesas</option>
           <option value="Veterano">Veteranos</option>
+          <option value="Goleador">Goleadores</option>
+          <option value="Asistidor">Asistidores</option>
         </select>
       </label>
 

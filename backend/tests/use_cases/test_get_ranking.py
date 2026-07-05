@@ -161,3 +161,21 @@ class TestGetRanking:
         await uc.execute(season="2024-25", bonus_label="Promesa")
 
         assert repo.last_ranking_call["bonus_label"] == "Promesa"
+
+    @pytest.mark.anyio
+    async def test_passes_goleador_profile_filter_to_repository(self):
+        repo = FakeSFAScoreRepository(total=1, ranking=[_make_ranked_player(1)])
+        uc = GetRankingUseCase(repo)
+
+        await uc.execute(season="2024-25", bonus_label="Goleador")
+
+        assert repo.last_ranking_call["bonus_label"] == "Goleador"
+
+    @pytest.mark.anyio
+    async def test_passes_asistidor_profile_filter_to_repository(self):
+        repo = FakeSFAScoreRepository(total=1, ranking=[_make_ranked_player(1)])
+        uc = GetRankingUseCase(repo)
+
+        await uc.execute(season="2024-25", bonus_label="Asistidor")
+
+        assert repo.last_ranking_call["bonus_label"] == "Asistidor"

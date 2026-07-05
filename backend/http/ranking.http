@@ -29,3 +29,43 @@ GET http://localhost:8000/api/v1/ranking?season=all&limit=10
 GET http://localhost:8000/api/v1/ranking?season=2025&limit=10
 
 ###
+
+### Ranking filtrado por perfil Promesa
+GET http://localhost:8000/api/v1/ranking?season=2024-25&bonus_label=Promesa&limit=15
+
+###
+
+### Ranking filtrado por perfil Veterano
+GET http://localhost:8000/api/v1/ranking?season=2024-25&bonus_label=Veterano&limit=15
+
+###
+
+### Ranking filtrado por perfil Goleador
+GET http://localhost:8000/api/v1/ranking?season=2024-25&bonus_label=Goleador&limit=15
+
+###
+
+### Ranking filtrado por perfil Goleador, página 2
+GET http://localhost:8000/api/v1/ranking?season=2024-25&bonus_label=Goleador&page=2&limit=15
+
+###
+
+### Ranking filtrado por perfil Asistidor
+GET http://localhost:8000/api/v1/ranking?season=2024-25&bonus_label=Asistidor&limit=15
+
+###
+
+### Ranking filtrado por perfil Goleador y posición
+GET http://localhost:8000/api/v1/ranking?season=2024-25&bonus_label=Goleador&position=DEL&limit=15
+
+###
+
+### Ranking filtrado por perfil Asistidor y competición
+GET http://localhost:8000/api/v1/ranking?season=2024-25&bonus_label=Asistidor&competition_id=1&limit=15
+
+###
+
+### Ranking acumulado (all seasons) filtrado por perfil Goleador
+GET http://localhost:8000/api/v1/ranking?season=all&bonus_label=Goleador&limit=15
+
+###
