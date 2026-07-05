@@ -68,6 +68,14 @@ def _stat_profile_filter(profile_label: str | None, goals_col, assists_col):
     return None
 
 
+def _ranking_order_column(profile_label: str | None, pts_col, goals_col, assists_col):
+    if profile_label == "Goleador":
+        return goals_col
+    if profile_label == "Asistidor":
+        return assists_col
+    return pts_col
+
+
 _TEAM_SEARCH_ALIAS_GROUPS: tuple[tuple[str, ...], ...] = (
     ("argentina",),
     ("australia",),
@@ -427,7 +435,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .subquery()
         )
 
-        rank_col = func.rank().over(order_by=agg.c.sum_pts.desc()).label("rank")
+        order_col = _ranking_order_column(bonus_label, agg.c.sum_pts, agg.c.sum_goals, agg.c.sum_assists)
+        rank_col = func.rank().over(order_by=[order_col.desc(), agg.c.sum_pts.desc()]).label("rank")
         stmt = (
             select(
                 rank_col,
@@ -454,7 +463,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .join(Team, best_comp.c.team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
             .outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
-            .order_by(agg.c.sum_pts.desc())
+            .order_by(order_col.desc(), agg.c.sum_pts.desc())
         )
         if position is not None:
             stmt = stmt.where(_position_filter(position))
@@ -895,7 +904,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .subquery()
         )
 
-        rank_col = func.rank().over(order_by=agg.c.sum_pts.desc()).label("rank")
+        order_col = _ranking_order_column(bonus_label, agg.c.sum_pts, agg.c.sum_goals, agg.c.sum_assists)
+        rank_col = func.rank().over(order_by=[order_col.desc(), agg.c.sum_pts.desc()]).label("rank")
         stmt = (
             select(
                 rank_col,
@@ -922,7 +932,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .join(Team, best_comp.c.team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
             .outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
-            .order_by(agg.c.sum_pts.desc())
+            .order_by(order_col.desc(), agg.c.sum_pts.desc())
         )
         if position is not None:
             stmt = stmt.where(_position_filter(position))
