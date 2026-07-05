@@ -80,25 +80,32 @@ async def _run(
         result.achievement_bonuses_created,
     )
     if result.status == "completed":
-        from sfa.core.config import get_settings
-        from sfa.tasks.generate_ranking_explanations_task import (
-            generate_ranking_explanations_task,
-        )
+        _queue_ranking_explanations_after_recalculation(season, rules_version_id)
 
-        settings = get_settings()
-        competition_id = 350 if season == "2026" else None
-        scope = "world_cup" if competition_id == 350 else "ranking"
-        task = generate_ranking_explanations_task.delay(
-            season,
-            rules_version_id,
-            competition_id,
-            scope,
-            settings.AI_EXPLANATIONS_TOP_N,
-            False,
-            True,
-        )
-        logger.info(
-            "[run_full_recalculation_task] queued ranking explanations task_id=%s scope=%s",
-            task.id,
-            scope,
-        )
+
+def _queue_ranking_explanations_after_recalculation(season: str, rules_version_id: int) -> str:
+    from sfa.core.config import get_settings
+    from sfa.tasks.generate_ranking_explanations_task import (
+        generate_ranking_explanations_task,
+    )
+
+    settings = get_settings()
+    competition_id = 350 if season == "2026" else None
+    scope = "world_cup" if competition_id == 350 else "ranking"
+    task = generate_ranking_explanations_task.delay(
+        season,
+        rules_version_id,
+        competition_id,
+        scope,
+        settings.AI_EXPLANATIONS_TOP_N,
+        False,
+        True,
+    )
+    logger.info(
+        "[run_full_recalculation_task] queued ranking explanations task_id=%s scope=%s force=%s top_n=%s",
+        task.id,
+        scope,
+        False,
+        settings.AI_EXPLANATIONS_TOP_N,
+    )
+    return str(task.id)
