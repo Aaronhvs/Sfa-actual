@@ -130,8 +130,8 @@ class DeterministicRankingExplanationWriter:
             f"{', '.join(impact_parts[:2])}."
         )
         long = (
-            f"{name} aparece en el puesto {rank} porque su puntaje no depende solo del volumen: "
-            f"el motor SFA pondera rival, fase, minuto y contexto de marcador. En este scope acumula "
+            f"{name} aparece en el puesto {rank} porque sus acciones pesaron en contexto: "
+            f"el motor SFA pondera rival, fase, minuto y marcador. En este torneo acumula "
             f"{total:g} pts en {matches} partidos"
         )
         if ppg:
@@ -196,9 +196,10 @@ class OpenAICompatibleRankingExplanationWriter:
             "Eres analista de Stats Football Award (SFA). Explicas a un aficionado que no conoce "
             "el sistema por que un jugador ocupa su puesto, de forma que lo entienda y quiera "
             "discutirlo. No vendes stats: cuentas el rendimiento real del jugador y muestras por "
-            "que el sistema lo valora. El criterio de fondo se dice una sola vez: SFA mide impacto "
-            "real, no volumen de minutos. Espanol neutro. Directo, seguro, premium. Nunca sonar a "
-            "robot ni a lista de datos. "
+            "que el sistema lo valora. No expliques el puesto por descarte contra los minutos; "
+            "explicalo por afirmacion futbolera: acciones relevantes, continuidad de rendimiento, "
+            "momento del partido, fase, rival y rarezas por posicion. Espanol neutro. Directo, "
+            "seguro, premium. Nunca sonar a robot ni a lista de datos. "
             "Usa solo el JSON de evidencia. No inventes goles, rivales, minutos, marcadores, records "
             "ni resultados. La distribucion de goles debe salir de top_events, match_summaries o "
             "impact_minutes. Consecuencias como clasifico, remonto o sentencio solo pueden aparecer "
@@ -220,7 +221,9 @@ class OpenAICompatibleRankingExplanationWriter:
             "puntos SFA, redondea. Torneo en curso: no presentes cifras como definitivas; usa "
             "'hasta ahora', 'viene marcando', 'sostiene'. "
             "Anti-redundancia estricta: cada frase debe aportar un partido, un numero, un contraste "
-            "o una lectura futbolera. No repitas la tesis. "
+            "o una lectura futbolera. No repitas la tesis. Prohibido usar frases comodin como "
+            "'no volumen de minutos', 'no depende del volumen' o equivalentes salvo que el JSON "
+            "muestre una comparacion concreta de puntos por partido contra otro jugador. "
             "Constancia primero: el puesto se sostiene por el rendimiento a lo largo del torneo. La "
             "mejor escena es un ancla, no toda la historia. Para DEL y EXT mira goles, asistencias, "
             "regularidad y momentos. Para MCO mira creacion, pases clave, asistencias y participacion "

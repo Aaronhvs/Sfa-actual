@@ -584,12 +584,13 @@ class RankingExplanationRepository:
     def _methodology_context(self) -> dict[str, Any]:
         return {
             "product_thesis": (
-                "SFA no mide solo cuanto juega un futbolista; mide cuanto pesa cuando juega."
+                "SFA valora cuanto pesan las acciones de un futbolista dentro del partido."
             ),
             "principles": [
-                "El volumen de partidos suma, pero la eficiencia por partido puede explicar un liderato.",
-                "Los goles y asistencias pesan mas cuando llegan con el partido abierto o en momentos clave.",
+                "Una accion pesa mas si cambia o abre el marcador, llega con tension o aparece en minutos sensibles.",
+                "El rendimiento sostenido partido a partido es mas fuerte que una sola noche aislada.",
                 "La dificultad del rival puede restar o elevar el valor de una accion.",
+                "La fase importa: no vale igual aparecer en grupos que en una ronda de eliminacion.",
                 "El recorrido del equipo y los perfiles especiales, como veterano o promesa, son contexto adicional.",
                 "El bonus de perfil no debe presentarse como la unica razon si el rendimiento base ya es alto.",
                 "Una participacion de gol vale distinto segun la posicion: en defensas y laterales es mas rara.",
@@ -609,6 +610,7 @@ class RankingExplanationRepository:
                 "No menciones equipos o rivales que no aparezcan en allowed_names.",
                 "Usa dieciseisavos, octavos, cuartos, semifinal o final cuando corresponda.",
                 "No uses palabras como scope, ranking peers, knockout, score, stage o bonus label.",
+                "No repitas que SFA no mide minutos; explica por que las acciones del jugador fueron relevantes.",
             ],
             "positional_lens": {
                 "DC": (
