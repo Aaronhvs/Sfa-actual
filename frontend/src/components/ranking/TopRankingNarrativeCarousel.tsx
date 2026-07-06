@@ -19,6 +19,29 @@ function cleanNarrativeText(text: string, player: RankedPlayer): string {
   return 'El motor no repite una tabla de goleadores: pondera rival, minuto, fase y tipo de accion para explicar por que este impacto pesa dentro del top.'
 }
 
+function buildHook(player: RankedPlayer): string {
+  const directImpact = [
+    player.goals > 0 ? `${player.goals} goles` : null,
+    player.assists > 0 ? `${player.assists} asistencias` : null,
+  ].filter(Boolean).join(' y ')
+
+  if (directImpact) {
+    return `${directImpact} en ${player.matches} partidos. La pregunta es cuando pesaron.`
+  }
+
+  if (player.b1_bonus_label) {
+    return `${player.b1_bonus_label} con impacto real: SFA mira contexto, no solo volumen.`
+  }
+
+  return 'SFA mira el peso de sus acciones: rival, momento, fase e impacto.'
+}
+
+function shortName(name: string): string {
+  const parts = name.split(' ').filter(Boolean)
+  if (parts.length <= 1) return name
+  return parts[parts.length - 1]
+}
+
 export default function TopRankingNarrativeCarousel({ players, explanations, onOpenAnalysis }: Props) {
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -45,6 +68,7 @@ export default function TopRankingNarrativeCarousel({ players, explanations, onO
   const slide = slides[active]
   const explanation = slide.explanation!
   const narrativeText = cleanNarrativeText(explanation.short_text, slide.player)
+  const hook = buildHook(slide.player)
 
   return (
     <section
@@ -56,16 +80,31 @@ export default function TopRankingNarrativeCarousel({ players, explanations, onO
       onBlur={() => setPaused(false)}
       onTouchStart={() => setPaused(true)}
     >
+      <div className="top-narrative__tabs" aria-label="Cambiar lectura del top 3">
+        {slides.map((item, index) => (
+          <button
+            key={item.player.id}
+            type="button"
+            className={index === active ? 'is-active' : ''}
+            onClick={() => setActive(index)}
+            aria-label={`Ver lectura de ${item.player.name}`}
+          >
+            <span>#{item.player.rank}</span>
+            <strong>{shortName(item.player.name)}</strong>
+          </button>
+        ))}
+      </div>
       <div className="top-narrative__body">
         <div className="top-narrative__headline">
           <span className="top-narrative__eyebrow">Por que este puesto</span>
           <h3>
             <span>#{slide.player.rank}</span>
-            {slide.player.name}, explicado por SFA
+            {slide.player.name}
           </h3>
         </div>
 
         <div className="top-narrative__story">
+          <strong>{hook}</strong>
           <p>{narrativeText}</p>
         </div>
 
@@ -94,20 +133,6 @@ export default function TopRankingNarrativeCarousel({ players, explanations, onO
         >
           Ver analisis
         </button>
-      </div>
-      <div className="top-narrative__tabs" aria-label="Cambiar lectura del top 3">
-        {slides.map((item, index) => (
-          <button
-            key={item.player.id}
-            type="button"
-            className={index === active ? 'is-active' : ''}
-            onClick={() => setActive(index)}
-            aria-label={`Ver lectura de ${item.player.name}`}
-          >
-            <span>#{item.player.rank}</span>
-            <strong>{index === active ? 'En foco' : 'Leer'}</strong>
-          </button>
-        ))}
       </div>
     </section>
   )
