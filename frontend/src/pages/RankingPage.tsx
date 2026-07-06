@@ -170,7 +170,10 @@ export default function RankingPage() {
   const animatedTotal = useCountUp(totalPlayers)
   const seasonPicker = seasonItems.length > 0 ? (
     <div className="rp-season-picker">
-      <span className="rp-season-picker__hint">Elige la temporada</span>
+      <div className="rp-season-picker__label">
+        <span className="rp-season-picker__hint">Temporada del ranking</span>
+        <small>Elige que tabla estas viendo</small>
+      </div>
       <SeasonDropdown
         items={seasonItems}
         value={season}
@@ -215,17 +218,15 @@ export default function RankingPage() {
       {isWcSeason ? (
         <WorldCupPageHeader />
       ) : (
-        <header className="rp-header">
-          <div className="rp-header__copy">
-            <span className="rp-header__eyebrow">
-              {season === 'all'
-                ? 'Stats Football Award - Historial'
-                : 'Stats Football Award - Clasificacion SFA'}
-            </span>
-            <h1 className="rp-header__title">Ranking de jugadores</h1>
-            <p className="rp-header__sub">No todos los goles valen igual.</p>
-          </div>
-        </header>
+        <WorldCupPageHeader
+          variant="standard"
+          eyebrow={season === 'all'
+            ? 'Stats Football Award - Historial'
+            : 'Stats Football Award - Clasificacion SFA'}
+          title="No todos los goles valen igual"
+          subtitle="Ranking de impacto SFA: el contexto cambia cada punto."
+          showLogo={true}
+        />
       )}
 
       <section
@@ -236,10 +237,10 @@ export default function RankingPage() {
         {seasonPicker}
         <Link to="/metodologia" className="rp-control-deck__method">
           <span>
-            <strong>Como funciona SFA</strong>
-            <small>No todos los goles valen igual</small>
+            <strong>Entiende los puntos</strong>
+            <small>Por que un gol vale mas que otro</small>
           </span>
-          <i aria-hidden="true">-&gt;</i>
+          <i aria-hidden="true">Ver guia</i>
         </Link>
       </section>
 
@@ -249,18 +250,33 @@ export default function RankingPage() {
       >
         <div className="rp-intro__copy">
           <span className="rp-intro__eyebrow">
-            {isWcSeason ? 'Como funciona este ranking' : 'Que mide SFA'}
+            {isWcSeason ? 'Edicion especial Mundial: lee el ranking en 10 segundos' : 'Que mide SFA'}
           </span>
           <h2 id="rp-intro-title">
             {isWcSeason
-              ? 'Todos empiezan en cero; cada actuacion suma segun su impacto real.'
+              ? 'SFA no pregunta cuantos hizo. Pregunta cuando pesaron.'
               : 'No contamos solo acciones: medimos cuanto cambiaron el partido.'}
           </h2>
         </div>
-        <p className="rp-intro__summary">
-          Rival, marcador, minuto, dificultad y trascendencia modifican el valor
-          de cada gol, asistencia y accion defensiva.
-        </p>
+        <div className="rp-intro__formula" aria-label="Formula simple del ranking SFA">
+          <span>Gol</span>
+          <i>+</i>
+          <span>Rival</span>
+          <i>+</i>
+          <span>Momento</span>
+          <i>+</i>
+          <span>Fase</span>
+          <i>=</i>
+          <strong>Puntos SFA</strong>
+        </div>
+        <div className="rp-intro__proof">
+          <p>
+            Un gol al 0-0 en eliminatoria vale mas que uno con el partido resuelto.
+          </p>
+          <p>
+            Tambien pesan asistencias, defensa, pases y apariciones en partidos grandes.
+          </p>
+        </div>
         <Link to="/metodologia" className="rp-intro__link">
           Como funciona SFA
           <span aria-hidden="true">-&gt;</span>
