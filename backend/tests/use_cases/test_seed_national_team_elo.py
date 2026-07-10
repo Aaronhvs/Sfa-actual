@@ -44,7 +44,14 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         return None, None
 
     async def upsert_team_elo(
-        self, team_id, season, elo_raw, strength_normalized, source, competition_ids
+        self,
+        team_id,
+        season,
+        elo_raw,
+        strength_normalized,
+        source,
+        competition_ids,
+        elo_seed_raw=None,
     ) -> None:
         self.upserted_elos.append({
             "team_id": team_id,
@@ -53,9 +60,10 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
             "strength_normalized": strength_normalized,
             "source": source,
             "competition_ids": competition_ids,
+            "elo_seed_raw": elo_seed_raw,
         })
 
-    async def get_all_teams_with_elo(self, season) -> list[TeamEloRow]:
+    async def get_all_teams_with_elo(self, season, competition_ids=None) -> list[TeamEloRow]:
         return []
 
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
@@ -112,6 +120,7 @@ async def test_seed_writes_national_team_elo_entries() -> None:
     assert result.coverage_pct == 100.0
     assert len(repo.upserted_elos) == 2
     assert {row["source"] for row in repo.upserted_elos} == {NATIONAL_ELO_SOURCE}
+    assert {row["elo_seed_raw"] for row in repo.upserted_elos} == {2100.0, 2080.0}
     assert repo.upserted_elos[0]["competition_ids"] == [1]
 
 

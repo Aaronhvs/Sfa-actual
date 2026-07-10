@@ -38,11 +38,18 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         return None, None
 
     async def upsert_team_elo(
-        self, team_id, season, elo_raw, strength_normalized, source, competition_ids
+        self,
+        team_id,
+        season,
+        elo_raw,
+        strength_normalized,
+        source,
+        competition_ids,
+        elo_seed_raw=None,
     ) -> None:
         pass
 
-    async def get_all_teams_with_elo(self, season) -> list[TeamEloRow]:
+    async def get_all_teams_with_elo(self, season, competition_ids=None) -> list[TeamEloRow]:
         return []
 
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:

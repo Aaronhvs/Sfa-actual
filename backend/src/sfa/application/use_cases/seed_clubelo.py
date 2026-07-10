@@ -56,6 +56,7 @@ class SeedClubEloUseCase:
                     strength_normalized=strength,
                     source="clubelo_seed",
                     competition_ids=competition_ids,
+                    elo_seed_raw=entry.elo,
                 )
                 matched += 1
 

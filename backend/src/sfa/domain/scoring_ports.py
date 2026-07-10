@@ -77,6 +77,7 @@ class TeamEloRow:
     season: str
     elo_raw: float
     strength: float
+    elo_seed_raw: float | None = None
 
 
 @dataclass(frozen=True)
@@ -237,9 +238,14 @@ class TeamStrengthRepositoryPort(Protocol):
         strength_normalized: float,
         source: str,
         competition_ids: list[int],
+        elo_seed_raw: float | None = None,
     ) -> None: ...
 
-    async def get_all_teams_with_elo(self, season: str) -> list[TeamEloRow]: ...
+    async def get_all_teams_with_elo(
+        self,
+        season: str,
+        competition_ids: list[int] | None = None,
+    ) -> list[TeamEloRow]: ...
 
     async def get_fixtures_for_elo_recalc(
         self, season: str, competition_ids: list[int]

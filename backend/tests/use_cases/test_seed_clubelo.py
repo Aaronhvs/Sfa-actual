@@ -32,7 +32,14 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         return None, None
 
     async def upsert_team_elo(
-        self, team_id, season, elo_raw, strength_normalized, source, competition_ids
+        self,
+        team_id,
+        season,
+        elo_raw,
+        strength_normalized,
+        source,
+        competition_ids,
+        elo_seed_raw=None,
     ) -> None:
         self.upserted_elos.append({
             "team_id": team_id,
@@ -41,9 +48,10 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
             "strength_normalized": strength_normalized,
             "source": source,
             "competition_ids": competition_ids,
+            "elo_seed_raw": elo_seed_raw,
         })
 
-    async def get_all_teams_with_elo(self, season) -> list[TeamEloRow]:
+    async def get_all_teams_with_elo(self, season, competition_ids=None) -> list[TeamEloRow]:
         return []
 
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
@@ -97,6 +105,7 @@ async def test_seed_known_team_writes_elo_entry():
     assert repo.upserted_elos[0]["strength_normalized"] == pytest.approx(78.57, abs=0.01)
     assert repo.upserted_elos[0]["source"] == "clubelo_seed"
     assert repo.upserted_elos[0]["competition_ids"] == [3]
+    assert repo.upserted_elos[0]["elo_seed_raw"] == pytest.approx(1950.0)
 
 
 @pytest.mark.anyio

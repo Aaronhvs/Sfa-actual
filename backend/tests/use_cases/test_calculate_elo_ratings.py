@@ -34,7 +34,14 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         return None, None
 
     async def upsert_team_elo(
-        self, team_id, season, elo_raw, strength_normalized, source, competition_ids
+        self,
+        team_id,
+        season,
+        elo_raw,
+        strength_normalized,
+        source,
+        competition_ids,
+        elo_seed_raw=None,
     ) -> None:
         self.upserted_elos.append({
             "team_id": team_id,
@@ -43,9 +50,11 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
             "strength_normalized": strength_normalized,
             "source": source,
             "competition_ids": competition_ids,
+            "elo_seed_raw": elo_seed_raw,
         })
 
-    async def get_all_teams_with_elo(self, season) -> list[TeamEloRow]:
+    async def get_all_teams_with_elo(self, season, competition_ids=None) -> list[TeamEloRow]:
+        self.requested_competition_ids = competition_ids
         return self.seeded
 
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
@@ -154,3 +163,78 @@ async def test_elo_written_normalized_and_raw():
     assert repo.upserted_elos[0]["elo_raw"] == pytest.approx(1950.0)
     assert repo.upserted_elos[0]["strength_normalized"] == pytest.approx(78.57, abs=0.01)
     assert repo.upserted_elos[0]["source"] == "elo_v1"
+
+
+@pytest.mark.anyio
+async def test_seed_baseline_recalculates_from_original_seed():
+    repo = FakeTeamStrengthRepository(
+        seeded=[
+            TeamEloRow(
+                team_id=10,
+                season="2026",
+                elo_raw=2025.0,
+                strength=89.29,
+                elo_seed_raw=2000.0,
+            ),
+            TeamEloRow(
+                team_id=20,
+                season="2026",
+                elo_raw=1810.0,
+                strength=58.57,
+                elo_seed_raw=1800.0,
+            ),
+        ],
+        fixtures=[
+            _fixture(1, 10, 20, 0, 1, datetime(2026, 6, 15, tzinfo=timezone.utc))
+        ],
+    )
+    use_case = CalculateEloRatingsUseCase(repo, EloCalculatorService())
+
+    await use_case.execute(
+        "2026",
+        [350],
+        {},
+        20.0,
+        source="national_elo_v1",
+        use_seed_baseline=True,
+    )
+
+    by_team = {row["team_id"]: row for row in repo.upserted_elos}
+    expected_home = EloCalculatorService.update_elo(2000.0, 1800.0, 0, 1, True, 20.0)
+    expected_away = EloCalculatorService.update_elo(1800.0, 2000.0, 0, 1, False, 20.0)
+    assert by_team[10]["elo_raw"] == pytest.approx(expected_home)
+    assert by_team[20]["elo_raw"] == pytest.approx(expected_away)
+    assert {row["source"] for row in repo.upserted_elos} == {"national_elo_v1"}
+    assert repo.requested_competition_ids == [350]
+
+
+@pytest.mark.anyio
+async def test_strict_seed_baseline_fails_when_fixture_team_has_no_seed():
+    repo = FakeTeamStrengthRepository(
+        seeded=[
+            TeamEloRow(
+                team_id=10,
+                season="2026",
+                elo_raw=2000.0,
+                strength=85.71,
+                elo_seed_raw=2000.0,
+            )
+        ],
+        fixtures=[
+            _fixture(1, 10, 20, 1, 0, datetime(2026, 6, 15, tzinfo=timezone.utc))
+        ],
+    )
+    use_case = CalculateEloRatingsUseCase(repo, EloCalculatorService())
+
+    result = await use_case.execute(
+        "2026",
+        [350],
+        {},
+        20.0,
+        use_seed_baseline=True,
+        require_seed_baseline=True,
+    )
+
+    assert result.status == "failed"
+    assert result.error == "Missing ELO seed baseline for team_ids: 20"
+    assert repo.upserted_elos == []

@@ -106,6 +106,7 @@ class SeedNationalTeamEloUseCase:
                         strength_normalized=self._calculator.normalize(entry.elo_raw),
                         source=NATIONAL_ELO_SOURCE,
                         competition_ids=[resolved_competition_id],
+                        elo_seed_raw=entry.elo_raw,
                     )
 
             logger.info(

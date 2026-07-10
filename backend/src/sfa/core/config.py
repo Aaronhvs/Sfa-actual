@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     INGEST_INTERVAL_MINUTES: int = 30
+    NATIONAL_TEAM_ELO_DEFAULT_K: float = 20.0
 
     # External APIs
     API_FOOTBALL_KEY: str = ""

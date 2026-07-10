@@ -112,17 +112,16 @@ async def _run_ingest_competition(
         await session.commit()
 
     competition_id = await _get_competition_id_by_league(league)
-    if competition_id is not None and league.participant_kind != "national_team":
+    if competition_id is not None and league.participant_kind == "national_team":
+        await _trigger_recalculation_after_national_team_elo(season, [competition_id])
+    elif competition_id is not None:
         from sfa.tasks.elo_tasks import apply_elo_update_task
 
         apply_elo_update_task.delay(str(season), [competition_id])
-    elif competition_id is not None:
-        logger.info(
-            "[ingestion] Skipping club-style ELO update for national-team competition_id=%d",
-            competition_id,
-        )
+        await _trigger_recalculation(season)
+    else:
+        await _trigger_recalculation(season)
 
-    await _trigger_recalculation(season)
     return _serialize_result(result)
 
 
@@ -142,6 +141,7 @@ async def _run_ingest_all(season: int, force: bool = False):
         settings.API_FOOTBALL_BASE_URL,
     )
     results = []
+    national_competition_ids: set[int] = set()
 
     async with AsyncSessionLocal() as session:
         repo = IngestionRepository(session)
@@ -159,8 +159,17 @@ async def _run_ingest_all(season: int, force: bool = False):
                 continue
             results.append(_serialize_result(await use_case.execute(league, season)))
             await session.commit()
+            competition_id = await _get_competition_id_by_league(league)
+            if competition_id is not None and league.participant_kind == "national_team":
+                national_competition_ids.add(competition_id)
 
-    await _trigger_recalculation(season)
+    if national_competition_ids:
+        await _trigger_recalculation_after_national_team_elo(
+            season,
+            sorted(national_competition_ids),
+        )
+    else:
+        await _trigger_recalculation(season)
     return results
 
 
@@ -184,4 +193,33 @@ async def _trigger_recalculation(season: int) -> None:
     logger.info(
         "[ingestion] Queued recalculation rules_version_id=%d season=%s",
         active_version.id, season,
+    )
+
+
+async def _trigger_recalculation_after_national_team_elo(
+    season: int,
+    competition_ids: list[int],
+) -> None:
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.repositories.scoring_rules_version_repository import ScoringRulesVersionRepository
+
+    async with AsyncSessionLocal() as ver_session:
+        active_version = await ScoringRulesVersionRepository(ver_session).get_active_version()
+
+    if active_version is None:
+        logger.error("[ingestion] No active scoring rules version found — skipping national-team ELO recalculation")
+        return
+
+    from sfa.tasks.elo_tasks import apply_elo_update_then_recalculate_task
+    apply_elo_update_then_recalculate_task.delay(
+        str(season),
+        competition_ids,
+        active_version.id,
+    )
+    logger.info(
+        "[ingestion] Queued national-team ELO + recalculation "
+        "rules_version_id=%d season=%s competition_ids=%s",
+        active_version.id,
+        season,
+        competition_ids,
     )

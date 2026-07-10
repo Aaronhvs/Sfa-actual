@@ -35,11 +35,44 @@ class CalculateEloRatingsUseCase:
         competition_ids: list[int],
         k_factors: dict[int, float],
         default_k: float = 30.0,
+        source: str = "elo_v1",
+        use_seed_baseline: bool = False,
+        require_seed_baseline: bool = False,
     ) -> CalculateEloRatingsResult:
         try:
-            seeded = await self._repo.get_all_teams_with_elo(season)
-            elo_by_team = {row.team_id: row.elo_raw for row in seeded}
+            seeded = await self._repo.get_all_teams_with_elo(season, competition_ids)
+            seed_by_team = {row.team_id: row.elo_seed_raw for row in seeded}
+            current_elo_by_team = {row.team_id: row.elo_raw for row in seeded}
             fixtures = await self._repo.get_fixtures_for_elo_recalc(season, competition_ids)
+            if use_seed_baseline and require_seed_baseline:
+                fixture_team_ids = {
+                    team_id
+                    for fixture in fixtures
+                    for team_id in (fixture.home_team_id, fixture.away_team_id)
+                }
+                missing_seed_team_ids = sorted(
+                    team_id
+                    for team_id in fixture_team_ids
+                    if seed_by_team.get(team_id) is None
+                )
+                if missing_seed_team_ids:
+                    missing = ", ".join(str(team_id) for team_id in missing_seed_team_ids)
+                    return CalculateEloRatingsResult(
+                        season=season,
+                        fixtures_processed=0,
+                        teams_updated=0,
+                        status="failed",
+                        error=f"Missing ELO seed baseline for team_ids: {missing}",
+                    )
+
+            elo_by_team = {}
+            for team_id, elo_raw in current_elo_by_team.items():
+                seed_raw = seed_by_team.get(team_id)
+                elo_by_team[team_id] = (
+                    seed_raw
+                    if use_seed_baseline and seed_raw is not None
+                    else elo_raw
+                )
 
             for fixture in fixtures:
                 home_elo = elo_by_team.get(fixture.home_team_id, ELO_DEFAULT)
@@ -72,7 +105,7 @@ class CalculateEloRatingsUseCase:
                     season=season,
                     elo_raw=elo_raw,
                     strength_normalized=self._calculator.normalize(elo_raw),
-                    source="elo_v1",
+                    source=source,
                     competition_ids=team_competition_ids,
                 )
                 teams_updated += 1

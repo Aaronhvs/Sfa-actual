@@ -122,6 +122,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
         strength_normalized: float,
         source: str,
         competition_ids: list[int],
+        elo_seed_raw: float | None = None,
     ) -> None:
         if not competition_ids:
             logger.warning(
@@ -132,42 +133,59 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
             return
 
         now = datetime.now(timezone.utc)
+        values = {
+            "team_id": team_id,
+            "season": season,
+            "strength": strength_normalized,
+            "elo_raw": elo_raw,
+            "source": source,
+            "created_at": now,
+        }
+        update_values = {
+            "strength": strength_normalized,
+            "elo_raw": elo_raw,
+            "source": source,
+        }
+        if elo_seed_raw is not None:
+            values["elo_seed_raw"] = elo_seed_raw
+            update_values["elo_seed_raw"] = elo_seed_raw
+
         for competition_id in competition_ids:
             stmt = (
                 pg_insert(TeamStrength)
                 .values(
-                    team_id=team_id,
-                    season=season,
                     competition_id=competition_id,
-                    strength=strength_normalized,
-                    elo_raw=elo_raw,
-                    source=source,
-                    created_at=now,
+                    **values,
                 )
                 .on_conflict_do_update(
                     constraint="uq_team_strength",
-                    set_={
-                        "strength": strength_normalized,
-                        "elo_raw": elo_raw,
-                        "source": source,
-                    },
+                    set_=update_values,
                 )
             )
             await self._session.execute(stmt)
         await self._session.flush()
 
-    async def get_all_teams_with_elo(self, season: str) -> list[TeamEloRow]:
+    async def get_all_teams_with_elo(
+        self,
+        season: str,
+        competition_ids: list[int] | None = None,
+    ) -> list[TeamEloRow]:
+        filters = [
+            TeamStrength.season == season,
+            TeamStrength.elo_raw.is_not(None),
+        ]
+        if competition_ids is not None:
+            filters.append(TeamStrength.competition_id.in_(competition_ids))
+
         stmt = (
             select(
                 TeamStrength.team_id,
                 TeamStrength.season,
                 func.max(TeamStrength.elo_raw).label("elo_raw"),
+                func.max(TeamStrength.elo_seed_raw).label("elo_seed_raw"),
                 func.max(TeamStrength.strength).label("strength"),
             )
-            .where(
-                TeamStrength.season == season,
-                TeamStrength.elo_raw.is_not(None),
-            )
+            .where(*filters)
             .group_by(TeamStrength.team_id, TeamStrength.season)
         )
         result = await self._session.execute(stmt)
@@ -177,6 +195,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 season=row.season,
                 elo_raw=float(row.elo_raw),
                 strength=float(row.strength),
+                elo_seed_raw=float(row.elo_seed_raw) if row.elo_seed_raw is not None else None,
             )
             for row in result.all()
         ]
