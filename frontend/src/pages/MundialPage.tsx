@@ -216,24 +216,28 @@ function FixtureCard({ fixture, compact = false }: {
   )
 }
 
-function bracketStageFixtures(fixtures: WcFixture[], stage: 'round32' | 'round16' | 'quarter' | 'semi' | 'final' | 'third', size: number) {
-  const matches = fixtures
-    .filter((fixture) => {
-      const normalizedStage = fixture.stage.toLowerCase()
-      if (stage === 'round32') return normalizedStage.includes('round of 32')
-      if (stage === 'round16') return normalizedStage.includes('round of 16') || normalizedStage.includes('last 16')
-      if (stage === 'quarter') return normalizedStage.includes('quarter')
-      if (stage === 'semi') return normalizedStage.includes('semi')
-      if (stage === 'third') return normalizedStage.includes('3rd') || normalizedStage.includes('third')
-      return normalizedStage.includes('final') && !normalizedStage.includes('3rd') && !normalizedStage.includes('third') && !normalizedStage.includes('semi')
-    })
-    .sort((a, b) => {
-      if (stage === 'round32') {
-        const byBracket = round32OrderIndex(a) - round32OrderIndex(b)
-        if (byBracket !== 0) return byBracket
-      }
-      return new Date(a.played_at).getTime() - new Date(b.played_at).getTime()
-    })
+type BracketStage = 'round32' | 'round16' | 'quarter' | 'semi' | 'final' | 'third'
+
+function stageMatches(fixtures: WcFixture[], stage: BracketStage): WcFixture[] {
+  return fixtures.filter((fixture) => {
+    const normalizedStage = fixture.stage.toLowerCase()
+    if (stage === 'round32') return normalizedStage.includes('round of 32')
+    if (stage === 'round16') return normalizedStage.includes('round of 16') || normalizedStage.includes('last 16')
+    if (stage === 'quarter') return normalizedStage.includes('quarter')
+    if (stage === 'semi') return normalizedStage.includes('semi')
+    if (stage === 'third') return normalizedStage.includes('3rd') || normalizedStage.includes('third')
+    return normalizedStage.includes('final') && !normalizedStage.includes('3rd') && !normalizedStage.includes('third') && !normalizedStage.includes('semi')
+  })
+}
+
+function bracketStageFixtures(fixtures: WcFixture[], stage: 'round32' | 'final' | 'third', size: number) {
+  const matches = stageMatches(fixtures, stage).sort((a, b) => {
+    if (stage === 'round32') {
+      const byBracket = round32OrderIndex(a) - round32OrderIndex(b)
+      if (byBracket !== 0) return byBracket
+    }
+    return new Date(a.played_at).getTime() - new Date(b.played_at).getTime()
+  })
 
   return Array.from({ length: size }, (_, index) => matches[index] ?? null)
 }
@@ -253,6 +257,70 @@ function bracketWinnerTeam(fixture: WcFixture | null): WcFixture['home_team'] | 
   if (winnerSide === 'home') return fixture?.home_team ?? null
   if (winnerSide === 'away') return fixture?.away_team ?? null
   return null
+}
+
+// Round of 32 has a fixed known seeding (ROUND32_BRACKET_ORDER), but later rounds
+// don't - their fixtures only exist once both qualifiers are known. Sorting those
+// by date alone breaks the bracket whenever two different-branch matches land on
+// dates that don't preserve left/right adjacency. Instead, each slot is resolved by
+// matching it against the two teams that actually won the previous round's slots.
+function bracketNextRound(
+  fixtures: WcFixture[],
+  stage: 'round16' | 'quarter' | 'semi',
+  previousRound: Array<WcFixture | null>,
+  size: number,
+): Array<WcFixture | null> {
+  const candidates = stageMatches(fixtures, stage)
+  const previousWinners = previousRound.map(bracketWinnerTeam)
+  const used = new Set<WcFixture>()
+
+  return Array.from({ length: size }, (_, slot) => {
+    const teamA = previousWinners[slot * 2] ?? null
+    const teamB = previousWinners[slot * 2 + 1] ?? null
+    if (!teamA && !teamB) return null
+
+    const match = candidates.find((fixture) => {
+      if (used.has(fixture)) return false
+      const homeId = fixture.home_team.external_id
+      const awayId = fixture.away_team.external_id
+      const hasA = teamA != null && (homeId === teamA.external_id || awayId === teamA.external_id)
+      const hasB = teamB != null && (homeId === teamB.external_id || awayId === teamB.external_id)
+      return teamA && teamB ? hasA && hasB : hasA || hasB
+    })
+
+    if (match) used.add(match)
+    return match ?? null
+  })
+}
+
+type BracketTeamPair = { home: WcFixture['home_team'] | null; away: WcFixture['home_team'] | null }
+
+function buildBracketRounds(fixtures: WcFixture[]) {
+  const round32 = bracketStageFixtures(fixtures, 'round32', 16)
+  const round16 = bracketNextRound(fixtures, 'round16', round32, 8)
+  const quarters = bracketNextRound(fixtures, 'quarter', round16, 4)
+  const semis = bracketNextRound(fixtures, 'semi', quarters, 2)
+  const final = bracketStageFixtures(fixtures, 'final', 1)[0]
+  const thirdPlace = bracketStageFixtures(fixtures, 'third', 1)[0]
+
+  const round16Teams: BracketTeamPair[] = Array.from({ length: 8 }, (_, index) => ({
+    home: bracketWinnerTeam(round32[index * 2]),
+    away: bracketWinnerTeam(round32[index * 2 + 1]),
+  }))
+  const quarterTeams: BracketTeamPair[] = Array.from({ length: 4 }, (_, index) => ({
+    home: bracketWinnerTeam(round16[index * 2]),
+    away: bracketWinnerTeam(round16[index * 2 + 1]),
+  }))
+  const semiTeams: BracketTeamPair[] = Array.from({ length: 2 }, (_, index) => ({
+    home: bracketWinnerTeam(quarters[index * 2]),
+    away: bracketWinnerTeam(quarters[index * 2 + 1]),
+  }))
+  const finalTeams: BracketTeamPair = {
+    home: bracketWinnerTeam(semis[0]),
+    away: bracketWinnerTeam(semis[1]),
+  }
+
+  return { round32, round16, quarters, semis, final, thirdPlace, round16Teams, quarterTeams, semiTeams, finalTeams }
 }
 
 function BracketTeam({
@@ -532,28 +600,8 @@ function BracketLines({
 
 function WorldCupBracketDesktop({ fixtures }: { fixtures: WcFixture[] }) {
   const boardRef = useRef<HTMLDivElement>(null)
-  const round32 = bracketStageFixtures(fixtures, 'round32', 16)
-  const round16 = bracketStageFixtures(fixtures, 'round16', 8)
-  const quarters = bracketStageFixtures(fixtures, 'quarter', 4)
-  const semis = bracketStageFixtures(fixtures, 'semi', 2)
-  const final = bracketStageFixtures(fixtures, 'final', 1)[0]
-  const thirdPlace = bracketStageFixtures(fixtures, 'third', 1)[0]
-  const round16Teams = Array.from({ length: 8 }, (_, index) => ({
-    home: bracketWinnerTeam(round32[index * 2]),
-    away: bracketWinnerTeam(round32[index * 2 + 1]),
-  }))
-  const quarterTeams = Array.from({ length: 4 }, (_, index) => ({
-    home: bracketWinnerTeam(round16[index * 2]),
-    away: bracketWinnerTeam(round16[index * 2 + 1]),
-  }))
-  const semiTeams = Array.from({ length: 2 }, (_, index) => ({
-    home: bracketWinnerTeam(quarters[index * 2]),
-    away: bracketWinnerTeam(quarters[index * 2 + 1]),
-  }))
-  const finalTeams = {
-    home: bracketWinnerTeam(semis[0]),
-    away: bracketWinnerTeam(semis[1]),
-  }
+  const { round32, round16, quarters, semis, final, thirdPlace, round16Teams, quarterTeams, semiTeams, finalTeams } =
+    buildBracketRounds(fixtures)
   const connections = useMemo<BracketConnection[]>(() => [
     { from: ['l32-0', 'l32-1'], to: 'l16-0', side: 'left' },
     { from: ['l32-2', 'l32-3'], to: 'l16-1', side: 'left' },
@@ -703,28 +751,8 @@ function WorldCupBracketDesktop({ fixtures }: { fixtures: WcFixture[] }) {
 }
 
 function WorldCupBracketMobile({ fixtures }: { fixtures: WcFixture[] }) {
-  const round32 = bracketStageFixtures(fixtures, 'round32', 16)
-  const round16 = bracketStageFixtures(fixtures, 'round16', 8)
-  const quarters = bracketStageFixtures(fixtures, 'quarter', 4)
-  const semis = bracketStageFixtures(fixtures, 'semi', 2)
-  const final = bracketStageFixtures(fixtures, 'final', 1)[0]
-  const thirdPlace = bracketStageFixtures(fixtures, 'third', 1)[0]
-  const round16Teams = Array.from({ length: 8 }, (_, index) => ({
-    home: bracketWinnerTeam(round32[index * 2]),
-    away: bracketWinnerTeam(round32[index * 2 + 1]),
-  }))
-  const quarterTeams = Array.from({ length: 4 }, (_, index) => ({
-    home: bracketWinnerTeam(round16[index * 2]),
-    away: bracketWinnerTeam(round16[index * 2 + 1]),
-  }))
-  const semiTeams = Array.from({ length: 2 }, (_, index) => ({
-    home: bracketWinnerTeam(quarters[index * 2]),
-    away: bracketWinnerTeam(quarters[index * 2 + 1]),
-  }))
-  const finalTeams = {
-    home: bracketWinnerTeam(semis[0]),
-    away: bracketWinnerTeam(semis[1]),
-  }
+  const { round32, round16, quarters, semis, final, thirdPlace, round16Teams, quarterTeams, semiTeams, finalTeams } =
+    buildBracketRounds(fixtures)
 
   return (
     <section className="wm-bracket-mobile wm-bracket-mobile--fotmob" aria-label="Cuadro final del Mundial">
