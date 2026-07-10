@@ -184,6 +184,10 @@ class TestScoringConfigV2:
         config = ScoringConfig.default_v2()
         assert config.m4_clamp[1] == pytest.approx(1.5)
 
+    def test_default_v2_softens_strength_based_m1(self):
+        config = ScoringConfig.default_v2()
+        assert config.m1_strength_divisor == pytest.approx(200.0)
+
     def test_default_v2_minutes_threshold_is_15(self):
         config = ScoringConfig.default_v2()
         assert config.minutes_threshold_stats == 15

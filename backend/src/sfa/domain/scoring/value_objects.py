@@ -686,7 +686,7 @@ class ScoringConfig:
             minutes_penalty_factor=0.50,
             ranking_min_minutes_global=600,
             ranking_min_minutes_competition=180,
-            m1_strength_divisor=100.0,
+            m1_strength_divisor=200.0,
             league_strength_factors=dict(_DEFAULT_LEAGUE_STRENGTH_FACTORS),
             promoted_champion_strength=35.0,
             promoted_runner_up_strength=30.0,
