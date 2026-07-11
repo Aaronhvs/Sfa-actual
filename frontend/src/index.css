@@ -15441,6 +15441,12 @@ body.mode-tournament .main-content {
 }
 
 .rp-control-deck .wc-live-chip__match {
+  display: grid;
+  grid-template-columns: auto minmax(86px, 1fr) auto minmax(86px, 1fr);
+  grid-template-areas:
+    "status home score away"
+    "status minute minute minute";
+  align-items: center;
   min-height: 48px;
   padding: 0 12px;
   border: 1px solid rgba(255,255,255,0.08);
@@ -15459,12 +15465,32 @@ body.mode-tournament .main-content {
 }
 
 .rp-control-deck .wc-live-chip__status {
+  grid-area: status;
   min-width: 70px;
   padding-right: 10px;
 }
 
+.rp-control-deck .wc-live-chip__side--home {
+  grid-area: home;
+}
+
+.rp-control-deck .wc-live-chip__score {
+  grid-area: score;
+}
+
+.rp-control-deck .wc-live-chip__side:not(.wc-live-chip__side--home) {
+  grid-area: away;
+}
+
 .rp-control-deck .wc-live-chip__team {
   max-width: 110px;
+}
+
+.rp-control-deck .wc-live-chip__minute {
+  grid-area: minute;
+  padding-top: 2px;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .rp-control-deck .wc-live-chip__more {
