@@ -376,8 +376,8 @@ function BracketNode({
 }) {
   const date = fixture ? formatLocalDateShort(fixture.played_at).replace('.', '') : dateFallback
   const winnerSide = bracketWinnerSide(fixture)
-  const displayHomeTeam = homeTeam ?? fixture?.home_team ?? null
-  const displayAwayTeam = awayTeam ?? fixture?.away_team ?? null
+  const displayHomeTeam = fixture?.home_team ?? homeTeam ?? null
+  const displayAwayTeam = fixture?.away_team ?? awayTeam ?? null
   const hasScore = fixture?.home_goals != null && fixture.away_goals != null
   const content = (
     <>
