@@ -332,6 +332,73 @@ async def test_calculation_details_contains_audit_keys():
 
 
 @pytest.mark.anyio
+async def test_safe_circulation_adjustment_for_high_volume_low_threat_mc():
+    """High-volume safe circulation is softened without changing all MC scoring."""
+    event = _make_mc_stats_event(
+        stage_factor=1.35,
+        passes_total=104,
+        passes_accuracy=98,
+        passes_key=2,
+        tackles_won=1,
+        interceptions=0,
+        blocks=1,
+        rating=7.6,
+        goals=0,
+        assists=0,
+        minutes=90,
+    )
+    scores = await _run_use_case([event], _make_v2_rules_version())
+
+    details = scores[0].calculation_details
+    mb = details["midfield_bonuses"]
+
+    assert details["passes_completed"] == 102
+    assert details["passes_puntuables_raw"] == 60
+    assert details["safe_circulation_adjustment_applied"] is True
+    assert details["safe_circulation_excess_passes"] == 17
+    assert details["passes_puntuables"] == pytest.approx(48.95)
+    assert details["pass_accuracy_bonus_raw"] == 180
+    assert details["pass_accuracy_bonus_base"] == 100
+
+    assert mb["control_midfield_bonus_earned"] is True
+    assert mb["two_way_midfield_bonus_earned"] is False
+    assert mb["creative_control_bonus_earned"] is False
+    assert mb["safe_circulation_control_adjustment_applied"] is True
+    assert mb["mc_bonus_total_base"] == 84
+    assert mb["mc_bonus_final"] == pytest.approx(98.7)
+
+
+@pytest.mark.anyio
+async def test_safe_circulation_adjustment_not_applied_to_creative_mc():
+    """A high-volume MC with enough key passes keeps the normal pass/control value."""
+    event = _make_mc_stats_event(
+        passes_total=104,
+        passes_accuracy=98,
+        passes_key=3,
+        tackles_won=0,
+        interceptions=0,
+        blocks=0,
+        rating=7.8,
+        goals=0,
+        assists=0,
+        minutes=90,
+    )
+    scores = await _run_use_case([event], _make_v2_rules_version())
+
+    details = scores[0].calculation_details
+    mb = details["midfield_bonuses"]
+
+    assert details["passes_completed"] == 102
+    assert details["passes_puntuables_raw"] == 60
+    assert details["safe_circulation_adjustment_applied"] is False
+    assert details["passes_puntuables"] == 60
+    assert details["pass_accuracy_bonus_raw"] == 180
+    assert details["pass_accuracy_bonus_base"] == 180
+    assert mb["creative_control_bonus_earned"] is True
+    assert mb["safe_circulation_control_adjustment_applied"] is False
+
+
+@pytest.mark.anyio
 async def test_legacy_v1_config_not_affected():
     """V1 config (default()) never applies midfield bonuses."""
     rv = _make_rules_version(version_id=1, config=ScoringConfig.default())

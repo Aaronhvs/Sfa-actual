@@ -87,6 +87,11 @@ _PASS_CONTROL_THRESHOLDS: tuple[tuple[float, int], ...] = (
     (70.0, 40),
 )
 
+_SAFE_CIRCULATION_MIN_COMPLETED_PASSES = 85
+_SAFE_CIRCULATION_MAX_PASS_ACCURACY_BONUS = 100
+_SAFE_CIRCULATION_EXCESS_PASS_FACTOR = 0.35
+_SAFE_CIRCULATION_CONTROL_BONUS_FACTOR = 0.60
+
 
 def _build_b1_contributions_map(
     events: list[PlayerEventRawContextDTO],
@@ -126,6 +131,27 @@ def _pass_accuracy_bonus_base(
         if passes_accuracy_pct >= threshold:
             return bonus
     return 0
+
+
+def _is_safe_circulation_profile(
+    *,
+    group: PositionGroup,
+    passes_completed: int,
+    goals: int,
+    assists: int,
+    passes_key: int,
+    tackles_won: int,
+    interceptions: int,
+    blocks: int,
+) -> bool:
+    if group != PositionGroup.MF:
+        return False
+    if passes_completed <= _SAFE_CIRCULATION_MIN_COMPLETED_PASSES:
+        return False
+    if goals > 0 or assists > 0:
+        return False
+    defensive_actions = tackles_won + interceptions + blocks
+    return passes_key < 3 and defensive_actions < 3
 
 
 @dataclass(frozen=True)
@@ -420,6 +446,20 @@ class CalculateScoresForRulesVersionUseCase:
         passes_completed_raw = _passes_completed_from_accuracy(
             passes_total, passes_accuracy_pct,
         )
+        passes_key = event.passes_key or 0
+        tackles_won = event.tackles_won or 0
+        interceptions = event.interceptions or 0
+        blocks = event.blocks or 0
+        safe_circulation = _is_safe_circulation_profile(
+            group=group,
+            passes_completed=passes_completed_raw,
+            goals=g,
+            assists=a,
+            passes_key=passes_key,
+            tackles_won=tackles_won,
+            interceptions=interceptions,
+            blocks=blocks,
+        )
 
         # v2: PASSES_COMPLETED uses above-average threshold
         passes_avg = 0
@@ -428,19 +468,38 @@ class CalculateScoresForRulesVersionUseCase:
                 passes_avg = config.passes_avg_by_position.get(group, 0)
             except (KeyError, TypeError):
                 passes_avg = 0
-        passes_puntuables = max(0, passes_completed_raw - passes_avg)
-        pass_accuracy_bonus_base = _pass_accuracy_bonus_base(
+        passes_puntuables_raw = max(0, passes_completed_raw - passes_avg)
+        safe_circulation_excess = max(
+            0,
+            passes_completed_raw - _SAFE_CIRCULATION_MIN_COMPLETED_PASSES,
+        ) if safe_circulation else 0
+        passes_puntuables = (
+            max(
+                0.0,
+                passes_puntuables_raw
+                - safe_circulation_excess
+                + safe_circulation_excess * _SAFE_CIRCULATION_EXCESS_PASS_FACTOR,
+            )
+            if safe_circulation
+            else float(passes_puntuables_raw)
+        )
+        pass_accuracy_bonus_raw = _pass_accuracy_bonus_base(
             group=group,
             minutes=minutes,
             passes_total=passes_total,
             passes_accuracy_pct=passes_accuracy_pct,
         )
+        pass_accuracy_bonus_base = (
+            min(pass_accuracy_bonus_raw, _SAFE_CIRCULATION_MAX_PASS_ACCURACY_BONUS)
+            if safe_circulation
+            else pass_accuracy_bonus_raw
+        )
 
         raw_stats: dict[ActionType, float] = {
             ActionType.DUELS_WON:        float(event.duels_won or 0),
-            ActionType.TACKLES:          float(event.tackles_won or 0),
-            ActionType.INTERCEPTIONS:    float(event.interceptions or 0),
-            ActionType.BLOCKS:           float(event.blocks or 0),
+            ActionType.TACKLES:          float(tackles_won),
+            ActionType.INTERCEPTIONS:    float(interceptions),
+            ActionType.BLOCKS:           float(blocks),
             ActionType.DRIBBLES_WON:     float(event.dribbles_won or 0),
             ActionType.XA_NO_ASSIST:     float(max(0, (event.passes_key or 0) - a)),
             ActionType.XG_NO_GOAL:       float(max(0, (event.shots_on or 0) - g)),
@@ -531,7 +590,13 @@ class CalculateScoresForRulesVersionUseCase:
             "passes_total": passes_total,
             "passes_accuracy_pct": round(passes_accuracy_pct, 1),
             "passes_completed": passes_completed_raw,
+            "passes_puntuables_raw": passes_puntuables_raw,
             "passes_puntuables": passes_puntuables,
+            "safe_circulation_adjustment_applied": safe_circulation,
+            "safe_circulation_completed_pass_threshold": _SAFE_CIRCULATION_MIN_COMPLETED_PASSES,
+            "safe_circulation_excess_passes": safe_circulation_excess,
+            "safe_circulation_excess_pass_factor": _SAFE_CIRCULATION_EXCESS_PASS_FACTOR,
+            "pass_accuracy_bonus_raw": pass_accuracy_bonus_raw,
             "pass_accuracy_bonus_base": pass_accuracy_bonus_base,
             "strength_used": strength_used,
             "diminishing_applied": dr_applied,
@@ -595,6 +660,7 @@ class CalculateScoresForRulesVersionUseCase:
         passes_key = event.passes_key or 0
         tackles_won = event.tackles_won or 0
         interceptions = event.interceptions or 0
+        blocks = event.blocks or 0
         duels_won = event.duels_won or 0
 
         passes_accuracy_pct = float(event.passes_accuracy or 0.0)
@@ -628,6 +694,27 @@ class CalculateScoresForRulesVersionUseCase:
             + (_MC_BONUS_TWO_WAY if two_way_earned else 0)
             + (_MC_BONUS_CREATIVE if creative_earned else 0)
         )
+        safe_circulation = _is_safe_circulation_profile(
+            group=group,
+            passes_completed=passes_completed,
+            goals=event.goals or 0,
+            assists=event.assists or 0,
+            passes_key=passes_key,
+            tackles_won=tackles_won,
+            interceptions=interceptions,
+            blocks=blocks,
+        )
+        safe_circulation_control_adjustment = (
+            safe_circulation
+            and control_earned
+            and not two_way_earned
+            and not creative_earned
+        )
+        if safe_circulation_control_adjustment:
+            total_before_cap = round(
+                total_before_cap * _SAFE_CIRCULATION_CONTROL_BONUS_FACTOR,
+                2,
+            )
 
         cap = config.midfield_control_bonus_cap_per_match
         capped = total_before_cap > cap
@@ -646,9 +733,13 @@ class CalculateScoresForRulesVersionUseCase:
             "interceptions": interceptions,
             "passes_key": passes_key,
             "duels_won": duels_won,
+            "blocks": blocks,
             "control_midfield_bonus_earned": control_earned,
             "two_way_midfield_bonus_earned": two_way_earned,
             "creative_control_bonus_earned": creative_earned,
+            "safe_circulation_adjustment_applied": safe_circulation,
+            "safe_circulation_control_adjustment_applied": safe_circulation_control_adjustment,
+            "safe_circulation_control_bonus_factor": _SAFE_CIRCULATION_CONTROL_BONUS_FACTOR,
             "mc_bonus_total_before_cap": total_before_cap,
             "mc_bonus_cap": cap,
             "mc_bonus_total_base": mc_bonus_total_base,
