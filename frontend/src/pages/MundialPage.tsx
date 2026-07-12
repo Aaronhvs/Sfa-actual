@@ -226,7 +226,11 @@ function stageMatches(fixtures: WcFixture[], stage: BracketStage): WcFixture[] {
     if (stage === 'quarter') return normalizedStage.includes('quarter')
     if (stage === 'semi') return normalizedStage.includes('semi')
     if (stage === 'third') return normalizedStage.includes('3rd') || normalizedStage.includes('third')
-    return normalizedStage.includes('final') && !normalizedStage.includes('3rd') && !normalizedStage.includes('third') && !normalizedStage.includes('semi')
+    return normalizedStage.includes('final')
+      && !normalizedStage.includes('3rd')
+      && !normalizedStage.includes('third')
+      && !normalizedStage.includes('semi')
+      && !normalizedStage.includes('quarter')
   })
 }
 
