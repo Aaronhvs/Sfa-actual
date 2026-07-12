@@ -138,10 +138,10 @@ export default function RankingPage() {
       position,
       bonusFilter,
       competition,
-      search,
+      search: debouncedSearch,
       page,
     }), { replace: true })
-  }, [season, position, bonusFilter, competition, search, page, setSearchParams])
+  }, [season, position, bonusFilter, competition, debouncedSearch, page, setSearchParams])
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
@@ -221,7 +221,7 @@ export default function RankingPage() {
     position,
     bonusFilter,
     competition,
-    search,
+    search: debouncedSearch,
     page,
   }).toString()}`
 
