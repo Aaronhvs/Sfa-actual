@@ -83,6 +83,14 @@
 /* ─── Reset ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
+
+/* Most of the layout is built in px, not rem, so shrinking the root
+   font-size alone would only shrink text and leave spacing untouched.
+   `zoom` (unlike `transform: scale`) scales everything uniformly - text,
+   px spacing, images - without breaking `position: fixed` (the Navbar). */
+@media (min-width: 1024px) {
+  html { zoom: 0.9; }
+}
 body {
   background: var(--bg);
   color: var(--text);
