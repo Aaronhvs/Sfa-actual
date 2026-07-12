@@ -170,6 +170,16 @@ async def test_skips_everything_when_top_players_are_unchanged():
     assert explanation_repo.upserted == []
     assert result.generated == 0
     assert result.skipped == 3
+    assert explanation_repo.stale_requests == [
+        (
+            _request(),
+            {
+                10: "hash-10-rank-1-pts-999.0",
+                20: "hash-20-rank-2-pts-998.0",
+                30: "hash-30-rank-3-pts-997.0",
+            },
+        )
+    ]
 
 
 @pytest.mark.anyio

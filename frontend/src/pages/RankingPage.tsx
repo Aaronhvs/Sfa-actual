@@ -201,7 +201,7 @@ export default function RankingPage() {
       season,
       competition_id: WORLD_CUP_COMPETITION_ID,
       scope: 'world_cup',
-      limit: 10,
+      limit: HERO_RANKING_OFFSET,
       use_total: true,
     })
       .then((data) => setRankingExplanations(data.explanations))

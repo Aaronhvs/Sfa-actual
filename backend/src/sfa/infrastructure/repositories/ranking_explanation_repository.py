@@ -300,28 +300,34 @@ class RankingExplanationRepository:
         request: RankingExplanationRequestDTO,
         fresh_hashes: dict[int, str],
     ) -> int:
-        if not fresh_hashes:
-            return 0
-        stale_conditions = [
-            RankingPlayerExplanation.player_id.in_(list(fresh_hashes)),
+        scope_conditions = [
             RankingPlayerExplanation.season == request.season,
             RankingPlayerExplanation.scope == request.scope,
             RankingPlayerExplanation.status.in_(PUBLIC_STATUSES),
         ]
         if request.competition_id is None:
-            stale_conditions.append(RankingPlayerExplanation.competition_id.is_(None))
+            scope_conditions.append(RankingPlayerExplanation.competition_id.is_(None))
         else:
-            stale_conditions.append(RankingPlayerExplanation.competition_id == request.competition_id)
+            scope_conditions.append(RankingPlayerExplanation.competition_id == request.competition_id)
         if request.rules_version_id is None:
-            stale_conditions.append(RankingPlayerExplanation.rules_version_id.is_(None))
+            scope_conditions.append(RankingPlayerExplanation.rules_version_id.is_(None))
         else:
-            stale_conditions.append(RankingPlayerExplanation.rules_version_id == request.rules_version_id)
+            scope_conditions.append(RankingPlayerExplanation.rules_version_id == request.rules_version_id)
 
         updated = 0
+        current_player_ids = list(fresh_hashes)
+        removed_stmt = update(RankingPlayerExplanation).where(*scope_conditions)
+        if current_player_ids:
+            removed_stmt = removed_stmt.where(
+                RankingPlayerExplanation.player_id.not_in(current_player_ids)
+            )
+        result = await self._session.execute(removed_stmt.values(status="stale"))
+        updated += int(result.rowcount or 0)
+
         for player_id, source_hash in fresh_hashes.items():
             stmt = (
                 update(RankingPlayerExplanation)
-                .where(*stale_conditions)
+                .where(*scope_conditions)
                 .where(RankingPlayerExplanation.player_id == player_id)
                 .where(RankingPlayerExplanation.source_hash != source_hash)
                 .values(status="stale")
