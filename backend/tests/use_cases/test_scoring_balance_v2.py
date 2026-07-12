@@ -289,6 +289,7 @@ def test_base_points_mf_ballon_dor_midfield_values():
 def test_base_points_striker_linkup_pass_value():
     config = ScoringConfig.default_v2()
     assert config.base_points[PositionGroup.DEL][ActionType.PASSES_COMPLETED] == 3
+    assert config.passes_avg_by_position[PositionGroup.DEL] == 10
     assert config.base_points[PositionGroup.EXT][ActionType.PASSES_COMPLETED] == 1
     assert config.base_points[PositionGroup.MCO][ActionType.PASSES_COMPLETED] == 2
 

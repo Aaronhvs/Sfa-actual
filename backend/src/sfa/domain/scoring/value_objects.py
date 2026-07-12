@@ -449,7 +449,7 @@ _DEFAULT_DIMINISHING_RETURNS_V2: dict[str, dict[str, float]] = {
 }
 
 _DEFAULT_PASSES_AVG_V2: dict[str, int] = {
-    "DEL": 20, "EXT": 28, "MF": 42, "MCO": 45, "LAT": 38, "DC": 32,
+    "DEL": 10, "EXT": 28, "MF": 42, "MCO": 45, "LAT": 38, "DC": 32,
 }
 
 _DEFAULT_LEAGUE_STRENGTH_FACTORS: dict[str, float] = {
