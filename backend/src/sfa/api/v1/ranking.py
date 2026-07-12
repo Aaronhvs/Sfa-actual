@@ -21,6 +21,7 @@ async def get_ranking(
     competition_id: int | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=10, ge=1, le=50),
+    offset: int | None = Query(default=None, ge=0, description="Offset absoluto opcional para vistas con podio separado."),
     name: str | None = Query(default=None, description="Busqueda por nombre de jugador o equipo"),
     bonus_label: str | None = Query(
         default=None, description="Filtro de perfil: Promesa, Veterano, Goleador o Asistidor",
@@ -40,6 +41,7 @@ async def get_ranking(
         competition_id=competition_id,
         limit=limit,
         page=page,
+        offset=offset,
         name=name,
         bonus_label=bonus_label,
         rules_version_id=rules_version_id,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { Competition, RankedPlayer, RankingPagination, RankingPlayerExplanation, SeasonItem } from '../types'
+import type { Competition, RankedPlayer, RankingPlayerExplanation, SeasonItem } from '../types'
 import { fetchRanking, fetchCompetitions, fetchRankingExplanations, fetchSeasons } from '../api/client'
 import FilterBar from '../components/ranking/FilterBar'
 import RankingCard from '../components/ranking/RankingCard'
@@ -15,7 +15,7 @@ import { useCountUp } from '../hooks/useCountUp'
 import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 
 const PAGE_SIZE = 12
-const WORLD_CUP_PAGE_SIZE = 15
+const HERO_RANKING_OFFSET = 3
 const WORLD_CUP_COMPETITION_ID = 350
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
@@ -69,10 +69,10 @@ export default function RankingPage() {
   const [search, setSearch] = useState(searchParams.get('name') ?? '')
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('name') ?? '')
   const [players, setPlayers] = useState<RankedPlayer[]>([])
+  const [heroPlayers, setHeroPlayers] = useState<RankedPlayer[]>([])
   const [rankingExplanations, setRankingExplanations] = useState<RankingPlayerExplanation[]>([])
   const [selectedAnalysis, setSelectedAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [totalPlayers, setTotalPlayers] = useState(0)
-  const [pagination, setPagination] = useState<RankingPagination | null>(null)
   const [loadingRanking, setLoadingRanking] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(pageParam(searchParams.get('page')))
@@ -82,7 +82,9 @@ export default function RankingPage() {
   const isWcSeason = isWorldCupSeason(season, seasonItems)
   const showWcBanner = isSeasonReceivingWcPoints(season, seasonItems)
   const wcSeason = seasonItems.find((item) => item.is_world_cup)?.season
-  const pageSize = isWcSeason ? WORLD_CUP_PAGE_SIZE : PAGE_SIZE
+  const pageSize = PAGE_SIZE
+  const isMainRankingView = !position && !bonusFilter && !competition && !debouncedSearch
+  const rankingOffset = (isMainRankingView ? HERO_RANKING_OFFSET : 0) + (page * pageSize)
 
   useEffect(() => {
     fetchSeasons()
@@ -165,20 +167,36 @@ export default function RankingPage() {
       competition_id: competition,
       page: page + 1,
       limit: pageSize,
+      offset: rankingOffset,
       name: debouncedSearch || undefined,
       bonus_label: bonusFilter || undefined,
     })
       .then((data) => {
         setPlayers(data.ranking)
         setTotalPlayers(data.total)
-        setPagination(data.pagination)
         setLoadingRanking(false)
       })
       .catch((e) => {
         setError(e.message ?? 'Error al cargar el ranking')
         setLoadingRanking(false)
       })
-  }, [position, competition, season, page, pageSize, debouncedSearch, bonusFilter])
+  }, [position, competition, season, page, pageSize, rankingOffset, debouncedSearch, bonusFilter])
+
+  useEffect(() => {
+    if (!season || !isMainRankingView) {
+      setHeroPlayers([])
+      return
+    }
+
+    fetchRanking({
+      season,
+      page: 1,
+      limit: HERO_RANKING_OFFSET,
+      offset: 0,
+    })
+      .then((data) => setHeroPlayers(data.ranking))
+      .catch(() => setHeroPlayers([]))
+  }, [season, isMainRankingView])
 
   useEffect(() => {
     const shouldLoadNarratives = (
@@ -187,7 +205,7 @@ export default function RankingPage() {
       && !debouncedSearch
       && !position
       && !bonusFilter
-      && players.length >= 3
+      && heroPlayers.length >= 3
     )
     if (!shouldLoadNarratives) {
       setRankingExplanations([])
@@ -202,12 +220,17 @@ export default function RankingPage() {
     })
       .then((data) => setRankingExplanations(data.explanations))
       .catch(() => setRankingExplanations([]))
-  }, [isWcSeason, page, debouncedSearch, position, bonusFilter, players.length, season])
+  }, [isWcSeason, page, debouncedSearch, position, bonusFilter, heroPlayers.length, season])
 
-  const showHero = page === 0 && !debouncedSearch && players.length >= 3
-  const top3 = showHero ? players.slice(0, 3) : []
-  const currentPagePlayers = showHero ? players.slice(3) : players
-  const totalPages = pagination?.total_pages ?? 0
+  const showHero = page === 0 && isMainRankingView && heroPlayers.length >= HERO_RANKING_OFFSET
+  const top3 = showHero ? heroPlayers : []
+  const currentPagePlayers = players
+  const visibleTotalPlayers = Math.max(totalPlayers - (isMainRankingView ? HERO_RANKING_OFFSET : 0), 0)
+  const totalPages = visibleTotalPlayers > 0 ? Math.ceil(visibleTotalPlayers / pageSize) : 0
+  const hasNextPage = page + 1 < totalPages
+  const hasPrevPage = page > 0
+  const visibleRangeStart = totalPlayers > 0 && currentPagePlayers.length > 0 ? rankingOffset + 1 : 0
+  const visibleRangeEnd = totalPlayers > 0 ? Math.min(rankingOffset + currentPagePlayers.length, totalPlayers) : 0
 
   const mainCompetitions = competitions
     .filter((c) => MAIN_COMPETITION_IDS.includes(c.id))
@@ -246,13 +269,13 @@ export default function RankingPage() {
   ) : null
 
   function goNext() {
-    if (!pagination?.has_next) return
+    if (!hasNextPage) return
     setPageDir('next')
     setPage((p) => p + 1)
   }
 
   function goPrev() {
-    if (!pagination?.has_prev) return
+    if (!hasPrevPage) return
     setPageDir('prev')
     setPage((p) => p - 1)
   }
@@ -534,7 +557,7 @@ export default function RankingPage() {
                     <button
                       className="pagination-btn pagination-btn--prev"
                       onClick={goPrev}
-                      disabled={!pagination?.has_prev}
+                      disabled={!hasPrevPage}
                       aria-label="Ir a la pagina anterior"
                     >
                       <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -567,8 +590,8 @@ export default function RankingPage() {
                         <span style={{ transform: `scaleX(${(page + 1) / totalPages})` }} />
                       </div>
                       <span className="ranking-pagination__status">
-                        {pagination && pagination.total_items > 0
-                          ? `${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total_items)} de ${pagination.total_items} jugadores`
+                        {visibleRangeStart > 0
+                          ? `${visibleRangeStart}-${visibleRangeEnd} de ${totalPlayers} jugadores`
                           : '0 jugadores'}
                       </span>
                     </div>
@@ -576,7 +599,7 @@ export default function RankingPage() {
                     <button
                       className="pagination-btn pagination-btn--next"
                       onClick={goNext}
-                      disabled={!pagination?.has_next}
+                      disabled={!hasNextPage}
                       aria-label="Ir a la pagina siguiente"
                     >
                       <span>Siguiente</span>

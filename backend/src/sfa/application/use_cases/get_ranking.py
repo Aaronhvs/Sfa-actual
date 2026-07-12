@@ -38,6 +38,7 @@ class GetRankingUseCaseProtocol(Protocol):
         competition_id: int | None = None,
         limit: int = DEFAULT_LIMIT,
         page: int = DEFAULT_PAGE,
+        offset: int | None = None,
         name: str | None = None,
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
@@ -61,6 +62,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
         competition_id: int | None = None,
         limit: int = DEFAULT_LIMIT,
         page: int = DEFAULT_PAGE,
+        offset: int | None = None,
         name: str | None = None,
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
@@ -68,7 +70,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
     ) -> RankingResult:
         page = max(page, 1)
         limit = min(max(limit, 1), MAX_LIMIT)
-        offset = (page - 1) * limit
+        offset = max(offset, 0) if offset is not None else (page - 1) * limit
 
         explicit_rules_version = rules_version_id is not None
         if rules_version_id is None:

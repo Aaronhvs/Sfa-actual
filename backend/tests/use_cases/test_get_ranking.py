@@ -154,6 +154,18 @@ class TestGetRanking:
         assert result.pagination.has_prev is True
 
     @pytest.mark.anyio
+    async def test_accepts_explicit_offset_for_custom_ranking_windows(self):
+        repo = FakeSFAScoreRepository(total=35, ranking=[_make_ranked_player(4)])
+        uc = GetRankingUseCase(repo)
+
+        result = await uc.execute(season="2024-25", page=1, limit=12, offset=3)
+
+        assert repo.last_ranking_call["limit"] == 12
+        assert repo.last_ranking_call["offset"] == 3
+        assert result.pagination.page == 1
+        assert result.pagination.limit == 12
+
+    @pytest.mark.anyio
     async def test_passes_bonus_label_filter_to_repository(self):
         repo = FakeSFAScoreRepository(total=1, ranking=[_make_ranked_player(1)])
         uc = GetRankingUseCase(repo)

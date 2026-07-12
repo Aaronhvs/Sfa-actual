@@ -28,6 +28,7 @@ export async function fetchRanking(params: {
   competition_id?: number
   page?: number
   limit?: number
+  offset?: number
   name?: string
   bonus_label?: string
 }): Promise<RankingResponse> {
@@ -37,6 +38,7 @@ export async function fetchRanking(params: {
   if (params.competition_id != null) q.set('competition_id', String(params.competition_id))
   if (params.page != null)  q.set('page', String(params.page))
   if (params.limit != null) q.set('limit', String(params.limit))
+  if (params.offset != null) q.set('offset', String(params.offset))
   if (params.name)          q.set('name', params.name)
   if (params.bonus_label)   q.set('bonus_label', params.bonus_label)
   q.set('use_total', 'true')
