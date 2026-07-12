@@ -94,8 +94,8 @@ export default function WcLiveChip() {
             {awayFlag && <img src={awayFlag} alt="" className="wc-live-chip__flag" />}
             <span className="wc-live-chip__team">{awayName}</span>
           </span>
-          <span className="wc-live-chip__minute">{matchStatus}</span>
         </span>
+        <span className="wc-live-chip__minute">{matchStatus}</span>
       </Link>
       <Link to="/mundial" className="wc-live-chip__more">
         Ver Mundial
