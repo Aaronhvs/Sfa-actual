@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { PlayerEvent, PlayerFixture } from '../../types'
 import { competitionLabel, stageLabel } from '../../utils/footballLabels'
+import { worldCupTeamNameFromString } from '../../utils/worldCupTeams'
 
 export interface ModalFixtureItem {
   type: 'fixture'
@@ -38,6 +39,10 @@ function scoreContext(scoreDiff: number | null): string {
   return 'Ganando'
 }
 
+function matchup(fixture: PlayerFixture): string {
+  return `${worldCupTeamNameFromString(fixture.home_team)} vs ${worldCupTeamNameFromString(fixture.away_team)}`
+}
+
 export default function MatchListModal({ title, subtitle, items, onClose }: Props) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -65,7 +70,7 @@ export default function MatchListModal({ title, subtitle, items, onClose }: Prop
               return (
                 <div key={i} className="modal__item">
                   <div className="modal__item-main">
-                    <span className="modal__item-match">{f.home_team} vs {f.away_team}</span>
+                    <span className="modal__item-match">{matchup(f)}</span>
                     <span className="modal__item-meta">{competitionLabel(f.competition)} · {stageLabel(f.stage)} · {formatDate(f.played_at)}</span>
                   </div>
                   <div className="modal__item-right">
@@ -82,7 +87,7 @@ export default function MatchListModal({ title, subtitle, items, onClose }: Prop
             return (
               <div key={i} className="modal__item">
                 <div className="modal__item-main">
-                  <span className="modal__item-match">{f.home_team} vs {f.away_team}</span>
+                  <span className="modal__item-match">{matchup(f)}</span>
                   <span className="modal__item-meta">
                     {competitionLabel(f.competition)} · {formatDate(f.played_at)}
                     {ev.minute ? ` · min ${ev.minute}'` : ''}

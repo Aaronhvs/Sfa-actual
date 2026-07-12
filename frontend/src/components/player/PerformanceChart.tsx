@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { PlayerFixture } from '../../types'
+import { worldCupTeamNameFromString } from '../../utils/worldCupTeams'
 
 interface Props {
   fixtures: PlayerFixture[]
@@ -35,6 +36,10 @@ function fmtPts(n: number) { return Math.round(n).toLocaleString('es-ES') }
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function teamLabel(value: string): string {
+  return worldCupTeamNameFromString(value)
 }
 
 const ACTION_LABELS: Record<string, [string, string]> = {
@@ -152,7 +157,7 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
         kind: detectKind(f),
         goals: (f.breakdown?.['goal']?.count ?? 0) + (f.breakdown?.['goal_penalty']?.count ?? 0),
         assists: f.breakdown?.['assist']?.count ?? 0,
-        opponent: isHome ? f.away_team : isAway ? f.home_team : fallbackIsHome ? f.away_team : f.home_team,
+        opponent: teamLabel(isHome ? f.away_team : isAway ? f.home_team : fallbackIsHome ? f.away_team : f.home_team),
         oppLogo: isHome
           ? f.away_team_logo
           : isAway
@@ -274,7 +279,7 @@ export default function PerformanceChart({ fixtures, playerTeam }: Props) {
             Mejor:{' '}
             <strong>{fmtPts(best.sfa_pts)} pts</strong>
             <span className="perf-chart__peak-ctx">
-              {' '}· {best.home_team} vs {best.away_team} · {fmtDate(best.played_at)}
+              {' '}· {teamLabel(best.home_team)} vs {teamLabel(best.away_team)} · {fmtDate(best.played_at)}
             </span>
           </p>
           <div className="perf-chart__legend" aria-label="Leyenda del gráfico">

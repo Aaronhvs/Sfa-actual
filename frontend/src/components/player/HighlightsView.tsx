@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { PlayerEvent, PlayerFixture } from '../../types'
 import { competitionLabel, stageLabel } from '../../utils/footballLabels'
+import { worldCupTeamNameFromString } from '../../utils/worldCupTeams'
 import MatchListModal, { type ModalItem } from './MatchListModal'
 
 interface Props {
@@ -51,16 +52,8 @@ function assistCount(f: PlayerFixture): number {
   return f.breakdown?.['assist']?.count ?? 0
 }
 
-const TEAM_NAMES_ES: Record<string, string> = {
-  Morocco: 'Marruecos',
-  'Korea Republic': 'Corea del Sur',
-  USA: 'Estados Unidos',
-  Qatar: 'Catar',
-  Czechia: 'Chequia',
-}
-
 function teamLabel(value: string): string {
-  return TEAM_NAMES_ES[value] ?? value
+  return worldCupTeamNameFromString(value)
 }
 
 function matchup(f: PlayerFixture): string {
