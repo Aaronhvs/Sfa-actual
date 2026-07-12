@@ -14,7 +14,7 @@ import WcLiveChip from '../components/shared/WcLiveChip'
 import { useCountUp } from '../hooks/useCountUp'
 import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
 
-const PAGE_SIZE = 15
+const PAGE_SIZE = 12
 const WORLD_CUP_PAGE_SIZE = 15
 const WORLD_CUP_COMPETITION_ID = 350
 const SEARCH_DEBOUNCE_MS = 350
