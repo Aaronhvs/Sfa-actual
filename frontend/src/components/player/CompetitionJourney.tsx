@@ -1,6 +1,7 @@
 import type { PlayerCompetitionAchievement } from '../../types'
 import { competitionLabel, phaseBadge, phaseLabel } from '../../utils/footballLabels'
 import { seasonLabel } from '../../utils/season'
+import { worldCupTeamNameFromString } from '../../utils/worldCupTeams'
 
 interface Props {
   achievements: PlayerCompetitionAchievement[]
@@ -45,6 +46,10 @@ export default function CompetitionJourney({ achievements, historical }: Props) 
             <div className="competition-journey__list">
               {items.map((achievement) => {
                 const champion = achievement.title_count > 0
+                const competition = competitionLabel(achievement.competition_name)
+                const teamName = competition === 'Mundial'
+                  ? worldCupTeamNameFromString(achievement.team_name)
+                  : achievement.team_name
                 return (
                   <article
                     className={`competition-journey__item${champion ? ' competition-journey__item--champion' : ''}`}
@@ -54,8 +59,8 @@ export default function CompetitionJourney({ achievements, historical }: Props) 
                       {champion ? <TrophyIcon /> : phaseBadge(achievement.phase)}
                     </span>
                     <span className="competition-journey__body">
-                      <strong>{competitionLabel(achievement.competition_name)}</strong>
-                      <small>{achievement.team_name}</small>
+                      <strong>{competition}</strong>
+                      <small>{teamName}</small>
                     </span>
                     <span className="competition-journey__result">
                       {champion ? (

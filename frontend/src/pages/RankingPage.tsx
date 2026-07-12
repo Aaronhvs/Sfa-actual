@@ -69,7 +69,6 @@ export default function RankingPage() {
   const [search, setSearch] = useState(searchParams.get('name') ?? '')
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('name') ?? '')
   const [players, setPlayers] = useState<RankedPlayer[]>([])
-  const [heroPlayers, setHeroPlayers] = useState<RankedPlayer[]>([])
   const [rankingExplanations, setRankingExplanations] = useState<RankingPlayerExplanation[]>([])
   const [selectedAnalysis, setSelectedAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [totalPlayers, setTotalPlayers] = useState(0)
@@ -84,7 +83,10 @@ export default function RankingPage() {
   const wcSeason = seasonItems.find((item) => item.is_world_cup)?.season
   const pageSize = PAGE_SIZE
   const isMainRankingView = !position && !bonusFilter && !competition && !debouncedSearch
-  const rankingOffset = (isMainRankingView ? HERO_RANKING_OFFSET : 0) + (page * pageSize)
+  const rankingLimit = isMainRankingView && page === 0 ? PAGE_SIZE + HERO_RANKING_OFFSET : PAGE_SIZE
+  const rankingOffset = isMainRankingView && page > 0
+    ? HERO_RANKING_OFFSET + (page * PAGE_SIZE)
+    : page * PAGE_SIZE
 
   useEffect(() => {
     fetchSeasons()
@@ -166,7 +168,7 @@ export default function RankingPage() {
       position: position || undefined,
       competition_id: competition,
       page: page + 1,
-      limit: pageSize,
+      limit: rankingLimit,
       offset: rankingOffset,
       name: debouncedSearch || undefined,
       bonus_label: bonusFilter || undefined,
@@ -180,23 +182,7 @@ export default function RankingPage() {
         setError(e.message ?? 'Error al cargar el ranking')
         setLoadingRanking(false)
       })
-  }, [position, competition, season, page, pageSize, rankingOffset, debouncedSearch, bonusFilter])
-
-  useEffect(() => {
-    if (!season || !isMainRankingView) {
-      setHeroPlayers([])
-      return
-    }
-
-    fetchRanking({
-      season,
-      page: 1,
-      limit: HERO_RANKING_OFFSET,
-      offset: 0,
-    })
-      .then((data) => setHeroPlayers(data.ranking))
-      .catch(() => setHeroPlayers([]))
-  }, [season, isMainRankingView])
+  }, [position, competition, season, page, rankingLimit, rankingOffset, debouncedSearch, bonusFilter])
 
   useEffect(() => {
     const shouldLoadNarratives = (
@@ -205,7 +191,7 @@ export default function RankingPage() {
       && !debouncedSearch
       && !position
       && !bonusFilter
-      && heroPlayers.length >= 3
+      && players.length >= 3
     )
     if (!shouldLoadNarratives) {
       setRankingExplanations([])
@@ -220,17 +206,21 @@ export default function RankingPage() {
     })
       .then((data) => setRankingExplanations(data.explanations))
       .catch(() => setRankingExplanations([]))
-  }, [isWcSeason, page, debouncedSearch, position, bonusFilter, heroPlayers.length, season])
+  }, [isWcSeason, page, debouncedSearch, position, bonusFilter, players.length, season])
 
-  const showHero = page === 0 && isMainRankingView && heroPlayers.length >= HERO_RANKING_OFFSET
-  const top3 = showHero ? heroPlayers : []
-  const currentPagePlayers = players
+  const showHero = page === 0 && isMainRankingView && players.length >= HERO_RANKING_OFFSET
+  const top3 = showHero ? players.slice(0, HERO_RANKING_OFFSET) : []
+  const currentPagePlayers = showHero ? players.slice(HERO_RANKING_OFFSET) : players
   const visibleTotalPlayers = Math.max(totalPlayers - (isMainRankingView ? HERO_RANKING_OFFSET : 0), 0)
   const totalPages = visibleTotalPlayers > 0 ? Math.ceil(visibleTotalPlayers / pageSize) : 0
   const hasNextPage = page + 1 < totalPages
   const hasPrevPage = page > 0
-  const visibleRangeStart = totalPlayers > 0 && currentPagePlayers.length > 0 ? rankingOffset + 1 : 0
-  const visibleRangeEnd = totalPlayers > 0 ? Math.min(rankingOffset + currentPagePlayers.length, totalPlayers) : 0
+  const visibleRangeStart = totalPlayers > 0 && currentPagePlayers.length > 0
+    ? rankingOffset + (showHero ? HERO_RANKING_OFFSET : 0) + 1
+    : 0
+  const visibleRangeEnd = totalPlayers > 0
+    ? Math.min(rankingOffset + (showHero ? HERO_RANKING_OFFSET : 0) + currentPagePlayers.length, totalPlayers)
+    : 0
 
   const mainCompetitions = competitions
     .filter((c) => MAIN_COMPETITION_IDS.includes(c.id))
