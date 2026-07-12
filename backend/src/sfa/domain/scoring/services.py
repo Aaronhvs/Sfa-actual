@@ -117,7 +117,7 @@ BASE_POINTS_TABLE_V2: dict[PositionGroup, dict[ActionType, int]] = {
         ActionType.XG_NO_GOAL: 60, ActionType.XA_NO_ASSIST: 60,
         ActionType.DRIBBLES_WON: 70, ActionType.DUELS_WON: 18,
         ActionType.TACKLES: 80, ActionType.INTERCEPTIONS: 70, ActionType.BLOCKS: 100,
-        ActionType.FOULS_DRAWN: 40, ActionType.PASSES_COMPLETED: 1,
+        ActionType.FOULS_DRAWN: 40, ActionType.PASSES_COMPLETED: 3,
         ActionType.PASS_ACCURACY_BONUS: 0,
         ActionType.FOULS_COMMITTED: -25, ActionType.YELLOW_CARD: -120, ActionType.RED_CARD: -500,
         ActionType.PENALTY_WON: 220, ActionType.DRIBBLES_PAST: 0,
