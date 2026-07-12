@@ -80,20 +80,22 @@ export default function WcLiveChip() {
           <i className="wc-live-chip__dot" aria-hidden="true" />
           {isLive ? 'En vivo' : 'Próximo'}
         </span>
-        <span className="wc-live-chip__side wc-live-chip__side--home">
-          <span className="wc-live-chip__team">{homeName}</span>
-          {homeFlag && <img src={homeFlag} alt="" className="wc-live-chip__flag" />}
+        <span className="wc-live-chip__fixture">
+          <span className="wc-live-chip__side wc-live-chip__side--home">
+            <span className="wc-live-chip__team">{homeName}</span>
+            {homeFlag && <img src={homeFlag} alt="" className="wc-live-chip__flag" />}
+          </span>
+          <strong className="wc-live-chip__score">
+            {isLive ? (fixture.home_goals ?? 0) : 'vs'}
+            {isLive && <span>:</span>}
+            {isLive ? (fixture.away_goals ?? 0) : ''}
+          </strong>
+          <span className="wc-live-chip__side">
+            {awayFlag && <img src={awayFlag} alt="" className="wc-live-chip__flag" />}
+            <span className="wc-live-chip__team">{awayName}</span>
+          </span>
+          <span className="wc-live-chip__minute">{matchStatus}</span>
         </span>
-        <strong className="wc-live-chip__score">
-          {isLive ? (fixture.home_goals ?? 0) : 'vs'}
-          {isLive && <span>:</span>}
-          {isLive ? (fixture.away_goals ?? 0) : ''}
-        </strong>
-        <span className="wc-live-chip__side">
-          {awayFlag && <img src={awayFlag} alt="" className="wc-live-chip__flag" />}
-          <span className="wc-live-chip__team">{awayName}</span>
-        </span>
-        <span className="wc-live-chip__minute">{matchStatus}</span>
       </Link>
       <Link to="/mundial" className="wc-live-chip__more">
         Ver Mundial

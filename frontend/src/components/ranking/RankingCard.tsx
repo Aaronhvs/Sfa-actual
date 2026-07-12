@@ -9,6 +9,7 @@ interface Props {
   competitionName?: string
   season?: string
   isWorldCup?: boolean
+  returnTo?: string
 }
 
 function formatPts(pts: number): string {
@@ -36,9 +37,14 @@ export default function RankingCard({
   competitionName,
   season,
   isWorldCup = false,
+  returnTo,
 }: Props) {
   const animatedRank = useCountUp(player.rank, 620)
-  const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
+  const playerParams = new URLSearchParams()
+  if (season) playerParams.set('season', season)
+  if (returnTo) playerParams.set('returnTo', returnTo)
+  const playerQuery = playerParams.toString()
+  const playerLink = `/player/${player.id}${playerQuery ? `?${playerQuery}` : ''}`
   const displayedRank = String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')
   const flagUrl = isWorldCup ? worldCupTeamFlagUrl(player.team) : null
 

@@ -13,6 +13,20 @@ import FixtureList from '../components/player/FixtureList'
 import PerformanceChart from '../components/player/PerformanceChart'
 import CompetitionJourney from '../components/player/CompetitionJourney'
 
+function safeRankingReturnTo(value: string | null): string | null {
+  if (!value || value.startsWith('//')) return null
+
+  try {
+    const parsed = new URL(value, window.location.origin)
+    if (parsed.origin !== window.location.origin || parsed.pathname !== '/ranking') {
+      return null
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return null
+  }
+}
+
 export default function PlayerPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -43,6 +57,12 @@ export default function PlayerPage() {
   })
 
   function goBackToRanking() {
+    const returnTo = safeRankingReturnTo(searchParams.get('returnTo'))
+    if (returnTo) {
+      navigate(returnTo)
+      return
+    }
+
     const targetSeason = season || seasonFromUrl
     navigate(targetSeason ? `/ranking?season=${targetSeason}` : '/ranking')
   }

@@ -14911,6 +14911,14 @@ body.mode-tournament .main-content {
   text-decoration: none;
 }
 
+.wc-live-chip__fixture {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
 .wc-live-chip__more {
   min-height: 34px;
   padding: 0 11px;
@@ -15441,12 +15449,10 @@ body.mode-tournament .main-content {
 }
 
 .rp-control-deck .wc-live-chip__match {
-  display: grid;
-  grid-template-columns: auto minmax(86px, 1fr) auto minmax(86px, 1fr);
-  grid-template-areas:
-    "status home score away"
-    "status minute minute minute";
+  display: inline-flex;
+  justify-content: flex-start;
   align-items: center;
+  gap: 10px;
   min-height: 48px;
   padding: 0 12px;
   border: 1px solid rgba(255,255,255,0.08);
@@ -15465,21 +15471,15 @@ body.mode-tournament .main-content {
 }
 
 .rp-control-deck .wc-live-chip__status {
-  grid-area: status;
-  min-width: 70px;
+  flex: 0 0 auto;
+  min-width: 0;
   padding-right: 10px;
+  border-right: 1px solid rgba(255,255,255,0.1);
 }
 
-.rp-control-deck .wc-live-chip__side--home {
-  grid-area: home;
-}
-
-.rp-control-deck .wc-live-chip__score {
-  grid-area: score;
-}
-
-.rp-control-deck .wc-live-chip__side:not(.wc-live-chip__side--home) {
-  grid-area: away;
+.rp-control-deck .wc-live-chip__fixture {
+  flex: 1 1 auto;
+  justify-content: flex-start;
 }
 
 .rp-control-deck .wc-live-chip__team {
@@ -15487,10 +15487,11 @@ body.mode-tournament .main-content {
 }
 
 .rp-control-deck .wc-live-chip__minute {
-  grid-area: minute;
-  padding-top: 2px;
+  flex: 0 0 auto;
+  margin-left: 2px;
+  padding-top: 0;
   line-height: 1.2;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .rp-control-deck .wc-live-chip__more {
@@ -15724,10 +15725,12 @@ body.mode-tournament .main-content {
     min-height: 42px;
     padding: 0 9px;
     gap: 5px;
+    justify-content: flex-start;
+    overflow: hidden;
   }
 
   .rp-control-deck .wc-live-chip__status {
-    min-width: 62px;
+    min-width: 0;
     padding-right: 6px;
     font-size: 0.5rem;
   }
@@ -17414,12 +17417,17 @@ body.mode-tournament .main-content {
 .top-narrative__body {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(190px, 0.35fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  grid-template-areas:
+    "headline action"
+    "story action";
   align-items: center;
-  gap: 14px;
+  column-gap: 18px;
+  row-gap: 6px;
 }
 
 .top-narrative__headline {
+  grid-area: headline;
   display: grid;
   gap: 6px;
 }
@@ -17440,22 +17448,21 @@ body.mode-tournament .main-content {
 }
 
 .top-narrative__story {
+  grid-area: story;
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 5px;
+  max-width: 74ch;
 }
 
 .top-narrative__story strong {
-  overflow: hidden;
   color: var(--text);
   font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 850;
   letter-spacing: 0.02em;
-  line-height: 1.1;
-  text-overflow: ellipsis;
+  line-height: 1.14;
   text-transform: none;
-  white-space: nowrap;
 }
 
 .top-narrative__body p {
@@ -17504,9 +17511,13 @@ body.mode-tournament .main-content {
 }
 
 .top-narrative__link {
+  grid-area: action;
   min-height: 36px;
   align-self: center;
   padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(201,168,76,0.24);
   border-radius: 3px;
   background: rgba(201,168,76,0.075);
@@ -17689,6 +17700,10 @@ body.mode-tournament .main-content {
 
   .top-narrative__body {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "headline"
+      "story"
+      "action";
     gap: 9px;
   }
 

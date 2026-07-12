@@ -10,6 +10,7 @@ interface Props {
   podiumPlace?: number
   season?: string
   isWorldCup?: boolean
+  returnTo?: string
 }
 
 function initials(name: string): string {
@@ -50,10 +51,14 @@ function cardClass(place: number, isWorldCup: boolean): string {
   return `player-showcase-card player-showcase-card--third${tournamentClass}`
 }
 
-export default function ShowcaseCard({ player, podiumPlace, season, isWorldCup = false }: Props) {
+export default function ShowcaseCard({ player, podiumPlace, season, isWorldCup = false, returnTo }: Props) {
   const displayPlace = podiumPlace ?? player.rank
   const animatedRank = useCountUp(displayPlace, 620)
-  const playerLink = `/player/${player.id}${season ? `?season=${season}` : ''}`
+  const playerParams = new URLSearchParams()
+  if (season) playerParams.set('season', season)
+  if (returnTo) playerParams.set('returnTo', returnTo)
+  const playerQuery = playerParams.toString()
+  const playerLink = `/player/${player.id}${playerQuery ? `?${playerQuery}` : ''}`
   const displayedRank = String(isWorldCup ? displayPlace : animatedRank).padStart(2, '0')
   const flagUrl = isWorldCup ? worldCupTeamFlagUrl(player.team) : null
   const mobileName = compactName(player.name)

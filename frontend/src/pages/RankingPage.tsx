@@ -22,16 +22,52 @@ const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
 const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
 const BONUS_FILTER_OPTIONS = ['Promesa', 'Veterano', 'Goleador', 'Asistidor']
 
+function numberParam(value: string | null): number | undefined {
+  if (!value) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function pageParam(value: string | null): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed - 1 : 0
+}
+
+function buildRankingParams({
+  season,
+  position,
+  bonusFilter,
+  competition,
+  search,
+  page,
+}: {
+  season: string
+  position: string
+  bonusFilter: string
+  competition?: number
+  search: string
+  page: number
+}) {
+  const params = new URLSearchParams()
+  if (season) params.set('season', season)
+  if (position) params.set('position', position)
+  if (bonusFilter) params.set('bonus_label', bonusFilter)
+  if (competition) params.set('competition_id', String(competition))
+  if (search.trim()) params.set('name', search.trim())
+  if (page > 0) params.set('page', String(page + 1))
+  return params
+}
+
 export default function RankingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
   const [season, setSeason] = useState<string>(searchParams.get('season') ?? '')
-  const [position, setPosition] = useState('')
-  const [bonusFilter, setBonusFilter] = useState('')
-  const [competition, setCompetition] = useState<number | undefined>(undefined)
+  const [position, setPosition] = useState(searchParams.get('position') ?? '')
+  const [bonusFilter, setBonusFilter] = useState(searchParams.get('bonus_label') ?? '')
+  const [competition, setCompetition] = useState<number | undefined>(numberParam(searchParams.get('competition_id')))
   const [competitions, setCompetitions] = useState<Competition[]>([])
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [search, setSearch] = useState(searchParams.get('name') ?? '')
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('name') ?? '')
   const [players, setPlayers] = useState<RankedPlayer[]>([])
   const [rankingExplanations, setRankingExplanations] = useState<RankingPlayerExplanation[]>([])
   const [selectedAnalysis, setSelectedAnalysis] = useState<RankingPlayerExplanation | null>(null)
@@ -39,9 +75,10 @@ export default function RankingPage() {
   const [pagination, setPagination] = useState<RankingPagination | null>(null)
   const [loadingRanking, setLoadingRanking] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(pageParam(searchParams.get('page')))
   const [pageDir, setPageDir] = useState<'next' | 'prev'>('next')
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const didMountFiltersRef = useRef(false)
   const isWcSeason = isWorldCupSeason(season, seasonItems)
   const showWcBanner = isSeasonReceivingWcPoints(season, seasonItems)
   const wcSeason = seasonItems.find((item) => item.is_world_cup)?.season
@@ -82,16 +119,29 @@ export default function RankingPage() {
 
   useEffect(() => {
     if (!isWcSeason) return
-    setPosition('')
-    setBonusFilter('')
     setCompetition(undefined)
-    setSearch('')
   }, [isWcSeason])
 
   useEffect(() => {
+    if (!didMountFiltersRef.current) {
+      didMountFiltersRef.current = true
+      return
+    }
     setPage(0)
     setPageDir('next')
   }, [position, competition, search, bonusFilter])
+
+  useEffect(() => {
+    if (!season) return
+    setSearchParams(buildRankingParams({
+      season,
+      position,
+      bonusFilter,
+      competition,
+      search,
+      page,
+    }), { replace: true })
+  }, [season, position, bonusFilter, competition, search, page, setSearchParams])
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
@@ -166,6 +216,14 @@ export default function RankingPage() {
   const activeComp = competitions.find((c) => c.id === competition)
   const contextParts = [activeComp?.name, position || null, bonusFilter || null].filter(Boolean)
   const contextLabel = contextParts.length > 0 ? contextParts.join(' - ') : null
+  const rankingReturnTo = `/ranking?${buildRankingParams({
+    season,
+    position,
+    bonusFilter,
+    competition,
+    search,
+    page,
+  }).toString()}`
 
   const animatedTotal = useCountUp(totalPlayers)
   const seasonPicker = seasonItems.length > 0 ? (
@@ -179,7 +237,6 @@ export default function RankingPage() {
         value={season}
         onChange={(nextSeason) => {
           setSeason(nextSeason)
-          setSearchParams({ season: nextSeason }, { replace: true })
           setPage(0)
           setPageDir('next')
         }}
@@ -347,6 +404,7 @@ export default function RankingPage() {
                     podiumPlace={index + 1}
                     season={season}
                     isWorldCup={isWcSeason}
+                    returnTo={rankingReturnTo}
                   />
                 ))}
               </div>
@@ -466,6 +524,7 @@ export default function RankingPage() {
                       competitionName={activeComp?.name}
                       season={season}
                       isWorldCup={isWcSeason}
+                      returnTo={rankingReturnTo}
                     />
                   ))}
                 </div>
