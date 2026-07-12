@@ -57,6 +57,7 @@ class PlayerEventRawContextDTO:
     # B1 fields (spec 0034): populated when birth_date is available in DB
     player_birth_date: date | None = None
     fixture_date: date | None = None
+    passes_completed: int | None = None
 
 
 @dataclass(frozen=True)

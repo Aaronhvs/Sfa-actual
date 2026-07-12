@@ -7,6 +7,7 @@ from sfa.domain.enrichment_ports import (
     EnrichmentRepositoryPort,
     RecalculationResult,
 )
+from sfa.domain.scoring.pass_stats import normalize_pass_stats
 from sfa.domain.scoring.services import BASE_POINTS_TABLE
 from sfa.domain.scoring.value_objects import (
     ActionType,
@@ -95,6 +96,12 @@ class RecalculateScoresUseCase:
                 logger.warning("RecalcStats: skipping event %d — %s", event.event_id, exc)
                 continue
 
+            pass_stats = normalize_pass_stats(
+                event.passes_total,
+                event.passes_completed if event.passes_completed > 0 else event.passes_accuracy,
+                value_is_completed=event.passes_completed > 0,
+            )
+
             stat_counts = {
                 ActionType.DUELS_WON:             event.duels_won,
                 ActionType.TACKLES:               event.tackles_won,
@@ -104,7 +111,7 @@ class RecalculateScoresUseCase:
                 ActionType.XA_NO_ASSIST:          max(0, event.passes_key - event.assists),
                 ActionType.XG_NO_GOAL:            max(0, event.shots_on - event.goals),
                 ActionType.FOULS_DRAWN:           event.fouls_drawn,
-                ActionType.PASSES_COMPLETED:      int(event.passes_total * event.passes_accuracy / 100),
+                ActionType.PASSES_COMPLETED:      pass_stats.completed,
                 ActionType.FOULS_COMMITTED:       event.fouls_committed,
                 ActionType.YELLOW_CARD:           event.cards_yellow,
                 ActionType.RED_CARD:              event.cards_red,

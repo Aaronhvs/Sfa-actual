@@ -21,6 +21,7 @@ class PlayerStats(Base):
     passes_key: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     passes_total: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     passes_accuracy: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    passes_completed: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     dribbles_won: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     dribbles_attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     dribbles_past: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
@@ -51,6 +52,7 @@ class PlayerStats(Base):
         CheckConstraint("passes_key >= 0", name="ck_ps_passes_key"),
         CheckConstraint("passes_total >= 0", name="ck_ps_passes_total"),
         CheckConstraint("passes_accuracy BETWEEN 0 AND 100", name="ck_ps_passes_accuracy"),
+        CheckConstraint("passes_completed >= 0", name="ck_ps_passes_completed"),
         CheckConstraint("dribbles_won >= 0", name="ck_ps_dribbles_won"),
         CheckConstraint("dribbles_attempts >= 0", name="ck_ps_dribbles_attempts"),
         CheckConstraint("dribbles_past >= 0", name="ck_ps_dribbles_past"),

@@ -257,6 +257,7 @@ class ReingestPlayerUseCase:
                         "shots_total": player_stats.shots_total,
                         "passes_key": player_stats.passes_key,
                         "passes_total": player_stats.passes_total,
+                        "passes_completed": player_stats.passes_completed,
                         "passes_accuracy": player_stats.passes_accuracy,
                         "dribbles_won": player_stats.dribbles_success,
                         "dribbles_attempts": player_stats.dribbles_attempts,

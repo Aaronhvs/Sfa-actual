@@ -261,10 +261,7 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
                 func.coalesce(func.max(PlayerStats.shots_total), 0).label("shots_total"),
                 func.coalesce(func.max(PlayerStats.shots_on), 0).label("shots_on"),
                 func.coalesce(func.max(PlayerStats.passes_total), 0).label("passes_total"),
-                func.coalesce(
-                    func.max(func.round(PlayerStats.passes_total * PlayerStats.passes_accuracy / 100)),
-                    0,
-                ).label("passes_accurate"),
+                func.coalesce(func.max(PlayerStats.passes_completed), 0).label("passes_accurate"),
                 func.coalesce(func.max(PlayerStats.passes_key), 0).label("passes_key"),
                 func.coalesce(func.max(PlayerStats.dribbles_won), 0).label("dribbles_won"),
                 func.coalesce(func.max(PlayerStats.duels_won), 0).label("duels_won"),
@@ -378,8 +375,7 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
         season: str | None,
     ) -> PlayerSeasonStatsDTO | None:
         weighted_pass_accuracy = func.coalesce(
-            func.sum(PlayerStats.passes_accuracy * PlayerStats.passes_total)
-            / func.nullif(func.sum(PlayerStats.passes_total), 0),
+            func.sum(PlayerStats.passes_completed) * 100.0 / func.nullif(func.sum(PlayerStats.passes_total), 0),
             0,
         )
         stmt = (

@@ -109,6 +109,7 @@ class PlayerStatsEventRecalcRow:
     goals: int
     assists: int
     rating: float | None
+    passes_completed: int = 0
 
 
 @dataclass(frozen=True)

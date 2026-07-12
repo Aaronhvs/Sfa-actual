@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import logging
 
 from sfa.domain.scoring.entities import PlayerEventScore
+from sfa.domain.scoring.pass_stats import normalize_pass_stats
 from sfa.domain.scoring.services import SFAScoringService
 from sfa.domain.scoring.value_objects import (
     ActionType,
@@ -107,13 +108,6 @@ def _build_b1_contributions_map(
 
 def _b1_enabled_for_competition(config: ScoringConfig, competition_id: int) -> bool:
     return config.b1_enabled and competition_id in config.b1_competition_ids
-
-
-def _passes_completed_from_accuracy(passes_total: int, passes_accuracy: float) -> int:
-    if passes_total <= 0 or passes_accuracy <= 0:
-        return 0
-    pct = max(0.0, min(100.0, float(passes_accuracy)))
-    return int(round(passes_total * pct / 100.0))
 
 
 def _pass_accuracy_bonus_base(
@@ -442,10 +436,14 @@ class CalculateScoresForRulesVersionUseCase:
         g = event.goals or 0
         a = event.assists or 0
         passes_total = int(event.passes_total or 0)
-        passes_accuracy_pct = float(event.passes_accuracy or 0.0)
-        passes_completed_raw = _passes_completed_from_accuracy(
-            passes_total, passes_accuracy_pct,
+        passes_completed_value = event.passes_completed or 0
+        pass_stats = normalize_pass_stats(
+            passes_total,
+            passes_completed_value if passes_completed_value > 0 else event.passes_accuracy,
+            value_is_completed=passes_completed_value > 0,
         )
+        passes_accuracy_pct = pass_stats.accuracy_pct
+        passes_completed_raw = pass_stats.completed
         passes_key = event.passes_key or 0
         tackles_won = event.tackles_won or 0
         interceptions = event.interceptions or 0
@@ -663,10 +661,14 @@ class CalculateScoresForRulesVersionUseCase:
         blocks = event.blocks or 0
         duels_won = event.duels_won or 0
 
-        passes_accuracy_pct = float(event.passes_accuracy or 0.0)
-        passes_completed = _passes_completed_from_accuracy(
-            passes_total, passes_accuracy_pct,
+        passes_completed_value = event.passes_completed or 0
+        pass_stats = normalize_pass_stats(
+            passes_total,
+            passes_completed_value if passes_completed_value > 0 else event.passes_accuracy,
+            value_is_completed=passes_completed_value > 0,
         )
+        passes_accuracy_pct = pass_stats.accuracy_pct
+        passes_completed = pass_stats.completed
         defensive_actions = tackles_won + interceptions
 
         control_earned = (

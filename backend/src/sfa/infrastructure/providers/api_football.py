@@ -513,11 +513,17 @@ class APIFootballProvider:
                     except (TypeError, ValueError):
                         rating = None
 
+                    passes_total = passes.get("total") or 0
                     raw_accuracy = passes.get("accuracy")
                     try:
-                        passes_accuracy = min(100, max(0, int(raw_accuracy))) if raw_accuracy is not None else 80
+                        passes_completed = max(0, int(raw_accuracy)) if raw_accuracy is not None else 0
                     except (TypeError, ValueError):
-                        passes_accuracy = 80
+                        passes_completed = 0
+                    passes_accuracy = (
+                        int(round(min(passes_completed, passes_total) * 100 / passes_total))
+                        if passes_total
+                        else 0
+                    )
 
                     result.append(
                         PlayerStatsRawDTO(
@@ -531,7 +537,8 @@ class APIFootballProvider:
                             shots_on=shots.get("on") or 0,
                             shots_total=shots.get("total") or 0,
                             passes_key=passes.get("key") or 0,
-                            passes_total=passes.get("total") or 0,
+                            passes_total=passes_total,
+                            passes_completed=passes_completed,
                             passes_accuracy=passes_accuracy,
                             dribbles_success=dribbles.get("success") or 0,
                             dribbles_attempts=dribbles.get("attempts") or 0,
@@ -591,11 +598,17 @@ class APIFootballProvider:
                     except (TypeError, ValueError):
                         rating = None
 
+                    passes_total = passes.get("total") or 0
                     raw_accuracy = passes.get("accuracy")
                     try:
-                        passes_accuracy = min(100, max(0, int(raw_accuracy))) if raw_accuracy is not None else 80
+                        passes_completed = max(0, int(raw_accuracy)) if raw_accuracy is not None else 0
                     except (TypeError, ValueError):
-                        passes_accuracy = 80
+                        passes_completed = 0
+                    passes_accuracy = (
+                        int(round(min(passes_completed, passes_total) * 100 / passes_total))
+                        if passes_total
+                        else 0
+                    )
 
                     result.append(
                         PlayerStatsRawDTO(
@@ -609,7 +622,8 @@ class APIFootballProvider:
                             shots_on=shots.get("on") or 0,
                             shots_total=shots.get("total") or 0,
                             passes_key=passes.get("key") or 0,
-                            passes_total=passes.get("total") or 0,
+                            passes_total=passes_total,
+                            passes_completed=passes_completed,
                             passes_accuracy=passes_accuracy,
                             dribbles_success=dribbles.get("success") or 0,
                             dribbles_attempts=dribbles.get("attempts") or 0,

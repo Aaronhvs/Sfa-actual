@@ -172,6 +172,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 shots_on=stats.shots_on if stats else None,
                 passes_key=stats.passes_key if stats else None,
                 passes_total=stats.passes_total if stats else None,
+                passes_completed=stats.passes_completed if stats else None,
                 passes_accuracy=float(stats.passes_accuracy) if stats else None,
                 dribbles_won=stats.dribbles_won if stats else None,
                 duels_won=stats.duels_won if stats else None,

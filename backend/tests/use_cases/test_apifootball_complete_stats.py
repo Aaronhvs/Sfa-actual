@@ -11,6 +11,7 @@ from sfa.domain.enrichment_ports import (
     SeasonScoreRow,
 )
 from sfa.domain.ingestion_ports import PlayerStatsRawDTO
+from sfa.domain.scoring.pass_stats import normalize_pass_stats
 from sfa.domain.scoring.services import BASE_POINTS_TABLE, SFAScoringService
 from sfa.domain.scoring.value_objects import ActionType, PositionGroup
 from sfa.infrastructure.models.enums import EventType
@@ -72,6 +73,7 @@ def _recalc_row(
         dribbles_won=0,
         passes_key=0,
         passes_total=0,
+        passes_completed=0,
         passes_accuracy=0,
         shots_on=0,
         shots_total=0,
@@ -125,6 +127,7 @@ def test_new_dto_fields_stored_correctly():
     dto = _make_player(
         shots_total=5,
         passes_total=60,
+        passes_completed=50,
         passes_accuracy=83,
         dribbles_past=2,
         duels_total=10,
@@ -137,6 +140,7 @@ def test_new_dto_fields_stored_correctly():
     )
     assert dto.shots_total == 5
     assert dto.passes_total == 60
+    assert dto.passes_completed == 50
     assert dto.passes_accuracy == 83
     assert dto.dribbles_past == 2
     assert dto.duels_total == 10
@@ -170,10 +174,22 @@ def test_new_dto_fields_default_to_zero():
 
 def test_passes_completed_calculation():
     """passes_total × passes_accuracy / 100 truncado a int."""
-    assert int(60 * 83 / 100) == 49
-    assert int(50 * 80 / 100) == 40
-    assert int(100 * 75 / 100) == 75
+    assert normalize_pass_stats(60, 50).completed == 50
+    assert normalize_pass_stats(50, 40).accuracy_pct == 80
+    assert normalize_pass_stats(100, 75).accuracy_pct == 75
     assert int(0 * 90 / 100) == 0
+
+
+def test_pass_stats_normalizes_provider_completed_passes():
+    stats = normalize_pass_stats(21, 15)
+    assert stats.completed == 15
+    assert stats.accuracy_pct == pytest.approx(71.43, abs=0.01)
+
+
+def test_pass_stats_keeps_legacy_percentage_values():
+    stats = normalize_pass_stats(50, 80, value_is_completed=False)
+    assert stats.completed == 40
+    assert stats.accuracy_pct == 80
 
 
 def test_passes_completed_mf_has_positive_base_pts():
@@ -191,7 +207,9 @@ def test_passes_completed_df_has_positive_base_pts():
 @pytest.mark.anyio
 async def test_mf_with_passes_scores_more_than_mf_without():
     """MF con passes_total=60, passes_accuracy=80 → PASSES_COMPLETED=48 → más pts."""
-    repo_with = FakeEnrichmentRepo([_recalc_row("MC", passes_total=60, passes_accuracy=80)])
+    repo_with = FakeEnrichmentRepo([
+        _recalc_row("MC", passes_total=60, passes_completed=48, passes_accuracy=80),
+    ])
     repo_without = FakeEnrichmentRepo([_recalc_row("MC")])
 
     await RecalculateScoresUseCase(repo_with).execute(1, "2024")

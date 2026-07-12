@@ -62,6 +62,7 @@ class PlayerStatsRawDTO:
     dribbles_attempts: int = 0
     shots_total: int = 0
     passes_total: int = 0
+    passes_completed: int = 0
     passes_accuracy: int = 0
     dribbles_past: int = 0
     duels_total: int = 0

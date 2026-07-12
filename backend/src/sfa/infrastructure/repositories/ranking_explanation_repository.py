@@ -364,7 +364,7 @@ class RankingExplanationRepository:
                 func.coalesce(func.sum(PlayerStats.shots_total), 0).label("shots_total"),
                 func.coalesce(func.sum(PlayerStats.passes_key), 0).label("passes_key"),
                 func.coalesce(func.sum(PlayerStats.passes_total), 0).label("passes_total"),
-                func.avg(PlayerStats.passes_accuracy).label("passes_accuracy_avg"),
+                func.coalesce(func.sum(PlayerStats.passes_completed), 0).label("passes_completed"),
                 func.coalesce(func.sum(PlayerStats.dribbles_won), 0).label("dribbles_won"),
                 func.coalesce(func.sum(PlayerStats.dribbles_attempts), 0).label("dribbles_attempts"),
                 func.coalesce(func.sum(PlayerStats.duels_won), 0).label("duels_won"),
@@ -391,7 +391,12 @@ class RankingExplanationRepository:
         shots_on = int(data.get("shots_on") or 0)
         goals = int(data.get("goals") or 0)
         passes_total = int(data.get("passes_total") or 0)
-        passes_accuracy = round(float(data.get("passes_accuracy_avg") or 0), 2)
+        passes_completed = round(float(data.get("passes_completed") or 0), 2)
+        passes_accuracy = (
+            round(passes_completed * 100 / passes_total, 2)
+            if passes_total
+            else None
+        )
         dribbles_attempts = int(data.get("dribbles_attempts") or 0)
         dribbles_won = int(data.get("dribbles_won") or 0)
         duels_total = int(data.get("duels_total") or 0)
@@ -419,8 +424,8 @@ class RankingExplanationRepository:
             "goal_conversion_pct": round((goals / shots_total) * 100, 2) if shots_total else None,
             "passes_key": int(data.get("passes_key") or 0),
             "passes_total": passes_total,
-            "passes_accuracy_avg": passes_accuracy if passes_total else None,
-            "estimated_completed_passes": round(passes_total * passes_accuracy / 100, 2) if passes_total else 0,
+            "passes_accuracy_avg": passes_accuracy,
+            "estimated_completed_passes": passes_completed,
             "dribbles_won": dribbles_won,
             "dribbles_attempts": dribbles_attempts,
             "dribble_success_pct": (

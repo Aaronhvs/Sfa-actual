@@ -244,19 +244,20 @@ class EnrichmentRepository:
                 PlayerStats.dribbles_won,  # 10
                 PlayerStats.passes_key,   # 11
                 PlayerStats.passes_total,  # 12
-                PlayerStats.passes_accuracy,  # 13
-                PlayerStats.shots_on,     # 14
-                PlayerStats.shots_total,  # 15
-                PlayerStats.dribbles_past,  # 16
-                PlayerStats.duels_total,  # 17
-                PlayerStats.fouls_drawn,  # 18
-                PlayerStats.fouls_committed,  # 19
-                PlayerStats.cards_yellow,  # 20
-                PlayerStats.cards_red,    # 21
-                PlayerStats.penalty_won,  # 22
-                PlayerStats.goals,        # 23
-                PlayerStats.assists,      # 24
-                PlayerStats.rating,       # 25
+                PlayerStats.passes_completed,  # 13
+                PlayerStats.passes_accuracy,  # 14
+                PlayerStats.shots_on,     # 15
+                PlayerStats.shots_total,  # 16
+                PlayerStats.dribbles_past,  # 17
+                PlayerStats.duels_total,  # 18
+                PlayerStats.fouls_drawn,  # 19
+                PlayerStats.fouls_committed,  # 20
+                PlayerStats.cards_yellow,  # 21
+                PlayerStats.cards_red,    # 22
+                PlayerStats.penalty_won,  # 23
+                PlayerStats.goals,        # 24
+                PlayerStats.assists,      # 25
+                PlayerStats.rating,       # 26
             )
             .join(Player, Player.id == PlayerEvent.player_id)
             .join(Fixture, Fixture.id == PlayerEvent.fixture_id)
@@ -292,19 +293,20 @@ class EnrichmentRepository:
                 dribbles_won=int(row[10]),
                 passes_key=int(row[11]),
                 passes_total=int(row[12]),
-                passes_accuracy=int(row[13]),
-                shots_on=int(row[14]),
-                shots_total=int(row[15]),
-                dribbles_past=int(row[16]),
-                duels_total=int(row[17]),
-                fouls_drawn=int(row[18]),
-                fouls_committed=int(row[19]),
-                cards_yellow=int(row[20]),
-                cards_red=int(row[21]),
-                penalty_won=int(row[22]),
-                goals=int(row[23]),
-                assists=int(row[24]),
-                rating=float(row[25]) if row[25] is not None else None,
+                passes_completed=int(row[13]),
+                passes_accuracy=int(row[14]),
+                shots_on=int(row[15]),
+                shots_total=int(row[16]),
+                dribbles_past=int(row[17]),
+                duels_total=int(row[18]),
+                fouls_drawn=int(row[19]),
+                fouls_committed=int(row[20]),
+                cards_yellow=int(row[21]),
+                cards_red=int(row[22]),
+                penalty_won=int(row[23]),
+                goals=int(row[24]),
+                assists=int(row[25]),
+                rating=float(row[26]) if row[26] is not None else None,
             )
             for row in result.fetchall()
         ]

@@ -65,6 +65,7 @@ class BackfillFixtureStatsUseCase:
                         "shots_total": ps.shots_total,
                         "passes_key": ps.passes_key,
                         "passes_total": ps.passes_total,
+                        "passes_completed": ps.passes_completed,
                         "passes_accuracy": ps.passes_accuracy,
                         "dribbles_won": ps.dribbles_success,
                         "dribbles_attempts": ps.dribbles_attempts,

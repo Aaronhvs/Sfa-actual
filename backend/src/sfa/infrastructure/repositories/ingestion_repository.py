@@ -280,6 +280,7 @@ class IngestionRepository(IngestionRepositoryPort):
             shots_total=stats.get("shots_total", 0),
             passes_key=stats.get("passes_key", 0),
             passes_total=stats.get("passes_total", 0),
+            passes_completed=stats.get("passes_completed", 0),
             passes_accuracy=stats.get("passes_accuracy", 0),
             dribbles_won=stats.get("dribbles_won", 0),
             dribbles_attempts=stats.get("dribbles_attempts", 0),
