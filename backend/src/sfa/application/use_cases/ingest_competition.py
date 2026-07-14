@@ -9,7 +9,7 @@ from sfa.domain.ingestion_ports import (
     FootballDataProviderPort,
     IngestionRepositoryPort,
 )
-from sfa.domain.name_matching import name_matches as _name_matches
+from sfa.domain.name_matching import event_matches_player as _event_matches_player
 from sfa.domain.position_mapping import KNOWN_POSITIONS, map_position
 from sfa.domain.scoring.services import (
     ScoreTimeline,
@@ -324,7 +324,12 @@ class IngestCompetitionUseCase:
                                 e for e in events
                                 if e.type == "Goal"
                                 and e.detail not in ("Own Goal",)
-                                and _name_matches(e.player_name, ps.player_name)
+                                and _event_matches_player(
+                                    e.player_external_id,
+                                    e.player_name,
+                                    ps.player_external_id,
+                                    ps.player_name,
+                                )
                                 and e.team_external_id == proc_team_ext_id
                                 and (
                                     not is_missed_penalty_event(e)
@@ -354,7 +359,12 @@ class IngestCompetitionUseCase:
                                 and e.detail not in ("Missed Penalty", "Own Goal")
                                 and not is_shootout_attempt_event(e)
                                 and e.assist_name is not None
-                                and _name_matches(e.assist_name, ps.player_name)
+                                and _event_matches_player(
+                                    e.assist_external_id,
+                                    e.assist_name,
+                                    ps.player_external_id,
+                                    ps.player_name,
+                                )
                                 and e.team_external_id == proc_team_ext_id
                             ]
                             for assist_evt in player_assists:

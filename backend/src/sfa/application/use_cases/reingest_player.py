@@ -8,7 +8,7 @@ from sfa.domain.ingestion_ports import (
     FootballDataProviderPort,
     IngestionRepositoryPort,
 )
-from sfa.domain.name_matching import name_matches
+from sfa.domain.name_matching import event_matches_player
 from sfa.domain.scoring.services import (
     ScoreTimeline,
     ShootoutDecider,
@@ -151,7 +151,12 @@ class ReingestPlayerUseCase:
                 is_goal_for_player = (
                     evt.type == "Goal"
                     and evt.detail not in ("Own Goal",)
-                    and name_matches(evt.player_name, player_name)
+                    and event_matches_player(
+                        evt.player_external_id,
+                        evt.player_name,
+                        player_external_id,
+                        player_name,
+                    )
                     and (
                         not is_missed_penalty_event(evt)
                         or is_shootout_attempt_event(evt)
@@ -162,7 +167,12 @@ class ReingestPlayerUseCase:
                     and evt.detail not in ("Missed Penalty", "Own Goal")
                     and not is_shootout_attempt_event(evt)
                     and evt.assist_name is not None
-                    and name_matches(evt.assist_name, player_name)
+                    and event_matches_player(
+                        evt.assist_external_id,
+                        evt.assist_name,
+                        player_external_id,
+                        player_name,
+                    )
                 )
 
                 if not is_goal_for_player and not is_assist_for_player:

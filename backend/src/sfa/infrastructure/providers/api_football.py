@@ -460,6 +460,8 @@ class APIFootballProvider:
         result: list[FixtureEventRawDTO] = []
         for source_sequence, e in enumerate(data.get("response", [])):
             try:
+                player_external_id = e["player"].get("id")
+                assist_external_id = e["assist"].get("id")
                 result.append(
                     FixtureEventRawDTO(
                         type=e.get("type") or "",
@@ -470,6 +472,16 @@ class APIFootballProvider:
                         minute=e["time"]["elapsed"] or 0,
                         extra_minute=e["time"]["extra"] or 0,
                         source_sequence=source_sequence,
+                        player_external_id=(
+                            player_external_id
+                            if isinstance(player_external_id, int) and player_external_id > 0
+                            else None
+                        ),
+                        assist_external_id=(
+                            assist_external_id
+                            if isinstance(assist_external_id, int) and assist_external_id > 0
+                            else None
+                        ),
                     )
                 )
             except (KeyError, TypeError) as exc:

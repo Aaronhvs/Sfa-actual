@@ -28,6 +28,28 @@ def name_matches(event_name: str | None, player_name: str) -> bool:
     return False
 
 
+def event_matches_player(
+    event_player_external_id: int | None,
+    event_name: str | None,
+    player_external_id: int | None,
+    player_name: str,
+) -> bool:
+    """Match event actor to DB player, preferring provider identity over text.
+
+    API-Football often sends abbreviated names like "L. Martinez", which can
+    refer to multiple teammates. When the provider gives an external id, use it
+    as the source of truth and avoid fuzzy fallback on mismatched ids.
+    """
+    if (
+        event_player_external_id is not None
+        and event_player_external_id > 0
+        and player_external_id is not None
+        and player_external_id > 0
+    ):
+        return event_player_external_id == player_external_id
+    return name_matches(event_name, player_name)
+
+
 def normalize(name: str) -> str:
     """NFD decomposition + strip diacritics + lowercase + remove punctuation."""
     name = unicodedata.normalize("NFD", name)

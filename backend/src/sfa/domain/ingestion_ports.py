@@ -41,6 +41,8 @@ class FixtureEventRawDTO:
     minute: int
     extra_minute: int
     source_sequence: int | None = None
+    player_external_id: int | None = None
+    assist_external_id: int | None = None
 
 
 @dataclass(frozen=True)
