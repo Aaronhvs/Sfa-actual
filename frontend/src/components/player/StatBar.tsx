@@ -84,6 +84,7 @@ export default function StatBar({ player, fixtures, seasonStats }: Props) {
         value: fmt(passesCompleted),
         sub: s.passes_accuracy_avg > 0 ? `${Math.round(s.passes_accuracy_avg)}% prec.` : undefined,
       },
+      { label: 'Oport. creadas', value: fmt(s.passes_key) },
       { label: 'Disparos', value: fmt(s.shots_total) },
       ...(s.shots_on > 0 ? [{ label: 'A puerta', value: fmt(s.shots_on) }] : []),
       ...(!isGK && goalConversion !== null ? [{
