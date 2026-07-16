@@ -83,8 +83,9 @@ export default function RankingPage() {
   const wcSeason = seasonItems.find((item) => item.is_world_cup)?.season
   const pageSize = PAGE_SIZE
   const isMainRankingView = !position && !bonusFilter && !competition && !debouncedSearch
-  const rankingLimit = isMainRankingView && page === 0 ? PAGE_SIZE + HERO_RANKING_OFFSET : PAGE_SIZE
-  const rankingOffset = isMainRankingView && page > 0
+  const usesHeroRankingLayout = !debouncedSearch
+  const rankingLimit = usesHeroRankingLayout && page === 0 ? PAGE_SIZE + HERO_RANKING_OFFSET : PAGE_SIZE
+  const rankingOffset = usesHeroRankingLayout && page > 0
     ? HERO_RANKING_OFFSET + (page * PAGE_SIZE)
     : page * PAGE_SIZE
 
@@ -188,9 +189,7 @@ export default function RankingPage() {
     const shouldLoadNarratives = (
       isWcSeason
       && page === 0
-      && !debouncedSearch
-      && !position
-      && !bonusFilter
+      && isMainRankingView
       && players.length >= 3
     )
     if (!shouldLoadNarratives) {
@@ -206,12 +205,12 @@ export default function RankingPage() {
     })
       .then((data) => setRankingExplanations(data.explanations))
       .catch(() => setRankingExplanations([]))
-  }, [isWcSeason, page, debouncedSearch, position, bonusFilter, players.length, season])
+  }, [isWcSeason, page, isMainRankingView, players.length, season])
 
-  const showHero = page === 0 && isMainRankingView && players.length >= HERO_RANKING_OFFSET
+  const showHero = page === 0 && usesHeroRankingLayout && players.length >= HERO_RANKING_OFFSET
   const top3 = showHero ? players.slice(0, HERO_RANKING_OFFSET) : []
   const currentPagePlayers = showHero ? players.slice(HERO_RANKING_OFFSET) : players
-  const visibleTotalPlayers = Math.max(totalPlayers - (isMainRankingView ? HERO_RANKING_OFFSET : 0), 0)
+  const visibleTotalPlayers = Math.max(totalPlayers - (usesHeroRankingLayout ? HERO_RANKING_OFFSET : 0), 0)
   const totalPages = visibleTotalPlayers > 0 ? Math.ceil(visibleTotalPlayers / pageSize) : 0
   const hasNextPage = page + 1 < totalPages
   const hasPrevPage = page > 0
