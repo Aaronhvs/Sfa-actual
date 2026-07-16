@@ -187,7 +187,7 @@ function ActionBreakdownGrid({ fixture }: { fixture: PlayerFixture }) {
           {fixture.shots_on > 0 && <StatCard label="Al arco" value={fixture.shots_on} />}
           {fixture.passes_total > 0 && <StatCard label="Pases" value={fixture.passes_total} />}
           {fixture.passes_accurate > 0 && <StatCard label="Pases comp." value={fixture.passes_accurate} />}
-          {fixture.passes_key > 0 && <StatCard label="Pases clave" value={fixture.passes_key} />}
+          {fixture.passes_key > 0 && <StatCard label="Oport. creadas" value={fixture.passes_key} />}
           {fixture.dribbles_won > 0 && <StatCard label="Regates" value={fixture.dribbles_won} />}
           {fixture.duels_won > 0 && <StatCard label="Duelos" value={fixture.duels_won} />}
           {(fixture.tackles_won > 0 || fixture.interceptions > 0) && (

@@ -52,7 +52,7 @@ ACTION_LABELS_ES = {
     "assist": "asistencia",
     "corner_assist": "asistencia de corner",
     "stats": "estadisticas",
-    "key_pass": "pase clave",
+    "key_pass": "oportunidad creada",
 }
 COMPETITION_NAMES_ES = {
     "World Cup": "Mundial",
@@ -628,11 +628,11 @@ class RankingExplanationRepository:
                     "central: recalca aportes de gol/asistencia si aparecen, "
                     "porque son diferenciales para un defensor"
                 ),
-                "LAT": "lateral: valora ida y vuelta, pases clave, asistencias, duelos y acciones defensivas",
+                "LAT": "lateral: valora ida y vuelta, oportunidades creadas, asistencias, duelos y acciones defensivas",
                 "GK": "arquero: prioriza atajadas, goles evitados, seguridad y contexto defensivo",
-                "MC": "mediocampista: valora control, precision de pase, duelos, pases clave y ritmo del partido",
+                "MC": "mediocampista: valora control, precision de pase, duelos, oportunidades creadas y ritmo del partido",
                 "MCO": (
-                    "mediapunta: valora creatividad, pases clave, asistencias "
+                    "mediapunta: valora creatividad, oportunidades creadas, asistencias "
                     "y llegada al area"
                 ),
                 "EXT": "extremo: valora regates, goles, asistencias, tiros a puerta y desequilibrio",

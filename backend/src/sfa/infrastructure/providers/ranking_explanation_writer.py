@@ -226,7 +226,7 @@ class OpenAICompatibleRankingExplanationWriter:
             "muestre una comparacion concreta de puntos por partido contra otro jugador. "
             "Constancia primero: el puesto se sostiene por el rendimiento a lo largo del torneo. La "
             "mejor escena es un ancla, no toda la historia. Para DEL y EXT mira goles, asistencias, "
-            "regularidad y momentos. Para MCO mira creacion, pases clave, asistencias y participacion "
+            "regularidad y momentos. Para MCO mira creacion, oportunidades creadas, asistencias y participacion "
             "en goles. Para MC mira control, volumen y precision de pase, recuperaciones, duelos y "
             "rating; no menciones presion porque no existe esa metrica. Para LAT mira proyeccion "
             "ofensiva y solidez; si rindio ante rivales fuertes, ese es el gancho. Para DC, si esta "

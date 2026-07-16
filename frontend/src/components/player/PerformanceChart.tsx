@@ -51,7 +51,7 @@ const ACTION_LABELS: Record<string, [string, string]> = {
   missed_shootout_decisive: ['penal decisivo fallado', 'penales decisivos fallados'],
   assist: ['asistencia', 'asistencias'],
   corner_assist: ['asistencia de córner', 'asistencias de córner'],
-  key_pass: ['pase clave', 'pases clave'],
+  key_pass: ['oportunidad creada', 'oportunidades creadas'],
   shots_on: ['disparo a puerta', 'disparos a puerta'],
   dribbles_won: ['regate ganado', 'regates ganados'],
   duels_won: ['duelo ganado', 'duelos ganados'],

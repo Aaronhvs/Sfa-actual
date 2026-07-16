@@ -318,7 +318,7 @@ export default function PointsBreakdown({ player, events, fixtures, seasonStats 
 
       if (seasonStats.passes_key > 0)
         stats.push(statTile(
-          'passes_key', 'Pases clave',
+          'passes_key', 'Oportunidades creadas',
           String(seasonStats.passes_key),
           Math.min(1, seasonStats.passes_key / 80),
         ))
