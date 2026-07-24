@@ -238,7 +238,8 @@ async def test_third_place_loser_gets_fourth_place_phase():
     assert phases["third_place"] == 2
     assert phases["fourth_place"] == 4
     assert all(a.phase != "semi_final" for a in repo.upserted)
-    assert next(a for a in repo.upserted if a.phase == "fourth_place").bonus_points == 4000
+    assert next(a for a in repo.upserted if a.phase == "third_place").bonus_points == 5000
+    assert next(a for a in repo.upserted if a.phase == "fourth_place").bonus_points == 5000
 
 
 @pytest.mark.anyio

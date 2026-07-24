@@ -492,7 +492,7 @@ _DEFAULT_COMPETITION_BONUS_WEIGHTS: dict[str, float] = {
 _DEFAULT_ACHIEVEMENT_PHASE_BONUSES: dict[str, dict[str, int]] = {
     "world_cup": {
         "round_of_32": 500, "round_of_16": 1200, "quarter_final": 2500,
-        "semi_final": 4000, "fourth_place": 4000,
+        "semi_final": 4000, "fourth_place": 5000,
         "third_place": 5000, "runner_up": 6000, "winner": 9000,
     },
     "champions_league": {

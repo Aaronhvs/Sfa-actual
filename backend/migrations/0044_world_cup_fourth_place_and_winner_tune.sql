@@ -3,7 +3,7 @@ SET config_json = jsonb_set(
   jsonb_set(
     config_json,
     '{achievement_phase_bonuses,world_cup,fourth_place}',
-    '4000'::jsonb,
+    '5000'::jsonb,
     true
   ),
   '{achievement_phase_bonuses,world_cup,winner}',
