@@ -35,18 +35,35 @@ def _compute_rank_factor(rank_in_team: int, participation_ratio: float) -> float
     return 0.85
 
 
+def _compute_effective_participation(participation_ratio: float) -> float:
+    """Smooth phase-bonus participation for relevant tournament contributors.
+
+    Raw minutes are still stored as participation_ratio, but knockout/phase
+    achievements should represent the player's role in the full team journey.
+    Below 20% we keep the raw ratio to avoid over-rewarding fringe minutes.
+    From 20% upward, use a softer curve so important players are not punished
+    too heavily for substitutions, injuries, or one low-minute match.
+    """
+    ratio = max(0.0, min(1.0, participation_ratio))
+    if ratio < 0.20:
+        return ratio
+    return min(1.0, 0.65 + (ratio * 0.35))
+
+
 def _compute_rating_factor(avg_rating: float | None) -> float:
     if avg_rating is None:
         return 1.00
     if avg_rating >= 8.0:
-        return 1.20
+        return 1.15
     if avg_rating >= 7.5:
         return 1.10
     if avg_rating >= 7.0:
+        return 1.05
+    if avg_rating >= 6.7:
         return 1.00
-    if avg_rating >= 6.5:
-        return 0.90
-    return 0.75
+    if avg_rating >= 6.4:
+        return 0.95
+    return 0.90
 
 
 class CalculateAchievementBonusesUseCase:
@@ -179,6 +196,7 @@ class CalculateAchievementBonusesUseCase:
         config: ScoringConfig,
     ) -> tuple[float, dict]:
         participation_ratio = min(1.0, player_minutes / team_total_minutes)
+        effective_participation = _compute_effective_participation(participation_ratio)
 
         if config.enable_performance_based_achievement_bonus:
             rank_in_team = await self._achievement_repo.get_player_rank_in_team(
@@ -193,7 +211,7 @@ class CalculateAchievementBonusesUseCase:
             performance_factor = max(0.50, min(1.35, rank_factor * rating_factor))
             final_bonus = round(
                 achievement.bonus_points * achievement.weight  # type: ignore[union-attr]
-                * participation_ratio * performance_factor, 2
+                * effective_participation * performance_factor, 2
             )
             details = {
                 "phase": achievement.phase,  # type: ignore[union-attr]
@@ -202,6 +220,7 @@ class CalculateAchievementBonusesUseCase:
                 "player_minutes": player_minutes,
                 "team_total_minutes": team_total_minutes,
                 "participation_ratio": round(participation_ratio, 4),
+                "effective_participation": round(effective_participation, 4),
                 "rank_in_team": rank_in_team,
                 "rank_factor": rank_factor,
                 "avg_rating": avg_rating,
@@ -212,7 +231,7 @@ class CalculateAchievementBonusesUseCase:
         else:
             final_bonus = round(
                 achievement.bonus_points * achievement.weight  # type: ignore[union-attr]
-                * participation_ratio, 2
+                * effective_participation, 2
             )
             details = {
                 "phase": achievement.phase,  # type: ignore[union-attr]
@@ -221,6 +240,7 @@ class CalculateAchievementBonusesUseCase:
                 "player_minutes": player_minutes,
                 "team_total_minutes": team_total_minutes,
                 "participation_ratio": round(participation_ratio, 4),
+                "effective_participation": round(effective_participation, 4),
                 "final_bonus": final_bonus,
             }
 

@@ -6,6 +6,7 @@ import pytest
 
 from sfa.application.use_cases.calculate_achievement_bonuses import (
     CalculateAchievementBonusesUseCase,
+    _compute_effective_participation,
     _compute_rank_factor,
     _compute_rating_factor,
 )
@@ -325,17 +326,23 @@ def test_achievement_phase_bonuses_runner_up_removed_from_ucl():
 
 def test_performance_factor_top3_high_rating():
     assert _compute_rank_factor(2, 0.50) == 1.20
-    assert _compute_rating_factor(8.2) == 1.20
-    result = max(0.50, min(1.35, 1.20 * 1.20))
+    assert _compute_rating_factor(8.2) == 1.15
+    result = max(0.50, min(1.35, 1.20 * 1.15))
     assert result == 1.35
 
 
 def test_performance_factor_low_participation_override():
     assert _compute_rank_factor(1, 0.15) == 0.50
+    assert _compute_effective_participation(0.15) == 0.15
 
 
 def test_performance_factor_no_rating():
     assert _compute_rating_factor(None) == 1.00
+
+
+def test_effective_participation_smooths_relevant_contributors():
+    assert _compute_effective_participation(0.5681) == pytest.approx(0.848835)
+    assert _compute_effective_participation(1.0) == 1.0
 
 
 # ─── Tests: achievement bonus with performance_factor ────────────────────────
@@ -347,7 +354,7 @@ async def test_achievement_bonus_uses_performance_factor_when_enabled():
     # player_minutes=2000, team=8000, ratio=0.25
     # rank=3 → rank_factor=1.20; rating=7.8 → rating_factor=1.10
     # performance_factor = min(1.35, 1.20*1.10) = min(1.35, 1.32) = 1.32
-    # bonus = 5000 * 1.0 * 0.25 * 1.32 = 1650.0
+    # effective_participation = 0.65 + (0.25 * 0.35) = 0.7375; bonus = 5000 * 1.0 * 0.7375 * 1.32 = 4867.5
     config = ScoringConfig.default_v2()
     assert config.enable_performance_based_achievement_bonus is True
 
@@ -371,12 +378,12 @@ async def test_achievement_bonus_uses_performance_factor_when_enabled():
     result = await use_case.execute(season="2024", competition_id=1, rules_version_id=3)
     assert result.status == "completed"
     assert len(repo.upserted_bonuses) == 1
-    assert repo.upserted_bonuses[0].final_bonus == pytest.approx(1650.0)
+    assert repo.upserted_bonuses[0].final_bonus == pytest.approx(4867.5)
 
 
 @pytest.mark.anyio
 async def test_achievement_bonus_retrocompat_when_flag_disabled():
-    """With enable_performance_based_achievement_bonus=False uses original formula."""
+    """With performance disabled skips rank/rating but keeps achievement participation curve."""
     import dataclasses
     config_off = dataclasses.replace(
         ScoringConfig.default_v2(), enable_performance_based_achievement_bonus=False
@@ -397,8 +404,8 @@ async def test_achievement_bonus_retrocompat_when_flag_disabled():
         achievement_repo=repo, rules_version_repo=rules_repo
     )
     await use_case.execute(season="2024", competition_id=1, rules_version_id=3)
-    # original: 5000 * 1.0 * 0.25 = 1250.0
-    assert repo.upserted_bonuses[0].final_bonus == pytest.approx(1250.0)
+    # performance disabled: 5000 * 1.0 * 0.7375 = 3687.5
+    assert repo.upserted_bonuses[0].final_bonus == pytest.approx(3687.5)
 
 
 @pytest.mark.anyio
