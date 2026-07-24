@@ -7,6 +7,7 @@ import pytest
 from sfa.application.use_cases.calculate_achievement_bonuses import (
     CalculateAchievementBonusesUseCase,
     _compute_effective_participation,
+    _compute_performance_factor,
     _compute_rank_factor,
     _compute_rating_factor,
 )
@@ -327,8 +328,7 @@ def test_achievement_phase_bonuses_runner_up_removed_from_ucl():
 def test_performance_factor_top3_high_rating():
     assert _compute_rank_factor(2, 0.50) == 1.20
     assert _compute_rating_factor(8.2) == 1.15
-    result = max(0.50, min(1.35, 1.20 * 1.15))
-    assert result == 1.35
+    assert _compute_performance_factor(1.20, 1.15) == 1.05
 
 
 def test_performance_factor_low_participation_override():
@@ -378,7 +378,7 @@ async def test_achievement_bonus_uses_performance_factor_when_enabled():
     result = await use_case.execute(season="2024", competition_id=1, rules_version_id=3)
     assert result.status == "completed"
     assert len(repo.upserted_bonuses) == 1
-    assert repo.upserted_bonuses[0].final_bonus == pytest.approx(4867.5)
+    assert repo.upserted_bonuses[0].final_bonus == pytest.approx(3871.88)
 
 
 @pytest.mark.anyio

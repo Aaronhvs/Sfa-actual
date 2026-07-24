@@ -66,6 +66,10 @@ def _compute_rating_factor(avg_rating: float | None) -> float:
     return 0.90
 
 
+def _compute_performance_factor(rank_factor: float, rating_factor: float) -> float:
+    return max(0.50, min(1.05, rank_factor * rating_factor))
+
+
 class CalculateAchievementBonusesUseCase:
     def __init__(
         self,
@@ -208,7 +212,7 @@ class CalculateAchievementBonusesUseCase:
             )
             rank_factor = _compute_rank_factor(rank_in_team, participation_ratio)
             rating_factor = _compute_rating_factor(avg_rating)
-            performance_factor = max(0.50, min(1.35, rank_factor * rating_factor))
+            performance_factor = _compute_performance_factor(rank_factor, rating_factor)
             final_bonus = round(
                 achievement.bonus_points * achievement.weight  # type: ignore[union-attr]
                 * effective_participation * performance_factor, 2
