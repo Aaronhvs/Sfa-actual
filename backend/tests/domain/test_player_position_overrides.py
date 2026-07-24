@@ -33,3 +33,47 @@ def test_kimmich_is_lateral_only_for_germany_world_cup_context() -> None:
         )
         == "MC"
     )
+
+
+def test_olise_is_mco_only_for_france_world_cup_context() -> None:
+    assert (
+        position_for_context(
+            "EXT",
+            player_name="Michael Olise",
+            team_name="France",
+            competition_id=350,
+        )
+        == "MCO"
+    )
+
+    assert (
+        position_for_context(
+            "EXT",
+            player_name="Michael Olise",
+            team_name="Bayern München",
+            competition_id=78,
+        )
+        == "EXT"
+    )
+
+
+def test_alex_baena_is_extremo_only_for_spain_world_cup_context() -> None:
+    assert (
+        position_for_context(
+            "MC",
+            player_name="Álex Baena",
+            team_name="Spain",
+            competition_id=350,
+        )
+        == "EXT"
+    )
+
+    assert (
+        position_for_context(
+            "MC",
+            player_name="Álex Baena",
+            team_name="Atletico Madrid",
+            competition_id=140,
+        )
+        == "MC"
+    )
