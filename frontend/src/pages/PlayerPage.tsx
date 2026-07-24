@@ -85,9 +85,7 @@ export default function PlayerPage() {
         const initialSeason = seasonFromUrl || p.available_seasons?.[0] || ''
         initialSeasonRef.current = initialSeason
         setSeason(initialSeason)
-        const statsRequest = initialSeason === 'all'
-          ? Promise.resolve(null)
-          : fetchPlayerSeasonStats(playerId, initialSeason)
+        const statsRequest = fetchPlayerSeasonStats(playerId, initialSeason)
         return Promise.all([
           fetchPlayerEvents(playerId, initialSeason || undefined),
           fetchPlayerFixtures(playerId, initialSeason || undefined),
@@ -133,9 +131,7 @@ export default function PlayerPage() {
     const playerId = Number(id)
     setSeasonChanging(true)
     setError(null)
-    const statsRequest = season === 'all'
-      ? Promise.resolve(null)
-      : fetchPlayerSeasonStats(playerId, season)
+    const statsRequest = fetchPlayerSeasonStats(playerId, season)
     Promise.all([
       fetchPlayer(playerId, season),
       fetchPlayerEvents(playerId, season),
