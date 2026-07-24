@@ -28,6 +28,7 @@ const STAGE_LABELS: Record<string, string> = {
   'semi-finals': 'Semifinales',
   semi_final: 'Semifinal',
   semifinals: 'Semifinales',
+  fourth_place: 'Cuarto puesto',
   winner: 'Campeón',
   champion: 'Campeón',
   runner_up: 'Subcampeón',
@@ -36,6 +37,7 @@ const STAGE_LABELS: Record<string, string> = {
 const PHASE_BADGES: Record<string, string> = {
   runner_up: '2',
   final: 'F',
+  fourth_place: '4º',
   semi_final: '4',
   semifinal: '4',
   quarter_final: '8',

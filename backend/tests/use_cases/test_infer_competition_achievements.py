@@ -217,6 +217,31 @@ async def test_semi_final_eliminated_teams_get_semi_final_phase():
 
 
 @pytest.mark.anyio
+async def test_third_place_loser_gets_fourth_place_phase():
+    fixtures = [
+        KnockoutFixtureDTO(fixture_id=10, stage="semi", home_team_id=1, away_team_id=2),
+        KnockoutFixtureDTO(fixture_id=11, stage="semi", home_team_id=3, away_team_id=4),
+        KnockoutFixtureDTO(fixture_id=20, stage="final", home_team_id=1, away_team_id=3),
+        KnockoutFixtureDTO(fixture_id=30, stage="third_place", home_team_id=2, away_team_id=4),
+    ]
+    goals = {
+        20: {1: 2, 3: 0},
+        30: {2: 1, 4: 0},
+    }
+    uc, repo = _make_use_case(fixtures=fixtures, goals=goals, competition_name="World Cup")
+    result = await uc.execute(competition_id=350, season="2026", rules_version_id=3)
+
+    assert result.skipped is False
+    phases = {a.phase: a.team_id for a in repo.upserted}
+    assert phases["winner"] == 1
+    assert phases["runner_up"] == 3
+    assert phases["third_place"] == 2
+    assert phases["fourth_place"] == 4
+    assert all(a.phase != "semi_final" for a in repo.upserted)
+    assert next(a for a in repo.upserted if a.phase == "fourth_place").bonus_points == 4000
+
+
+@pytest.mark.anyio
 async def test_full_tournament_all_phases_assigned():
     # round_of_16: 8 fixtures (16 teams, teams 1-16)
     # quarter: 4 fixtures (teams 1,3,5,7,9,11,13,15 advanced)

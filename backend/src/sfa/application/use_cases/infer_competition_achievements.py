@@ -187,10 +187,11 @@ class InferCompetitionAchievementsUseCase:
 
         if "third_place" in teams_at_stage:
             for fx in [fx for fx in fixtures if fx.stage == "third_place"]:
-                winner_id, _ = await self._resolve_fixture_winner(fx)
-                if winner_id is not None:
+                winner_id, fourth_place_id = await self._resolve_fixture_winner(fx)
+                if winner_id is not None and fourth_place_id is not None:
                     phase_teams.setdefault("third_place", set()).add(winner_id)
-                    terminal_phase_team_ids.add(winner_id)
+                    phase_teams.setdefault("fourth_place", set()).add(fourth_place_id)
+                    terminal_phase_team_ids.update({winner_id, fourth_place_id})
 
         for team_id, reached_order in team_reached_order.items():
             if team_id in terminal_phase_team_ids:

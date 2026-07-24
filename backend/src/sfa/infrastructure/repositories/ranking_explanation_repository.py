@@ -41,6 +41,7 @@ STAGE_LABELS_ES = {
     "round_of_16": "octavos",
     "quarter_final": "cuartos de final",
     "semi_final": "semifinal",
+    "fourth_place": "cuarto puesto",
     "third_place": "tercer puesto",
     "final": "final",
 }
