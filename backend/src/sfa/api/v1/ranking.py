@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from sfa.api.v1.schemas.ranking import (
     RankedPlayerSchema,
@@ -9,6 +9,7 @@ from sfa.api.v1.schemas.ranking import (
 )
 from sfa.application.use_cases.get_ranking import GetRankingUseCase
 from sfa.core.dependencies import get_ranking_use_case
+from sfa.domain.season_scope import InconsistentScopeRulesVersionError, ScopeNotFoundError
 
 router = APIRouter()
 
@@ -17,11 +18,16 @@ router = APIRouter()
 async def get_ranking(
     use_case: Annotated[GetRankingUseCase, Depends(get_ranking_use_case)],
     season: str | None = Query(default=None, description="Temporada, ej: 2024-25"),
+    scope: str | None = Query(default=None, description="Scope canonico, ej: season-2025"),
     position: str | None = Query(default=None, description="Posicion: DEL, EXT, MC, DC, LAT, GK"),
     competition_id: int | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=10, ge=1, le=50),
-    offset: int | None = Query(default=None, ge=0, description="Offset absoluto opcional para vistas con podio separado."),
+    offset: int | None = Query(
+        default=None,
+        ge=0,
+        description="Offset absoluto opcional para vistas con podio separado.",
+    ),
     name: str | None = Query(default=None, description="Busqueda por nombre de jugador o equipo"),
     bonus_label: str | None = Query(
         default=None, description="Filtro de perfil: Promesa, Veterano, Goleador o Asistidor",
@@ -35,20 +41,29 @@ async def get_ranking(
         description="Si true, ordena por sfa_total_pts (total_pts + achievement_bonus_pts).",
     ),
 ):
-    result = await use_case.execute(
-        season=season,
-        position=position,
-        competition_id=competition_id,
-        limit=limit,
-        page=page,
-        offset=offset,
-        name=name,
-        bonus_label=bonus_label,
-        rules_version_id=rules_version_id,
-        use_total=use_total,
-    )
+    if season is not None and scope is not None:
+        raise HTTPException(status_code=422, detail="scope and season are mutually exclusive")
+    try:
+        result = await use_case.execute(
+            season=season,
+            scope=scope,
+            position=position,
+            competition_id=competition_id,
+            limit=limit,
+            page=page,
+            offset=offset,
+            name=name,
+            bonus_label=bonus_label,
+            rules_version_id=rules_version_id,
+            use_total=use_total,
+        )
+    except ScopeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InconsistentScopeRulesVersionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return RankingResponseSchema(
         season=result.season,
+        scope=result.scope,
         total=result.total,
         pagination=RankingPaginationSchema(
             page=result.pagination.page,

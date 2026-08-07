@@ -49,7 +49,7 @@ function buildRankingParams({
   page: number
 }) {
   const params = new URLSearchParams()
-  if (season) params.set('season', season)
+  if (season) params.set('scope', season)
   if (position) params.set('position', position)
   if (bonusFilter) params.set('bonus_label', bonusFilter)
   if (competition) params.set('competition_id', String(competition))
@@ -61,7 +61,7 @@ function buildRankingParams({
 export default function RankingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
-  const [season, setSeason] = useState<string>(searchParams.get('season') ?? '')
+  const [season, setSeason] = useState<string>(searchParams.get('scope') ?? '')
   const [position, setPosition] = useState(searchParams.get('position') ?? '')
   const [bonusFilter, setBonusFilter] = useState(searchParams.get('bonus_label') ?? '')
   const [competition, setCompetition] = useState<number | undefined>(numberParam(searchParams.get('competition_id')))
@@ -80,7 +80,8 @@ export default function RankingPage() {
   const didMountFiltersRef = useRef(false)
   const isWcSeason = isWorldCupSeason(season, seasonItems)
   const showWcBanner = isSeasonReceivingWcPoints(season, seasonItems)
-  const wcSeason = seasonItems.find((item) => item.is_world_cup)?.season
+  const wcSeason = seasonItems.find((item) => item.is_world_cup)?.key
+  const selectedSeasonItem = seasonItems.find((item) => item.key === season)
   const pageSize = PAGE_SIZE
   const isMainRankingView = !position && !bonusFilter && !competition && !debouncedSearch
   const usesHeroRankingLayout = !debouncedSearch
@@ -93,13 +94,21 @@ export default function RankingPage() {
     fetchSeasons()
       .then((data) => {
         setSeasonItems(data.seasons)
-        const fromUrl = searchParams.get('season')
+        const fromUrl = searchParams.get('scope')
+        const legacySeason = searchParams.get('season')
         if (!fromUrl) {
-          const fallback = data.seasons.find((item) => item.is_latest)?.season
-            ?? data.seasons[0]?.season
+          const legacyItem = legacySeason
+            ? data.seasons.find((item) => (
+              item.season === legacySeason
+              && (legacySeason !== '2026' || item.kind === 'tournament')
+            ))
+            : undefined
+          const fallback = legacyItem?.key
+            ?? data.seasons.find((item) => item.is_latest)?.key
+            ?? data.seasons[0]?.key
           if (fallback) {
             setSeason(fallback)
-            setSearchParams({ season: fallback }, { replace: true })
+            setSearchParams({ scope: fallback }, { replace: true })
           }
         }
       })
@@ -165,7 +174,7 @@ export default function RankingPage() {
     setError(null)
 
     fetchRanking({
-      season,
+      scope: season,
       position: position || undefined,
       competition_id: competition,
       page: page + 1,
@@ -197,7 +206,7 @@ export default function RankingPage() {
       return
     }
     fetchRankingExplanations({
-      season,
+      season: selectedSeasonItem?.season ?? '2026',
       competition_id: WORLD_CUP_COMPETITION_ID,
       scope: 'world_cup',
       limit: HERO_RANKING_OFFSET,
@@ -205,7 +214,7 @@ export default function RankingPage() {
     })
       .then((data) => setRankingExplanations(data.explanations))
       .catch(() => setRankingExplanations([]))
-  }, [isWcSeason, page, isMainRankingView, players.length, season])
+  }, [isWcSeason, page, isMainRankingView, players.length, selectedSeasonItem?.season])
 
   const showHero = page === 0 && usesHeroRankingLayout && players.length >= HERO_RANKING_OFFSET
   const top3 = showHero ? players.slice(0, HERO_RANKING_OFFSET) : []
@@ -363,7 +372,7 @@ export default function RankingPage() {
           <WorldCupBanner
             onViewWorldCup={wcSeason ? () => {
               setSeason(wcSeason)
-              setSearchParams({ season: wcSeason }, { replace: true })
+              setSearchParams({ scope: wcSeason }, { replace: true })
             } : undefined}
           />
         </div>
@@ -414,7 +423,7 @@ export default function RankingPage() {
                     detail={null}
                     isFirst={index === 0}
                     podiumPlace={index + 1}
-                    season={season}
+                    scope={season}
                     isWorldCup={isWcSeason}
                     returnTo={rankingReturnTo}
                   />
@@ -534,7 +543,7 @@ export default function RankingPage() {
                       player={p}
                       index={i}
                       competitionName={activeComp?.name}
-                      season={season}
+                      scope={season}
                       isWorldCup={isWcSeason}
                       returnTo={rankingReturnTo}
                     />

@@ -32,6 +32,7 @@ export default function PlayerPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const seasonFromUrl = searchParams.get('season') ?? ''
+  const scopeFromUrl = searchParams.get('scope') ?? ''
 
   useEffect(() => { window.scrollTo(0, 0) }, [id])
 
@@ -48,13 +49,12 @@ export default function PlayerPage() {
   const [error, setError] = useState<string | null>(null)
   const initialSeasonRef = useRef('')
   const isWcSeason = isWorldCupSeason(season, seasonItems)
-  const explanationScope = isWcSeason ? 'world_cup' : 'ranking'
+  const explanationScope = isWcSeason ? 'world_cup' : 'award_period'
   const explanationCompetitionId = isWcSeason ? 350 : undefined
-  const isExplanationWorldCup = (value: string) => isWorldCupSeason(value, seasonItems) || value === '2026'
-  const playerSeasonItems: SeasonItem[] = (player?.available_seasons ?? []).map((item) => {
-    const metadata = seasonItems.find((seasonItem) => seasonItem.season === item)
-    return metadata ?? { season: item, is_latest: false }
-  })
+  const selectedSeasonItem = seasonItems.find((item) => item.key === season)
+  const playerSeasonItems: SeasonItem[] = seasonItems.filter((item) => (
+    (player?.available_scopes ?? []).includes(item.key)
+  ))
 
   function goBackToRanking() {
     const returnTo = safeRankingReturnTo(searchParams.get('returnTo'))
@@ -63,8 +63,8 @@ export default function PlayerPage() {
       return
     }
 
-    const targetSeason = season || seasonFromUrl
-    navigate(targetSeason ? `/ranking?season=${targetSeason}` : '/ranking')
+    const targetScope = season || scopeFromUrl
+    navigate(targetScope ? `/ranking?scope=${targetScope}` : '/ranking')
   }
 
   useEffect(() => {
@@ -79,23 +79,30 @@ export default function PlayerPage() {
     const playerId = Number(id)
     setLoading(true)
     setError(null)
-    fetchPlayer(playerId, seasonFromUrl || undefined)
+    fetchPlayer(
+      playerId,
+      scopeFromUrl ? undefined : seasonFromUrl || undefined,
+      scopeFromUrl || undefined,
+    )
       .then((p) => {
         setPlayer(p)
-        const initialSeason = seasonFromUrl || p.available_seasons?.[0] || ''
+        const initialSeason = scopeFromUrl || p.scope || seasonFromUrl || p.available_scopes?.[0] || ''
         initialSeasonRef.current = initialSeason
         setSeason(initialSeason)
-        const statsRequest = fetchPlayerSeasonStats(playerId, initialSeason)
+        const isAll = initialSeason === 'all'
+        const requestScope = isAll ? undefined : initialSeason
+        const requestSeason = isAll ? 'all' : undefined
+        const statsRequest = fetchPlayerSeasonStats(playerId, requestSeason, requestScope)
         return Promise.all([
-          fetchPlayerEvents(playerId, initialSeason || undefined),
-          fetchPlayerFixtures(playerId, initialSeason || undefined),
+          fetchPlayerEvents(playerId, requestSeason, requestScope),
+          fetchPlayerFixtures(playerId, requestSeason, requestScope),
           statsRequest,
-          fetchPlayerAchievements(playerId, initialSeason),
+          fetchPlayerAchievements(playerId, requestSeason, requestScope),
           fetchPlayerExplanation({
             player_id: playerId,
-            season: initialSeason,
-            competition_id: isExplanationWorldCup(initialSeason) ? 350 : undefined,
-            scope: isExplanationWorldCup(initialSeason) ? 'world_cup' : 'ranking',
+            season: p.season,
+            competition_id: p.scope?.startsWith('world-cup-') ? 350 : undefined,
+            scope: p.scope?.startsWith('world-cup-') ? 'world_cup' : 'award_period',
           }),
         ])
       })
@@ -108,7 +115,7 @@ export default function PlayerPage() {
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
       .finally(() => setLoading(false))
-  }, [id, seasonFromUrl])
+  }, [id, seasonFromUrl, scopeFromUrl])
 
   useEffect(() => {
     if (isWcSeason) {
@@ -131,16 +138,19 @@ export default function PlayerPage() {
     const playerId = Number(id)
     setSeasonChanging(true)
     setError(null)
-    const statsRequest = fetchPlayerSeasonStats(playerId, season)
+    const isAll = season === 'all'
+    const requestScope = isAll ? undefined : season
+    const requestSeason = isAll ? 'all' : undefined
+    const statsRequest = fetchPlayerSeasonStats(playerId, requestSeason, requestScope)
     Promise.all([
-      fetchPlayer(playerId, season),
-      fetchPlayerEvents(playerId, season),
-      fetchPlayerFixtures(playerId, season),
+      fetchPlayer(playerId, requestSeason, requestScope),
+      fetchPlayerEvents(playerId, requestSeason, requestScope),
+      fetchPlayerFixtures(playerId, requestSeason, requestScope),
       statsRequest,
-      fetchPlayerAchievements(playerId, season),
+      fetchPlayerAchievements(playerId, requestSeason, requestScope),
       fetchPlayerExplanation({
         player_id: playerId,
-        season,
+        season: selectedSeasonItem?.season ?? player.season,
         competition_id: explanationCompetitionId,
         scope: explanationScope,
       }),
@@ -203,13 +213,16 @@ export default function PlayerPage() {
 
       <PlayerHeader player={player} isWorldCup={isWcSeason} />
 
-      {player.available_seasons && player.available_seasons.length > 1 && (
+      {playerSeasonItems.length > 1 && (
         <div className="pp-season-bar">
           <span className="pp-season-bar__label">Temporada</span>
           <SeasonDropdown
             items={playerSeasonItems}
             value={season}
-            onChange={setSeason}
+            onChange={(value) => {
+              setSeason(value)
+              navigate(`/player/${id}?${value === 'all' ? 'season=all' : `scope=${value}`}`, { replace: true })
+            }}
             includeAll={true}
           />
         </div>

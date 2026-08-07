@@ -16,7 +16,15 @@ async def get_seasons(
     result = await use_case.execute()
     return SeasonsResponseSchema(
         seasons=[
-            SeasonSchema(season=season.season, is_latest=season.is_latest, is_world_cup=season.is_world_cup)
+            SeasonSchema(
+                season=season.season,
+                is_latest=season.is_latest,
+                is_world_cup=season.is_world_cup,
+                key=season.key or f"season-{season.season}",
+                label=season.label or season.season,
+                kind=season.kind,
+                includes_world_cup=season.includes_world_cup,
+            )
             for season in result.seasons
         ]
     )

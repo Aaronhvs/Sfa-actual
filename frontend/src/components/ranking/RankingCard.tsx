@@ -7,7 +7,7 @@ interface Props {
   player: RankedPlayer
   index?: number
   competitionName?: string
-  season?: string
+  scope?: string
   isWorldCup?: boolean
   returnTo?: string
 }
@@ -35,13 +35,13 @@ export default function RankingCard({
   player,
   index = 0,
   competitionName,
-  season,
+  scope,
   isWorldCup = false,
   returnTo,
 }: Props) {
   const animatedRank = useCountUp(player.rank, 620)
   const playerParams = new URLSearchParams()
-  if (season) playerParams.set('season', season)
+  if (scope) playerParams.set('scope', scope)
   if (returnTo) playerParams.set('returnTo', returnTo)
   const playerQuery = playerParams.toString()
   const playerLink = `/player/${player.id}${playerQuery ? `?${playerQuery}` : ''}`

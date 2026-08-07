@@ -135,8 +135,8 @@ class TestM1RivalDifficultyV2:
         m1 = M1RivalDifficulty(
             player_team_strength=10.0, rival_team_strength=90.0, config=config
         )
-        # 1.0 + (90 - 10) / 100 = 1.8, clamp [0.6, 1.8] → 1.8
-        assert m1.value == pytest.approx(1.8)
+        # 1.0 + (90 - 10) / 200 = 1.4
+        assert m1.value == pytest.approx(1.4)
 
     def test_clamp_min_0_6_with_v2_config(self):
         config = ScoringConfig.default_v2()
@@ -151,8 +151,8 @@ class TestM1RivalDifficultyV2:
         m1 = M1RivalDifficulty(
             player_team_strength=0.0, rival_team_strength=100.0, config=config
         )
-        # 1.0 + 100/100 = 2.0 → clamped to 1.8
-        assert m1.value == pytest.approx(1.8)
+        # 1.0 + 100/200 = 1.5
+        assert m1.value == pytest.approx(1.5)
 
     def test_no_data_returns_neutral(self):
         m1 = M1RivalDifficulty()

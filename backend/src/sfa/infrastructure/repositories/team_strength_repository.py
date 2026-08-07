@@ -25,6 +25,15 @@ from sfa.infrastructure.models.teams.models import Team
 
 logger = logging.getLogger(__name__)
 
+ELO_SOURCES = (
+    "clubelo_seed",
+    "elo_v1",
+    "club_elo_v2",
+    "national_elo_seed",
+    "national_elo_v1",
+)
+ELO_FINAL_FIXTURE_STATUSES = ("FT", "AET", "PEN")
+
 
 class TeamStrengthRepository(TeamStrengthRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
@@ -63,6 +72,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
             .on_conflict_do_update(
                 constraint="uq_team_strength",
                 set_={"strength": strength, "source": source, "elo_raw": None},
+                where=TeamStrength.source.not_in(ELO_SOURCES),
             )
         )
         await self._session.execute(stmt)
@@ -243,6 +253,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
             .where(
                 Fixture.competition_id.in_(competition_ids),
                 Fixture.season == season,
+                Fixture.status.in_(ELO_FINAL_FIXTURE_STATUSES),
             )
             .group_by(
                 Fixture.id,
@@ -309,6 +320,22 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
         )
         result = await self._session.execute(stmt)
         return [row[0] for row in result.all()]
+
+    async def get_competition_ids_for_participant_kind(
+        self, season: str, participant_kind: str
+    ) -> list[int]:
+        stmt = (
+            select(Fixture.competition_id)
+            .join(Competition, Competition.id == Fixture.competition_id)
+            .where(
+                Fixture.season == season,
+                Competition.participant_kind == participant_kind,
+            )
+            .distinct()
+            .order_by(Fixture.competition_id.asc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
 
     async def get_competition_id_by_name(self, name: str) -> int | None:
         stmt = (

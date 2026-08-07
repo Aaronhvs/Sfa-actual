@@ -66,6 +66,9 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
     async def get_active_competition_ids_for_team(self, team_id, season):
         return self.active_competitions.get(team_id, [1])
 
+    async def get_competition_ids_for_participant_kind(self, season, participant_kind):
+        return [1]
+
     async def get_competition_id_by_name(self, name):
         return None
 
@@ -238,3 +241,28 @@ async def test_strict_seed_baseline_fails_when_fixture_team_has_no_seed():
     assert result.status == "failed"
     assert result.error == "Missing ELO seed baseline for team_ids: 20"
     assert repo.upserted_elos == []
+
+
+@pytest.mark.anyio
+async def test_club_replay_initializes_and_persists_missing_seed_baseline():
+    repo = FakeTeamStrengthRepository(
+        fixtures=[
+            _fixture(1, 10, 20, 1, 0, datetime(2025, 8, 15, tzinfo=timezone.utc))
+        ],
+    )
+    use_case = CalculateEloRatingsUseCase(repo, EloCalculatorService())
+
+    result = await use_case.execute(
+        "2025",
+        [1],
+        {},
+        30.0,
+        source="club_elo_v2",
+        use_seed_baseline=True,
+        require_seed_baseline=True,
+        initialize_missing_seed_baseline=True,
+    )
+
+    assert result.status == "completed"
+    assert {row["elo_seed_raw"] for row in repo.upserted_elos} == {ELO_DEFAULT}
+    assert {row["source"] for row in repo.upserted_elos} == {"club_elo_v2"}

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PlayerDetail, PlayerEvent, PlayerFixture, RankedPlayer } from '../types'
-import { fetchPlayer, fetchPlayerEvents, fetchPlayerFixtures, fetchRanking } from '../api/client'
+import { fetchPlayer, fetchPlayerEvents, fetchPlayerFixtures, fetchRanking, fetchSeasons } from '../api/client'
 
-const SEASON = '2024'
 const SEARCH_DEBOUNCE_MS = 300
 const COMPARE_ENABLED = false
 
@@ -168,9 +167,10 @@ interface PickerProps {
   onSelect: (p: RankedPlayer) => void
   onClear: () => void
   excludeId?: number
+  scope: string
 }
 
-function PlayerPicker({ label, selected, onSelect, onClear, excludeId }: PickerProps) {
+function PlayerPicker({ label, selected, onSelect, onClear, excludeId, scope }: PickerProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<RankedPlayer[]>([])
   const [searching, setSearching] = useState(false)
@@ -181,13 +181,13 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeId }: PickerP
     if (!query || query.length < 2) { setResults([]); return }
     setSearching(true)
     timerRef.current = setTimeout(() => {
-      fetchRanking({ season: SEASON, name: query, limit: 8 })
+      fetchRanking({ scope, name: query, limit: 8 })
         .then(d => setResults(d.ranking.filter(p => p.id !== excludeId)))
         .catch(() => setResults([]))
         .finally(() => setSearching(false))
     }, SEARCH_DEBOUNCE_MS)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [query, excludeId])
+  }, [query, excludeId, scope])
 
   if (selected) {
     return (
@@ -779,6 +779,8 @@ interface PlayerData {
 }
 
 export default function ComparePage() {
+  const [scope, setScope] = useState('')
+  const [scopeLabel, setScopeLabel] = useState('Actual')
   const [selectedA, setSelectedA] = useState<RankedPlayer | null>(null)
   const [selectedB, setSelectedB] = useState<RankedPlayer | null>(null)
   const [dataA, setDataA] = useState<PlayerData | null>(null)
@@ -787,7 +789,17 @@ export default function ComparePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!selectedA || !selectedB) {
+    fetchSeasons().then(({ seasons }) => {
+      const latest = seasons.find((item) => item.is_latest)
+      if (latest) {
+        setScope(latest.key)
+        setScopeLabel(latest.label)
+      }
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!selectedA || !selectedB || !scope) {
       setDataA(null)
       setDataB(null)
       return
@@ -795,12 +807,12 @@ export default function ComparePage() {
     setLoading(true)
     setError(null)
     Promise.all([
-      fetchPlayer(selectedA.id, SEASON),
-      fetchPlayer(selectedB.id, SEASON),
-      fetchPlayerEvents(selectedA.id, SEASON),
-      fetchPlayerEvents(selectedB.id, SEASON),
-      fetchPlayerFixtures(selectedA.id, SEASON),
-      fetchPlayerFixtures(selectedB.id, SEASON),
+      fetchPlayer(selectedA.id, undefined, scope),
+      fetchPlayer(selectedB.id, undefined, scope),
+      fetchPlayerEvents(selectedA.id, undefined, scope),
+      fetchPlayerEvents(selectedB.id, undefined, scope),
+      fetchPlayerFixtures(selectedA.id, undefined, scope),
+      fetchPlayerFixtures(selectedB.id, undefined, scope),
     ])
       .then(([dA, dB, evA, evB, fxA, fxB]) => {
         setDataA({ detail: dA, events: evA, fixtures: fxA })
@@ -808,7 +820,7 @@ export default function ComparePage() {
       })
       .catch((e: Error) => setError(e.message ?? 'Error al cargar los datos'))
       .finally(() => setLoading(false))
-  }, [selectedA, selectedB])
+  }, [selectedA, selectedB, scope])
 
   const derivedA = useMemo(
     () => (dataA ? deriveCmpStats(dataA.detail, dataA.events, dataA.fixtures) : null),
@@ -837,7 +849,7 @@ export default function ComparePage() {
   return (
     <div className="compare-page">
       <div className="cmp-header">
-        <span className="rp-header__eyebrow">Temporada {SEASON}</span>
+        <span className="rp-header__eyebrow">Temporada {scopeLabel}</span>
         <h1 className="rp-header__title">Comparar<br />Jugadores</h1>
         <p className="rp-header__sub">
           Head-to-head con métricas contextuales SFA
@@ -851,6 +863,7 @@ export default function ComparePage() {
           onSelect={p => { setSelectedA(p); setDataA(null) }}
           onClear={() => { setSelectedA(null); setDataA(null) }}
           excludeId={selectedB?.id}
+          scope={scope}
         />
         <div className="cmp-pickers__vs">VS</div>
         <PlayerPicker
@@ -859,6 +872,7 @@ export default function ComparePage() {
           onSelect={p => { setSelectedB(p); setDataB(null) }}
           onClear={() => { setSelectedB(null); setDataB(null) }}
           excludeId={selectedA?.id}
+          scope={scope}
         />
       </div>
 

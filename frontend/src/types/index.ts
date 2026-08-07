@@ -1,8 +1,11 @@
 export interface SeasonItem {
   season: string
+  key: string
   is_latest: boolean
   is_world_cup?: boolean
-  label?: string
+  label: string
+  kind: 'award_period' | 'tournament' | 'all_time'
+  includes_world_cup?: boolean
 }
 
 export function isWorldCupItem(item: SeasonItem): boolean {
@@ -41,6 +44,7 @@ export interface RankedPlayer {
 
 export interface RankingResponse {
   season: string
+  scope: string | null
   total: number
   ranking: RankedPlayer[]
   pagination: RankingPagination
@@ -104,6 +108,8 @@ export interface PlayerDetail {
   breakdown: Record<string, BreakdownEntry> | null
   competitions: string[]
   available_seasons: string[]
+  scope: string | null
+  available_scopes: string[]
   b1_bonus_pts: number
   b1_bonus_label: string | null
 }

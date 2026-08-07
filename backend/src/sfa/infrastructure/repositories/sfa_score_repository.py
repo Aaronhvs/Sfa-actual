@@ -1,18 +1,20 @@
 from datetime import date
 from unicodedata import combining, normalize
 
-from sqlalchemy import Integer, Numeric, case, cast, func, or_, select
+from sqlalchemy import Integer, Numeric, and_, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sfa.domain.ports import (
-    PlayerScoreDTO,
-    RankedPlayerDTO,
-    SFAScoreRepositoryProtocol,
-)
 from sfa.domain.player_position_overrides import (
     override_name_terms_for_position,
     position_for_context,
 )
+from sfa.domain.ports import (
+    PlayerScoreDTO,
+    RankedPlayerDTO,
+    ScopedPlayerDetailDTO,
+    SFAScoreRepositoryProtocol,
+)
+from sfa.domain.season_scope import AwardPeriodScope, InconsistentScopeRulesVersionError, ScopeKind
 from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
 from sfa.infrastructure.models.players.models import Player
@@ -224,9 +226,170 @@ def _historical_scores_scope(rules_version_id: int | None = None):
     return select(ranked).where(ranked.c.rn == 1).subquery()
 
 
+def _scope_filter(model, scope: AwardPeriodScope):
+    return or_(
+        *[
+            and_(
+                model.season == source.season,
+                model.competition_id.in_(source.competition_ids),
+            )
+            for source in scope.sources
+        ]
+    )
+
+
+def _breakdown_count(
+    breakdown: dict[str, dict[str, float | int]], *actions: str
+) -> int:
+    return sum(int(breakdown.get(action, {}).get("count", 0) or 0) for action in actions)
+
+
 class SFAScoreRepository(SFAScoreRepositoryProtocol):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get_player_detail_for_scope(
+        self,
+        player_id: int,
+        scope: AwardPeriodScope,
+        rules_version_id: int,
+    ) -> ScopedPlayerDetailDTO | None:
+        stmt = (
+            select(
+                Player.id.label("player_id"),
+                Player.name.label("player_name"),
+                Player.position,
+                Player.photo_url,
+                Team.name.label("team_name"),
+                Competition.name.label("competition_name"),
+                Competition.participant_kind,
+                SFASeasonScore.competition_id,
+                SFASeasonScore.total_pts,
+                SFASeasonScore.achievement_bonus_pts,
+                SFASeasonScore.matches_played,
+                SFASeasonScore.breakdown,
+            )
+            .join(Player, Player.id == SFASeasonScore.player_id)
+            .join(Team, Team.id == SFASeasonScore.team_id)
+            .join(Competition, Competition.id == SFASeasonScore.competition_id)
+            .where(
+                SFASeasonScore.player_id == player_id,
+                SFASeasonScore.rules_version_id == rules_version_id,
+                _scope_filter(SFASeasonScore, scope),
+            )
+        )
+        rows = (await self._session.execute(stmt)).mappings().all()
+        if not rows:
+            return None
+
+        representative = sorted(
+            rows,
+            key=lambda row: (
+                0 if row["participant_kind"] == "club" else 1,
+                -float(row["total_pts"] or 0),
+            ),
+        )[0]
+        merged_breakdown: dict[str, dict[str, float | int]] = {}
+        for row in rows:
+            for action, values in (row["breakdown"] or {}).items():
+                if not isinstance(values, dict):
+                    continue
+                entry = merged_breakdown.setdefault(action, {"count": 0, "pts": 0.0})
+                entry["count"] = int(entry["count"]) + int(values.get("count", 0) or 0)
+                entry["pts"] = round(float(entry["pts"]) + float(values.get("pts", 0) or 0), 2)
+        breakdown_pts = sum(float(values["pts"]) for values in merged_breakdown.values())
+        for values in merged_breakdown.values():
+            values["pct"] = round(float(values["pts"]) / breakdown_pts * 100, 2) if breakdown_pts else 0.0
+
+        total_pts = round(
+            sum(float(row["total_pts"] or 0) + float(row["achievement_bonus_pts"] or 0) for row in rows),
+            2,
+        )
+        per_player = (
+            select(
+                SFASeasonScore.player_id,
+                func.sum(SFASeasonScore.total_pts + SFASeasonScore.achievement_bonus_pts).label("sum_pts"),
+            )
+            .where(
+                SFASeasonScore.rules_version_id == rules_version_id,
+                _scope_filter(SFASeasonScore, scope),
+            )
+            .group_by(SFASeasonScore.player_id)
+            .subquery()
+        )
+        global_rank = int(
+            (await self._session.scalar(select(func.count()).where(per_player.c.sum_pts > total_pts)))
+            or 0
+        ) + 1
+        b1_pts, b1_label = await self._get_b1_bonus_for_scope(
+            player_id, scope, rules_version_id
+        )
+        position = position_for_context(
+            _position_value(representative["position"]),
+            player_name=representative["player_name"],
+            team_name=representative["team_name"],
+            competition_id=representative["competition_id"],
+        )
+        score = PlayerScoreDTO(
+            player_id=representative["player_id"],
+            player_name=representative["player_name"],
+            team_name=representative["team_name"],
+            position=position or "",
+            competition_name=representative["competition_name"],
+            competition_id=representative["competition_id"],
+            total_pts=total_pts,
+            matches_played=sum(int(row["matches_played"] or 0) for row in rows),
+            photo_url=representative["photo_url"],
+            breakdown=merged_breakdown,
+        )
+        return ScopedPlayerDetailDTO(
+            score=score,
+            competitions=tuple(sorted({str(row["competition_name"]) for row in rows})),
+            matches=score.matches_played,
+            goals=_breakdown_count(merged_breakdown, "goal", "goal_penalty"),
+            assists=_breakdown_count(merged_breakdown, "assist", "corner_assist"),
+            total_pts=total_pts,
+            global_rank=global_rank,
+            b1_bonus_pts=b1_pts,
+            b1_bonus_label=b1_label,
+        )
+
+    async def _get_b1_bonus_for_scope(
+        self,
+        player_id: int,
+        scope: AwardPeriodScope,
+        rules_version_id: int,
+    ) -> tuple[float, str | None]:
+        birth_date = await self._session.scalar(
+            select(Player.birth_date).where(Player.id == player_id)
+        )
+        b1_age = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["age_at_match"].astext,
+            Integer,
+        )
+        b1_pts = cast(
+            PlayerEventScore.calculation_details["b1_bonus"]["b1_per_event"].astext,
+            Numeric,
+        )
+        row = (
+            await self._session.execute(
+                select(
+                    func.coalesce(func.sum(case((b1_age <= 20, b1_pts), else_=0)), 0),
+                    func.coalesce(func.sum(case((b1_age >= 35, b1_pts), else_=0)), 0),
+                ).where(
+                    PlayerEventScore.player_id == player_id,
+                    PlayerEventScore.rules_version_id == rules_version_id,
+                    PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
+                    _scope_filter(PlayerEventScore, scope),
+                )
+            )
+        ).first()
+        young_pts = float(row[0] or 0) if row else 0.0
+        veteran_pts = float(row[1] or 0) if row else 0.0
+        total = round(young_pts + veteran_pts, 2)
+        if total <= 0:
+            return 0.0, _b1_label_for_birth_date(birth_date)
+        return total, ("Veterano" if veteran_pts >= young_pts and veteran_pts > 0 else "Promesa")
 
     async def get_best_score_for_player_season(
         self, player_id: int, season: str, rules_version_id: int | None = None,
@@ -343,8 +506,13 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
+        _scope: AwardPeriodScope | None = None,
     ) -> list[RankedPlayerDTO]:
-        score_filters = [SFASeasonScore.season == season]
+        score_filters = [
+            _scope_filter(SFASeasonScore, _scope)
+            if _scope is not None
+            else SFASeasonScore.season == season
+        ]
         if rules_version_id is None:
             score_filters.append(SFASeasonScore.rules_version_id.is_(None))
         else:
@@ -375,7 +543,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .subquery()
         )
         b1_filters = [
-            PlayerEventScore.season == season,
+            _scope_filter(PlayerEventScore, _scope)
+            if _scope is not None
+            else PlayerEventScore.season == season,
             PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
         ]
         if rules_version_id is not None:
@@ -416,7 +586,11 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 func.row_number().over(
                     partition_by=SFASeasonScore.player_id,
                     order_by=[
-                        case((Competition.country == "EUR", 1), else_=0).asc(),
+                        (
+                            case((Competition.participant_kind == "club", 0), else_=1).asc()
+                            if _scope is not None and _scope.kind == ScopeKind.AWARD_PERIOD
+                            else case((Competition.country == "EUR", 1), else_=0).asc()
+                        ),
                         SFASeasonScore.total_pts.desc(),
                     ],
                 ).label("rn"),
@@ -539,8 +713,13 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         name: str | None = None,
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
+        _scope: AwardPeriodScope | None = None,
     ) -> int:
-        score_filters = [SFASeasonScore.season == season]
+        score_filters = [
+            _scope_filter(SFASeasonScore, _scope)
+            if _scope is not None
+            else SFASeasonScore.season == season
+        ]
         if rules_version_id is None:
             score_filters.append(SFASeasonScore.rules_version_id.is_(None))
         else:
@@ -576,7 +755,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         bonus_filter = None
         if bonus_label in {"Promesa", "Veterano"}:
             b1_filters = [
-                PlayerEventScore.season == season,
+                _scope_filter(PlayerEventScore, _scope)
+                if _scope is not None
+                else PlayerEventScore.season == season,
                 PlayerEventScore.calculation_details["b1_bonus"]["applied"].astext == "true",
             ]
             if rules_version_id is not None:
@@ -674,6 +855,87 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         subq = inner.subquery()
         stmt = select(func.count()).select_from(subq)
         return (await self._session.execute(stmt)).scalar_one()
+
+    async def get_ranking_for_scope(
+        self,
+        scope: AwardPeriodScope,
+        position: str | None = None,
+        competition_id: int | None = None,
+        limit: int = 50,
+        offset: int = 0,
+        name: str | None = None,
+        bonus_label: str | None = None,
+        rules_version_id: int | None = None,
+        use_total: bool = False,
+    ) -> list[RankedPlayerDTO]:
+        return await self.get_ranking(
+            season=scope.sources[0].season,
+            position=position,
+            competition_id=competition_id,
+            limit=limit,
+            offset=offset,
+            name=name,
+            bonus_label=bonus_label,
+            rules_version_id=rules_version_id,
+            use_total=use_total,
+            _scope=scope,
+        )
+
+    async def get_ranking_total_for_scope(
+        self,
+        scope: AwardPeriodScope,
+        position: str | None = None,
+        competition_id: int | None = None,
+        name: str | None = None,
+        bonus_label: str | None = None,
+        rules_version_id: int | None = None,
+    ) -> int:
+        return await self.get_ranking_total(
+            season=scope.sources[0].season,
+            position=position,
+            competition_id=competition_id,
+            name=name,
+            bonus_label=bonus_label,
+            rules_version_id=rules_version_id,
+            _scope=scope,
+        )
+
+    async def resolve_rules_version_id_for_scope(
+        self,
+        scope: AwardPeriodScope,
+        preferred_rules_version_id: int | None = None,
+    ) -> int:
+        stmt = (
+            select(
+                SFASeasonScore.season,
+                SFASeasonScore.competition_id,
+                SFASeasonScore.rules_version_id,
+            )
+            .where(
+                _scope_filter(SFASeasonScore, scope),
+                SFASeasonScore.rules_version_id.is_not(None),
+            )
+            .distinct()
+        )
+        rows = (await self._session.execute(stmt)).all()
+        versions_by_pair: dict[tuple[str, int], set[int]] = {
+            pair: set() for pair in scope.pairs
+        }
+        for season, competition_id, rules_version_id in rows:
+            pair = (str(season), int(competition_id))
+            if pair in versions_by_pair and rules_version_id is not None:
+                versions_by_pair[pair].add(int(rules_version_id))
+
+        if not versions_by_pair or any(not versions for versions in versions_by_pair.values()):
+            raise InconsistentScopeRulesVersionError(scope.key)
+        common_versions = set.intersection(*versions_by_pair.values())
+        if preferred_rules_version_id is not None:
+            if preferred_rules_version_id in common_versions:
+                return preferred_rules_version_id
+            raise InconsistentScopeRulesVersionError(scope.key)
+        if not common_versions:
+            raise InconsistentScopeRulesVersionError(scope.key)
+        return max(common_versions)
 
     async def latest_season(self) -> str | None:
         result = await self._session.execute(select(func.max(SFASeasonScore.season)))

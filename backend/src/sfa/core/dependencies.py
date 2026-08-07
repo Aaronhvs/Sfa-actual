@@ -1,7 +1,7 @@
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
 import redis.asyncio as aioredis
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.infrastructure.database import get_db
@@ -122,32 +122,37 @@ from sfa.application.use_cases.calculate_scores_for_rules_version import (
 )
 from sfa.application.use_cases.calculate_team_strengths import CalculateTeamStrengthsUseCase
 from sfa.application.use_cases.compare_players import ComparePlayersUseCase
+from sfa.application.use_cases.enrich_player_birth_dates import EnrichPlayerBirthDatesUseCase
 from sfa.application.use_cases.enrich_player_positions import EnrichPlayerPositionsUseCase
 from sfa.application.use_cases.fix_player_positions import FixPlayerPositionsUseCase
 from sfa.application.use_cases.get_ingestion_status import GetIngestionStatusUseCase
 from sfa.application.use_cases.get_national_team_elo_coverage import (
     GetNationalTeamEloCoverageUseCase,
 )
+from sfa.application.use_cases.get_player_achievements import GetPlayerAchievementsUseCase
 from sfa.application.use_cases.get_player_detail import GetPlayerDetailUseCase
 from sfa.application.use_cases.get_player_events import GetPlayerEventsUseCase
 from sfa.application.use_cases.get_player_fixtures import GetPlayerFixturesUseCase
-from sfa.application.use_cases.get_player_season_stats import GetPlayerSeasonStatsUseCase
-from sfa.application.use_cases.get_player_achievements import GetPlayerAchievementsUseCase
 from sfa.application.use_cases.get_player_ranking_explanation import (
     GetPlayerRankingExplanationUseCase,
 )
+from sfa.application.use_cases.get_player_season_stats import GetPlayerSeasonStatsUseCase
 from sfa.application.use_cases.get_ranking import GetRankingUseCase
 from sfa.application.use_cases.get_ranking_explanations import GetRankingExplanationsUseCase
 from sfa.application.use_cases.get_seasons import GetSeasonsUseCase
 from sfa.application.use_cases.get_standings import GetStandingsUseCase
 from sfa.application.use_cases.get_status import GetStatusUseCase
 from sfa.application.use_cases.get_world_cup import (
+    GetWcTeamProfileUseCase,
+    GetWcTeamSFARankingUseCase,
     GetWorldCupFixtureDetailUseCase,
     GetWorldCupFixturesUseCase,
     GetWorldCupLiveUseCase,
     GetWorldCupStandingsUseCase,
-    GetWcTeamSFARankingUseCase,
-    GetWcTeamProfileUseCase,
+)
+from sfa.application.use_cases.infer_competition_achievements import (
+    InferAllCompetitionAchievementsUseCase,
+    InferCompetitionAchievementsUseCase,
 )
 from sfa.application.use_cases.list_competitions import ListCompetitionsUseCase
 from sfa.application.use_cases.manage_scoring_rules_version import (
@@ -155,14 +160,9 @@ from sfa.application.use_cases.manage_scoring_rules_version import (
     CreateScoringRulesVersionUseCase,
     ListScoringRulesVersionsUseCase,
 )
-from sfa.application.use_cases.infer_competition_achievements import (
-    InferAllCompetitionAchievementsUseCase,
-    InferCompetitionAchievementsUseCase,
-)
 from sfa.application.use_cases.register_competition_achievement import (
     RegisterCompetitionAchievementUseCase,
 )
-from sfa.application.use_cases.enrich_player_birth_dates import EnrichPlayerBirthDatesUseCase
 from sfa.application.use_cases.seed_clubelo import SeedClubEloUseCase
 from sfa.application.use_cases.seed_national_team_elo import SeedNationalTeamEloUseCase
 from sfa.infrastructure.providers.ranking_explanation_writer import (
@@ -173,17 +173,27 @@ from sfa.infrastructure.providers.ranking_explanation_writer import (
 async def get_player_detail_use_case(
     score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
     ver_repo: Annotated[ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
 ) -> GetPlayerDetailUseCase:
     active = await ver_repo.get_active_version()
-    return GetPlayerDetailUseCase(score_repo, default_rules_version_id=active.id if active else None)
+    return GetPlayerDetailUseCase(
+        score_repo,
+        default_rules_version_id=active.id if active else None,
+        season_repo=season_repo,
+    )
 
 
 async def get_ranking_use_case(
     score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
     ver_repo: Annotated[ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
 ) -> GetRankingUseCase:
     active = await ver_repo.get_active_version()
-    return GetRankingUseCase(score_repo, default_rules_version_id=active.id if active else None)
+    return GetRankingUseCase(
+        score_repo,
+        default_rules_version_id=active.id if active else None,
+        season_repo=season_repo,
+    )
 
 
 async def get_ranking_explanation_writer() -> DeterministicRankingExplanationWriter:
@@ -228,20 +238,25 @@ async def get_seasons_use_case(
 
 async def get_player_events_use_case(
     event_repo: Annotated[PlayerEventRepository, Depends(get_player_event_repository)],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
 ) -> GetPlayerEventsUseCase:
-    return GetPlayerEventsUseCase(event_repo)
+    return GetPlayerEventsUseCase(event_repo, season_repo, score_repo)
 
 
 async def get_player_fixtures_use_case(
     event_repo: Annotated[PlayerEventRepository, Depends(get_player_event_repository)],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
 ) -> GetPlayerFixturesUseCase:
-    return GetPlayerFixturesUseCase(event_repo)
+    return GetPlayerFixturesUseCase(event_repo, season_repo, score_repo)
 
 
 async def get_player_season_stats_use_case(
     event_repo: Annotated[PlayerEventRepository, Depends(get_player_event_repository)],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
 ) -> GetPlayerSeasonStatsUseCase:
-    return GetPlayerSeasonStatsUseCase(event_repo)
+    return GetPlayerSeasonStatsUseCase(event_repo, season_repo)
 
 
 async def get_compare_players_use_case(
@@ -380,11 +395,15 @@ async def get_player_achievements_use_case(
     ver_repo: Annotated[
         ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)
     ],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
 ) -> GetPlayerAchievementsUseCase:
     active = await ver_repo.get_active_version()
     return GetPlayerAchievementsUseCase(
         achievement_repo,
         default_rules_version_id=active.id if active else None,
+        season_repository=season_repo,
+        score_repository=score_repo,
     )
 
 

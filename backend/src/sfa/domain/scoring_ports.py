@@ -11,6 +11,7 @@ from sfa.domain.scoring.entities import (
     ScoringRulesVersion,
 )
 from sfa.domain.scoring.value_objects import ScoringConfig
+from sfa.domain.season_scope import AwardPeriodScope
 
 
 @dataclass(frozen=True)
@@ -258,6 +259,10 @@ class TeamStrengthRepositoryPort(Protocol):
         self, team_id: int, season: str
     ) -> list[int]: ...
 
+    async def get_competition_ids_for_participant_kind(
+        self, season: str, participant_kind: str
+    ) -> list[int]: ...
+
     async def get_competition_id_by_name(self, name: str) -> int | None: ...
 
     async def get_teams_for_competition_season(
@@ -331,4 +336,5 @@ class CompetitionAchievementRepositoryPort(Protocol):
         player_id: int,
         rules_version_id: int,
         season: str | None = None,
+        scope: AwardPeriodScope | None = None,
     ) -> list[PlayerCompetitionAchievementDTO]: ...

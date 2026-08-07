@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from sfa.domain.scoring_ports import (
     CompetitionAchievementRepositoryPort,
     PlayerCompetitionAchievementDTO,
 )
+from sfa.domain.season_scope import AwardPeriodScope
 from sfa.infrastructure.models.competition_achievements.models import (
     CompetitionAchievementModel,
     PlayerAchievementBonusModel,
@@ -280,6 +281,7 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         player_id: int,
         rules_version_id: int,
         season: str | None = None,
+        scope: AwardPeriodScope | None = None,
     ) -> list[PlayerCompetitionAchievementDTO]:
         stmt = (
             select(
@@ -313,6 +315,18 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         )
         if season is not None:
             stmt = stmt.where(CompetitionAchievementModel.season == season)
+        if scope is not None:
+            stmt = stmt.where(
+                or_(
+                    *[
+                        and_(
+                            CompetitionAchievementModel.season == source.season,
+                            CompetitionAchievementModel.competition_id.in_(source.competition_ids),
+                        )
+                        for source in scope.sources
+                    ]
+                )
+            )
 
         rows = (await self._session.execute(stmt)).mappings().all()
         return [

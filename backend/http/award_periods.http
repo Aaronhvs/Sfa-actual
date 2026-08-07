@@ -1,0 +1,27 @@
+@baseUrl = http://localhost:8000/api/v1
+@adminKey = replace-me
+@rulesVersionId = 4
+
+### Canonical season catalog
+GET {{baseUrl}}/seasons
+
+### Latest award ranking (2025/2026 + World Cup 2026)
+GET {{baseUrl}}/ranking?scope=season-2025&use_total=true
+
+### World Cup remains independent
+GET {{baseUrl}}/ranking?scope=world-cup-2026&use_total=true
+
+### Legacy physical season remains available
+GET {{baseUrl}}/ranking?season=2025&use_total=true
+
+### Recalculate the complete award period with one rules snapshot
+POST {{baseUrl}}/scoring/recalculate-award-period
+Content-Type: application/json
+X-Admin-Key: {{adminKey}}
+
+{
+  "scope_key": "season-2025",
+  "rules_version_id": {{rulesVersionId}},
+  "force_recalculate": true,
+  "infer_achievements": true
+}

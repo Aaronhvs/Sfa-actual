@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from sfa.api.v1.schemas.players import (
     BreakdownEntrySchema,
+    PlayerCompetitionAchievementSchema,
     PlayerDetailSchema,
     PlayerEventSchema,
     PlayerFixtureSchema,
-    PlayerCompetitionAchievementSchema,
     PlayerSeasonStatsSchema,
 )
 from sfa.application.use_cases.get_player_achievements import GetPlayerAchievementsUseCase
@@ -21,12 +21,13 @@ from sfa.application.use_cases.get_player_events import GetPlayerEventsUseCase
 from sfa.application.use_cases.get_player_fixtures import GetPlayerFixturesUseCase
 from sfa.application.use_cases.get_player_season_stats import GetPlayerSeasonStatsUseCase
 from sfa.core.dependencies import (
-    get_player_detail_use_case,
     get_player_achievements_use_case,
+    get_player_detail_use_case,
     get_player_events_use_case,
     get_player_fixtures_use_case,
     get_player_season_stats_use_case,
 )
+from sfa.domain.season_scope import InconsistentScopeRulesVersionError, ScopeNotFoundError
 
 router = APIRouter()
 
@@ -36,12 +37,24 @@ async def get_player(
     player_id: int,
     use_case: Annotated[GetPlayerDetailUseCase, Depends(get_player_detail_use_case)],
     season: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
     rules_version_id: int | None = Query(default=None),
 ):
+    if season is not None and scope is not None:
+        raise HTTPException(status_code=422, detail="scope and season are mutually exclusive")
     try:
-        result = await use_case.execute(player_id, season, rules_version_id)
+        result = await use_case.execute(
+            player_id,
+            season=season,
+            scope=scope,
+            rules_version_id=rules_version_id,
+        )
     except PlayerNotFoundError:
         raise HTTPException(status_code=404, detail="Player not found")
+    except ScopeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InconsistentScopeRulesVersionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     position = result.position
     if hasattr(position, "value"):
@@ -66,6 +79,8 @@ async def get_player(
         } if result.breakdown else None,
         competitions=result.competitions,
         available_seasons=result.available_seasons,
+        scope=result.scope,
+        available_scopes=result.available_scopes,
         b1_bonus_pts=result.b1_bonus_pts,
         b1_bonus_label=result.b1_bonus_label,
     )
@@ -76,9 +91,17 @@ async def get_player_events(
     player_id: int,
     use_case: Annotated[GetPlayerEventsUseCase, Depends(get_player_events_use_case)],
     season: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
     competition_id: int | None = Query(default=None),
 ):
-    events = await use_case.execute(player_id, season, competition_id)
+    if season is not None and scope is not None:
+        raise HTTPException(status_code=422, detail="scope and season are mutually exclusive")
+    try:
+        events = await use_case.execute(
+            player_id, season, competition_id, scope=scope
+        )
+    except (ScopeNotFoundError, InconsistentScopeRulesVersionError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return [PlayerEventSchema(**e.__dict__) for e in events]
 
 
@@ -87,9 +110,17 @@ async def get_player_season_stats(
     player_id: int,
     use_case: Annotated[GetPlayerSeasonStatsUseCase, Depends(get_player_season_stats_use_case)],
     competition_id: int | None = Query(default=None),
-    season: str = Query(...),
+    season: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
 ):
-    result = await use_case.execute(player_id, competition_id, season)
+    if season is not None and scope is not None:
+        raise HTTPException(status_code=422, detail="scope and season are mutually exclusive")
+    if season is None and scope is None:
+        raise HTTPException(status_code=422, detail="season or scope is required")
+    try:
+        result = await use_case.execute(player_id, competition_id, season, scope)
+    except (ScopeNotFoundError, InconsistentScopeRulesVersionError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if result is None:
         raise HTTPException(status_code=404, detail="No stats found for this player/competition/season")
     return PlayerSeasonStatsSchema(**dataclasses.asdict(result))
@@ -106,9 +137,20 @@ async def get_player_achievements(
         Depends(get_player_achievements_use_case),
     ],
     season: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
     rules_version_id: int | None = Query(default=None),
 ):
-    achievements = await use_case.execute(player_id, season, rules_version_id)
+    if season is not None and scope is not None:
+        raise HTTPException(status_code=422, detail="scope and season are mutually exclusive")
+    try:
+        achievements = await use_case.execute(
+            player_id,
+            season,
+            rules_version_id,
+            scope=scope,
+        )
+    except (ScopeNotFoundError, InconsistentScopeRulesVersionError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return [
         PlayerCompetitionAchievementSchema(**dataclasses.asdict(achievement))
         for achievement in achievements
@@ -120,21 +162,28 @@ async def get_player_fixtures(
     player_id: int,
     use_case: Annotated[GetPlayerFixturesUseCase, Depends(get_player_fixtures_use_case)],
     season: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
     competition_id: int | None = Query(default=None),
     include_breakdown: bool = Query(default=True),
     competition_name: str | None = Query(default=None),
     rival: str | None = Query(default=None),
     date: datetime.date | None = Query(default=None),
 ):
-    fixtures = await use_case.execute(
-        player_id,
-        season,
-        competition_id,
-        include_breakdown=include_breakdown,
-        competition_name=competition_name,
-        rival=rival,
-        date=date,
-    )
+    if season is not None and scope is not None:
+        raise HTTPException(status_code=422, detail="scope and season are mutually exclusive")
+    try:
+        fixtures = await use_case.execute(
+            player_id,
+            season,
+            competition_id,
+            include_breakdown=include_breakdown,
+            competition_name=competition_name,
+            rival=rival,
+            date=date,
+            scope=scope,
+        )
+    except (ScopeNotFoundError, InconsistentScopeRulesVersionError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return [
         PlayerFixtureSchema(
             fixture_id=f.fixture_id,

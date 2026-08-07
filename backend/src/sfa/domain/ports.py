@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Protocol, runtime_checkable
 
+from sfa.domain.season_scope import AwardPeriodScope
+
 # ─── DTOs de dominio ─────────────────────────────────────────────────
 
 
@@ -29,6 +31,19 @@ class PlayerScoreDTO:
     matches_played: int
     photo_url: str | None
     breakdown: dict | None
+
+
+@dataclass(frozen=True)
+class ScopedPlayerDetailDTO:
+    score: PlayerScoreDTO
+    competitions: tuple[str, ...]
+    matches: int
+    goals: int
+    assists: int
+    total_pts: float
+    global_rank: int
+    b1_bonus_pts: float = 0.0
+    b1_bonus_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -173,6 +188,10 @@ class SeasonDTO:
     season: str
     is_latest: bool
     is_world_cup: bool = False
+    key: str | None = None
+    label: str | None = None
+    kind: str = "award_period"
+    includes_world_cup: bool = False
 
 
 # ─── Protocols (Ports) ───────────────────────────────────────────────
@@ -185,6 +204,13 @@ class PlayerRepositoryProtocol(Protocol):
 
 @runtime_checkable
 class SFAScoreRepositoryProtocol(Protocol):
+    async def get_player_detail_for_scope(
+        self,
+        player_id: int,
+        scope: AwardPeriodScope,
+        rules_version_id: int,
+    ) -> ScopedPlayerDetailDTO | None: ...
+
     async def get_best_score_for_player_season(
         self, player_id: int, season: str, rules_version_id: int | None = None,
     ) -> PlayerScoreDTO | None:
@@ -227,6 +253,35 @@ class SFAScoreRepositoryProtocol(Protocol):
     ) -> int:
         """Total de jugadores en el ranking (sin limit)."""
         ...
+
+    async def get_ranking_for_scope(
+        self,
+        scope: AwardPeriodScope,
+        position: str | None = None,
+        competition_id: int | None = None,
+        limit: int = 50,
+        offset: int = 0,
+        name: str | None = None,
+        bonus_label: str | None = None,
+        rules_version_id: int | None = None,
+        use_total: bool = False,
+    ) -> list[RankedPlayerDTO]: ...
+
+    async def get_ranking_total_for_scope(
+        self,
+        scope: AwardPeriodScope,
+        position: str | None = None,
+        competition_id: int | None = None,
+        name: str | None = None,
+        bonus_label: str | None = None,
+        rules_version_id: int | None = None,
+    ) -> int: ...
+
+    async def resolve_rules_version_id_for_scope(
+        self,
+        scope: AwardPeriodScope,
+        preferred_rules_version_id: int | None = None,
+    ) -> int: ...
 
     async def latest_season(self) -> str | None: ...
 
@@ -282,6 +337,10 @@ class SFAScoreRepositoryProtocol(Protocol):
 class SeasonRepositoryProtocol(Protocol):
     async def get_available_seasons(self) -> list[SeasonDTO]: ...
 
+    async def resolve_scope(self, scope_key: str | None = None) -> AwardPeriodScope | None: ...
+
+    async def get_available_scopes_for_player(self, player_id: int) -> list[SeasonDTO]: ...
+
 
 @runtime_checkable
 class CompetitionRepositoryProtocol(Protocol):
@@ -313,6 +372,7 @@ class PlayerEventRepositoryProtocol(Protocol):
         season: str | None = None,
         competition_id: int | None = None,
         rules_version_id: int | None = None,
+        scope: AwardPeriodScope | None = None,
     ) -> list[PlayerEventDTO]: ...
 
     async def get_fixtures_by_player(
@@ -324,6 +384,7 @@ class PlayerEventRepositoryProtocol(Protocol):
         rival: str | None = None,
         date: date | None = None,
         rules_version_id: int | None = None,
+        scope: AwardPeriodScope | None = None,
     ) -> list[PlayerFixtureDTO]: ...
 
     async def get_fixture_breakdown_by_player(
@@ -339,6 +400,7 @@ class PlayerEventRepositoryProtocol(Protocol):
         player_id: int,
         competition_id: int | None,
         season: str | None,
+        scope: AwardPeriodScope | None = None,
     ) -> PlayerSeasonStatsDTO | None: ...
 
 

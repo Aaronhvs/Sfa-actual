@@ -27,6 +27,8 @@ class PlayerDetailSchema(BaseModel):
     breakdown: dict[str, BreakdownEntrySchema] | None
     competitions: list[str]
     available_seasons: list[str] = Field(default_factory=list)
+    scope: str | None = None
+    available_scopes: list[str] = Field(default_factory=list)
     b1_bonus_pts: float = 0.0
     b1_bonus_label: str | None = None
 

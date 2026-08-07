@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -70,6 +72,7 @@ class RecalculateEloRequest(BaseModel):
     competition_ids: list[int]
     k_factors: dict[int, float] = Field(default_factory=dict)
     default_k: float = 30.0
+    participant_kind: Literal["club", "national_team"] = "club"
 
 
 class RecalculateEloResponse(BaseModel):

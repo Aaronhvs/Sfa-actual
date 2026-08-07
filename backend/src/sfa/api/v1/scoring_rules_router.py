@@ -3,6 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sfa.api.v1.schemas.full_recalculation_schemas import (
+    AwardPeriodRecalculateRequestSchema,
+    AwardPeriodRecalculateResponseSchema,
+    FullRecalculateRequestSchema,
+    FullRecalculateResponseSchema,
+)
 from sfa.api.v1.schemas.scoring_rules_schemas import (
     CreateScoringRulesVersionRequestSchema,
     InferAchievementsAllRequestSchema,
@@ -11,10 +17,6 @@ from sfa.api.v1.schemas.scoring_rules_schemas import (
     RecalculateRequestSchema,
     RecalculateResponseSchema,
     ScoringRulesVersionResponseSchema,
-)
-from sfa.api.v1.schemas.full_recalculation_schemas import (
-    FullRecalculateRequestSchema,
-    FullRecalculateResponseSchema,
 )
 from sfa.application.use_cases.manage_scoring_rules_version import (
     ActivateScoringRulesVersionUseCase,
@@ -147,6 +149,28 @@ async def trigger_full_recalculate(body: FullRecalculateRequestSchema):
         season=body.season,
         force_recalculate=body.force_recalculate,
         infer_achievements=body.infer_achievements,
+    )
+
+
+@router.post(
+    "/recalculate-award-period",
+    response_model=AwardPeriodRecalculateResponseSchema,
+    status_code=202,
+)
+async def trigger_award_period_recalculate(body: AwardPeriodRecalculateRequestSchema):
+    from sfa.tasks.recalculate_award_period_task import recalculate_award_period_task
+
+    task = recalculate_award_period_task.delay(
+        body.scope_key,
+        body.rules_version_id,
+        body.force_recalculate,
+        body.infer_achievements,
+    )
+    return AwardPeriodRecalculateResponseSchema(
+        task_id=task.id,
+        status="queued",
+        scope_key=body.scope_key,
+        rules_version_id=body.rules_version_id,
     )
     return FullRecalculateResponseSchema(
         task_id=task.id,

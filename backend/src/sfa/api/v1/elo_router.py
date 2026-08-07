@@ -31,7 +31,11 @@ from sfa.domain.scoring_ports import NationalTeamEloEntry
 router = APIRouter(prefix="/admin/elo", tags=["elo"])
 
 
-@router.post("/seed", response_model=SeedClubEloResponse)
+@router.post(
+    "/seed",
+    response_model=SeedClubEloResponse,
+    dependencies=[Depends(require_admin_key)],
+)
 async def seed_clubelo(
     body: SeedClubEloRequest,
     use_case: Annotated[SeedClubEloUseCase, Depends(get_seed_clubelo_use_case)],
@@ -50,7 +54,11 @@ async def seed_clubelo(
     )
 
 
-@router.post("/recalculate", response_model=RecalculateEloResponse)
+@router.post(
+    "/recalculate",
+    response_model=RecalculateEloResponse,
+    dependencies=[Depends(require_admin_key)],
+)
 async def recalculate_elo(
     body: RecalculateEloRequest,
     use_case: Annotated[CalculateEloRatingsUseCase, Depends(get_calculate_elo_use_case)],
@@ -61,6 +69,10 @@ async def recalculate_elo(
         competition_ids=body.competition_ids,
         k_factors=body.k_factors,
         default_k=body.default_k,
+        source=("club_elo_v2" if body.participant_kind == "club" else "national_elo_v1"),
+        use_seed_baseline=True,
+        require_seed_baseline=True,
+        initialize_missing_seed_baseline=(body.participant_kind == "club"),
     )
     if result.status == "failed":
         raise HTTPException(status_code=500, detail=result.error)

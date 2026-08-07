@@ -1,6 +1,6 @@
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { SeasonItem } from '../../types'
-import { getSeasonLabel, isWorldCupSeason } from '../../utils/season'
+import { getSeasonLabel, isWorldCupSeason, seasonItemValue } from '../../utils/season'
 
 interface Props {
   items: SeasonItem[]
@@ -15,9 +15,11 @@ export default function SeasonSelector({
   onChange,
   includeAll = true,
 }: Props) {
-  const allOption: SeasonItem = { season: 'all', is_latest: false }
+  const allOption: SeasonItem = {
+    season: 'all', key: 'all', label: 'Total historico', kind: 'all_time', is_latest: false,
+  }
   const options = includeAll ? [...items, allOption] : items
-  const activeIndex = options.findIndex((option) => option.season === value)
+  const activeIndex = options.findIndex((option) => seasonItemValue(option) === value)
 
   if (options.length <= 1) return null
 
@@ -37,7 +39,7 @@ export default function SeasonSelector({
     if (event.key === 'Home') nextIndex = 0
     if (event.key === 'End') nextIndex = options.length - 1
 
-    onChange(options[nextIndex].season)
+    onChange(seasonItemValue(options[nextIndex]))
     event.currentTarget.parentElement
       ?.querySelectorAll<HTMLButtonElement>('.season-btn')
       [nextIndex]?.focus()
@@ -52,10 +54,11 @@ export default function SeasonSelector({
     >
       <div className="season-selector__track" aria-hidden="true" />
       {options.map((item, index) => {
+        const itemValue = seasonItemValue(item)
         const isWorldCup = item.is_world_cup === true
         const label = item.season === 'all'
           ? 'Todas'
-          : getSeasonLabel(item.season, items)
+          : item.label || getSeasonLabel(itemValue, items)
         const meta = item.season === 'all'
           ? 'Histórico'
           : isWorldCup
@@ -65,18 +68,18 @@ export default function SeasonSelector({
               : 'Temporada'
         return (
           <button
-            key={item.season}
+            key={itemValue}
             type="button"
             role="radio"
             className={[
               'season-btn',
-              value === item.season ? 'season-btn--active' : '',
+              value === itemValue ? 'season-btn--active' : '',
               isWorldCup ? 'season-btn--wc' : '',
             ].filter(Boolean).join(' ')}
-            onClick={() => onChange(item.season)}
+            onClick={() => onChange(itemValue)}
             onKeyDown={(event) => moveSelection(event, index)}
-            aria-checked={value === item.season}
-            tabIndex={value === item.season ? 0 : -1}
+            aria-checked={value === itemValue}
+            tabIndex={value === itemValue ? 0 : -1}
           >
             <span className="season-btn__label">{label}</span>
             <span className="season-btn__meta">{meta}</span>

@@ -41,7 +41,7 @@ function TeamFixtureRow({ fixture, teamId }: { fixture: WcFixture; teamId: numbe
 
 function TeamPlayerRow({ player }: { player: WcTopPlayer }) {
   return (
-    <Link to={`/player/${player.player_id}?season=2026`} className="wmt-player">
+    <Link to={`/player/${player.player_id}?scope=world-cup-2026`} className="wmt-player">
       <span className="wmt-player__rank">{String(player.rank).padStart(2, '0')}</span>
       {player.photo_url && <img src={player.photo_url} alt="" loading="lazy" decoding="async" />}
       <span>

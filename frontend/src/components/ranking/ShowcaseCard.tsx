@@ -8,7 +8,7 @@ interface Props {
   detail: PlayerDetail | null
   isFirst?: boolean
   podiumPlace?: number
-  season?: string
+  scope?: string
   isWorldCup?: boolean
   returnTo?: string
 }
@@ -51,11 +51,11 @@ function cardClass(place: number, isWorldCup: boolean): string {
   return `player-showcase-card player-showcase-card--third${tournamentClass}`
 }
 
-export default function ShowcaseCard({ player, podiumPlace, season, isWorldCup = false, returnTo }: Props) {
+export default function ShowcaseCard({ player, podiumPlace, scope, isWorldCup = false, returnTo }: Props) {
   const displayPlace = podiumPlace ?? player.rank
   const animatedRank = useCountUp(displayPlace, 620)
   const playerParams = new URLSearchParams()
-  if (season) playerParams.set('season', season)
+  if (scope) playerParams.set('scope', scope)
   if (returnTo) playerParams.set('returnTo', returnTo)
   const playerQuery = playerParams.toString()
   const playerLink = `/player/${player.id}${playerQuery ? `?${playerQuery}` : ''}`

@@ -24,6 +24,7 @@ async function get<T>(path: string): Promise<T> {
 
 export async function fetchRanking(params: {
   season?: string
+  scope?: string
   position?: string
   competition_id?: number
   page?: number
@@ -34,6 +35,7 @@ export async function fetchRanking(params: {
 }): Promise<RankingResponse> {
   const q = new URLSearchParams()
   if (params.season)        q.set('season', params.season)
+  if (params.scope)         q.set('scope', params.scope)
   if (params.position)      q.set('position', params.position)
   if (params.competition_id != null) q.set('competition_id', String(params.competition_id))
   if (params.page != null)  q.set('page', String(params.page))
@@ -69,32 +71,33 @@ export async function fetchCompetitions(): Promise<Competition[]> {
   return data
 }
 
-export async function fetchPlayer(id: number, season?: string): Promise<PlayerDetail> {
-  const key = `player:${id}:${season ?? ''}:active`
+export async function fetchPlayer(id: number, season?: string, scope?: string): Promise<PlayerDetail> {
+  const key = `player:${id}:${season ?? ''}:${scope ?? ''}:active`
   const cached = getCached<PlayerDetail>(key)
   if (cached) return cached
   const q = new URLSearchParams()
   if (season) q.set('season', season)
+  if (scope) q.set('scope', scope)
   const data = await get<PlayerDetail>(`/players/${id}?${q.toString()}`)
   setCache(key, data)
   return data
 }
 
-export async function fetchPlayerEvents(id: number, season?: string): Promise<PlayerEvent[]> {
-  const key = `events:${id}:${season ?? ''}`
+export async function fetchPlayerEvents(id: number, season?: string, scope?: string): Promise<PlayerEvent[]> {
+  const key = `events:${id}:${season ?? ''}:${scope ?? ''}`
   const cached = getCached<PlayerEvent[]>(key)
   if (cached) return cached
-  const q = season && season !== 'all' ? `?season=${season}` : ''
+  const q = scope ? `?scope=${encodeURIComponent(scope)}` : season && season !== 'all' ? `?season=${season}` : ''
   const data = await get<PlayerEvent[]>(`/players/${id}/events${q}`)
   setCache(key, data)
   return data
 }
 
-export async function fetchPlayerFixtures(id: number, season?: string): Promise<PlayerFixture[]> {
-  const key = `fixtures:${id}:${season ?? ''}`
+export async function fetchPlayerFixtures(id: number, season?: string, scope?: string): Promise<PlayerFixture[]> {
+  const key = `fixtures:${id}:${season ?? ''}:${scope ?? ''}`
   const cached = getCached<PlayerFixture[]>(key)
   if (cached) return cached
-  const q = season && season !== 'all' ? `?season=${season}` : ''
+  const q = scope ? `?scope=${encodeURIComponent(scope)}` : season && season !== 'all' ? `?season=${season}` : ''
   const data = await get<PlayerFixture[]>(`/players/${id}/fixtures${q}`)
   setCache(key, data)
   return data
@@ -115,14 +118,15 @@ export async function fetchCompare(playerA: number, playerB: number, season?: st
 
 export async function fetchPlayerSeasonStats(
   id: number,
-  season: string,
+  season?: string,
+  scope?: string,
 ): Promise<PlayerSeasonStats | null> {
-  const key = `seasonstats:${id}:${season}`
+  const key = `seasonstats:${id}:${season ?? ''}:${scope ?? ''}`
   const cached = getCached<PlayerSeasonStats>(key)
   if (cached) return cached
   try {
     const data = await get<PlayerSeasonStats>(
-      `/players/${id}/stats?season=${season}`,
+      `/players/${id}/stats?${scope ? `scope=${encodeURIComponent(scope)}` : `season=${season}`}`,
     )
     setCache(key, data)
     return data
@@ -219,12 +223,14 @@ export async function fetchWcTeamProfile(teamExternalId: number): Promise<WcTeam
 export async function fetchPlayerAchievements(
   id: number,
   season?: string,
+  scope?: string,
 ): Promise<PlayerCompetitionAchievement[]> {
-  const key = `achievements:${id}:${season ?? ''}:active`
+  const key = `achievements:${id}:${season ?? ''}:${scope ?? ''}:active`
   const cached = getCached<PlayerCompetitionAchievement[]>(key)
   if (cached) return cached
   const params = new URLSearchParams()
   if (season) params.set('season', season)
+  if (scope) params.set('scope', scope)
   const data = await get<PlayerCompetitionAchievement[]>(
     `/players/${id}/achievements?${params.toString()}`,
   )

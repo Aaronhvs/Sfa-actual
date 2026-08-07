@@ -111,7 +111,7 @@ function PlayerRow({ player, color }: { player: WcLineupPlayer; color: string })
 
   if (player.player_id != null) {
     return (
-      <Link className="wmd-player wmd-player--link" style={style} to={`/player/${player.player_id}?season=2026`}>
+      <Link className="wmd-player wmd-player--link" style={style} to={`/player/${player.player_id}?scope=world-cup-2026`}>
         {content}
       </Link>
     )
@@ -285,7 +285,7 @@ function PitchPlayer({
 
   return player.player_id != null ? (
     <Link
-      to={`/player/${player.player_id}?season=2026`}
+      to={`/player/${player.player_id}?scope=world-cup-2026`}
       className="wmd-pitch-player wmd-pitch-player--link"
       style={playerStyle}
     >
@@ -464,7 +464,7 @@ function PlayerPerformancePanel({ lineups }: { lineups: WcTeamLineup[] }) {
 
           return player.player_id != null ? (
             <Link
-              to={`/player/${player.player_id}?season=2026`}
+              to={`/player/${player.player_id}?scope=world-cup-2026`}
               className="wmd-performance__row"
               key={`${player.external_id ?? player.name}-${index}`}
             >

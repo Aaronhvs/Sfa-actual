@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
-from sfa.domain.ports import SFAScoreRepositoryProtocol
+from sfa.domain.ports import SeasonRepositoryProtocol, SFAScoreRepositoryProtocol
 
 
 @dataclass(frozen=True)
@@ -30,6 +30,8 @@ class PlayerDetailResult:
     breakdown: dict[str, BreakdownEntry] | None
     competitions: list[str]
     available_seasons: list[str] = field(default_factory=list)
+    scope: str | None = None
+    available_scopes: list[str] = field(default_factory=list)
     b1_bonus_pts: float = 0.0
     b1_bonus_label: str | None = None
 
@@ -37,7 +39,8 @@ class PlayerDetailResult:
 @runtime_checkable
 class GetPlayerDetailUseCaseProtocol(Protocol):
     async def execute(
-        self, player_id: int, season: str | None = None, rules_version_id: int | None = None,
+        self, player_id: int, season: str | None = None, scope: str | None = None,
+        rules_version_id: int | None = None,
     ) -> PlayerDetailResult: ...
 
 
@@ -51,16 +54,50 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
         self,
         score_repo: SFAScoreRepositoryProtocol,
         default_rules_version_id: int | None = None,
+        season_repo: SeasonRepositoryProtocol | None = None,
     ) -> None:
         self._score_repo = score_repo
         self._default_rules_version_id = default_rules_version_id
+        self._season_repo = season_repo
 
     async def execute(
-        self, player_id: int, season: str | None = None, rules_version_id: int | None = None,
+        self, player_id: int, season: str | None = None, scope: str | None = None,
+        rules_version_id: int | None = None,
     ) -> PlayerDetailResult:
+        if season is not None and scope is not None:
+            raise ValueError("scope and season are mutually exclusive")
         explicit_rules_version = rules_version_id is not None
         if rules_version_id is None:
             rules_version_id = self._default_rules_version_id
+
+        if self._season_repo is not None and (scope is not None or season is None):
+            resolved_scope = await self._season_repo.resolve_scope(scope)
+            if resolved_scope is None:
+                raise PlayerNotFoundError(player_id)
+            rules_version_id = await self._score_repo.resolve_rules_version_id_for_scope(
+                resolved_scope, rules_version_id
+            )
+            scoped = await self._score_repo.get_player_detail_for_scope(
+                player_id, resolved_scope, rules_version_id
+            )
+            if scoped is None:
+                raise PlayerNotFoundError(player_id)
+            available = await self._season_repo.get_available_scopes_for_player(player_id)
+            return self._build_result(
+                score=scoped.score,
+                season=resolved_scope.sources[0].season,
+                scope=resolved_scope.key,
+                competitions=list(scoped.competitions),
+                available_seasons=await self._score_repo.get_available_seasons_for_player(player_id),
+                available_scopes=[item.key for item in available if item.key],
+                total_matches=scoped.matches,
+                total_goals=scoped.goals,
+                total_assists=scoped.assists,
+                total_pts=scoped.total_pts,
+                global_rank=scoped.global_rank,
+                b1_bonus_pts=scoped.b1_bonus_pts,
+                b1_bonus_label=scoped.b1_bonus_label,
+            )
 
         # 1. Resolver season
         if season is None:
@@ -171,6 +208,8 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
         total_assists: int,
         total_pts: float,
         global_rank: int,
+        scope: str | None = None,
+        available_scopes: list[str] | None = None,
         b1_bonus_pts: float = 0.0,
         b1_bonus_label: str | None = None,
     ) -> PlayerDetailResult:
@@ -198,6 +237,8 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
             breakdown=breakdown,
             competitions=competitions,
             available_seasons=available_seasons,
+            scope=scope,
+            available_scopes=available_scopes or [],
             b1_bonus_pts=b1_bonus_pts,
             b1_bonus_label=b1_bonus_label,
         )

@@ -28,6 +28,7 @@ async def _run(
     season: str,
     force_recalculate: bool,
     infer_achievements: bool = True,
+    queue_explanations: bool = True,
 ) -> None:
     from sfa.application.use_cases.run_full_recalculation import (
         RunFullRecalculationUseCase,
@@ -79,7 +80,9 @@ async def _run(
         result.players_updated,
         result.achievement_bonuses_created,
     )
-    if result.status == "completed":
+    if result.status != "completed":
+        raise RuntimeError(result.error or "Full recalculation failed")
+    if result.status == "completed" and queue_explanations:
         _queue_ranking_explanations_after_recalculation(season, rules_version_id)
 
 

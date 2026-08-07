@@ -47,6 +47,18 @@ async def _get_competition_id_by_league(league: LeagueConfig) -> int | None:
         )
 
 
+async def _get_competition_ids_for_kind(
+    season: int, participant_kind: str
+) -> list[int]:
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.repositories.team_strength_repository import TeamStrengthRepository
+
+    async with AsyncSessionLocal() as session:
+        return await TeamStrengthRepository(session).get_competition_ids_for_participant_kind(
+            str(season), participant_kind
+        )
+
+
 async def _already_completed(league: LeagueConfig, season: int) -> bool:
     from sfa.infrastructure.database import AsyncSessionLocal
     from sfa.infrastructure.models.enums import IngestionStatus
@@ -112,15 +124,22 @@ async def _run_ingest_competition(
         await session.commit()
 
     competition_id = await _get_competition_id_by_league(league)
-    if competition_id is not None and league.participant_kind == "national_team":
-        await _trigger_recalculation_after_national_team_elo(season, [competition_id])
-    elif competition_id is not None:
-        from sfa.tasks.elo_tasks import apply_elo_update_task
-
-        apply_elo_update_task.delay(str(season), [competition_id])
+    if competition_id is None:
         await _trigger_recalculation(season)
     else:
-        await _trigger_recalculation(season)
+        await _trigger_recalculation_after_elo_pools(
+            season,
+            club_competition_ids=(
+                await _get_competition_ids_for_kind(season, "club")
+                if league.participant_kind == "club"
+                else []
+            ),
+            national_competition_ids=(
+                [competition_id]
+                if league.participant_kind == "national_team"
+                else []
+            ),
+        )
 
     return _serialize_result(result)
 
@@ -142,6 +161,7 @@ async def _run_ingest_all(season: int, force: bool = False):
     )
     results = []
     national_competition_ids: set[int] = set()
+    club_competition_ids: set[int] = set()
 
     async with AsyncSessionLocal() as session:
         repo = IngestionRepository(session)
@@ -162,11 +182,18 @@ async def _run_ingest_all(season: int, force: bool = False):
             competition_id = await _get_competition_id_by_league(league)
             if competition_id is not None and league.participant_kind == "national_team":
                 national_competition_ids.add(competition_id)
+            elif competition_id is not None:
+                club_competition_ids.add(competition_id)
 
-    if national_competition_ids:
-        await _trigger_recalculation_after_national_team_elo(
+    if national_competition_ids or club_competition_ids:
+        await _trigger_recalculation_after_elo_pools(
             season,
-            sorted(national_competition_ids),
+            club_competition_ids=(
+                await _get_competition_ids_for_kind(season, "club")
+                if club_competition_ids
+                else []
+            ),
+            national_competition_ids=sorted(national_competition_ids),
         )
     else:
         await _trigger_recalculation(season)
@@ -222,4 +249,37 @@ async def _trigger_recalculation_after_national_team_elo(
         active_version.id,
         season,
         competition_ids,
+    )
+
+
+async def _trigger_recalculation_after_elo_pools(
+    season: int,
+    club_competition_ids: list[int],
+    national_competition_ids: list[int],
+) -> None:
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.repositories.scoring_rules_version_repository import ScoringRulesVersionRepository
+
+    async with AsyncSessionLocal() as ver_session:
+        active_version = await ScoringRulesVersionRepository(ver_session).get_active_version()
+
+    if active_version is None:
+        logger.error("[ingestion] No active scoring rules version found - skipping ELO/scoring")
+        return
+
+    from sfa.tasks.elo_tasks import apply_elo_pools_then_recalculate_task
+
+    apply_elo_pools_then_recalculate_task.delay(
+        str(season),
+        active_version.id,
+        club_competition_ids,
+        national_competition_ids,
+    )
+    logger.info(
+        "[ingestion] Queued ELO pools + recalculation rules_version_id=%d "
+        "season=%s clubs=%s national=%s",
+        active_version.id,
+        season,
+        club_competition_ids,
+        national_competition_ids,
     )

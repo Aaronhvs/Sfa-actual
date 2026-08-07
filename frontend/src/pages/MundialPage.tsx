@@ -1155,7 +1155,7 @@ export default function MundialPage() {
       navigate(-1)
       return
     }
-    navigate('/ranking?season=2026')
+    navigate('/ranking?scope=world-cup-2026')
   }
 
   return (

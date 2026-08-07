@@ -49,6 +49,7 @@ _archive/
 
 # Database backups
 *.sql
+!migrations/0045_normalize_club_elo_progression.sql
 *.dump
 
 # Frontend (if building from repo root)

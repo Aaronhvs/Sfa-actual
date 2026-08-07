@@ -14,7 +14,6 @@ from sfa.domain.scoring_ports import (
     ScoringRulesVersionRepositoryPort,
 )
 
-
 # ─── Fakes ───────────────────────────────────────────────────────────────────
 
 
@@ -258,10 +257,10 @@ class TestCalculateScoresForRulesVersionUseCase:
         score = events_repo.upserted[0]
         assert score.action_type == "goal_shootout_decisive"
         assert score.base_points == 300
-        assert score.m1 == 1.45
+        assert score.m1 == 1.225
         assert score.m2 == 1.15
         assert score.m3 == 1.0
-        assert score.final_points == 500.25
+        assert score.final_points == 422.62
 
     @pytest.mark.anyio
     async def test_decisive_shootout_miss_can_subtract_points(self):
@@ -284,10 +283,10 @@ class TestCalculateScoresForRulesVersionUseCase:
         score = events_repo.upserted[0]
         assert score.action_type == "missed_shootout_decisive"
         assert score.base_points == -220
-        assert score.m1 == 1.45
+        assert score.m1 == 1.225
         assert score.m2 == 1.15
         assert score.m3 == 1.0
-        assert score.final_points == -366.85
+        assert score.final_points == -309.93
 
     @pytest.mark.anyio
     async def test_stats_event_recalculated_with_config(self):
@@ -384,8 +383,6 @@ class TestCalculateScoresForRulesVersionUseCase:
 
     @pytest.mark.anyio
     async def test_changed_base_points_affect_final_score(self):
-        import copy
-
         default_config = ScoringConfig.default()
         modified_bp = {g: dict(v) for g, v in default_config.base_points.items()}
         from sfa.domain.scoring.value_objects import ActionType, PositionGroup

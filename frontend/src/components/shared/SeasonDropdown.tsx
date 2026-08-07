@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { SeasonItem } from '../../types'
-import { getSeasonLabel, isWorldCupSeason } from '../../utils/season'
+import { getSeasonLabel, isWorldCupSeason, seasonItemValue } from '../../utils/season'
 
 interface Props {
   items: SeasonItem[]
@@ -16,7 +16,9 @@ export default function SeasonDropdown({
   onChange,
   includeAll = true,
 }: Props) {
-  const allOption: SeasonItem = { season: 'all', is_latest: false }
+  const allOption: SeasonItem = {
+    season: 'all', key: 'all', label: 'Total historico', kind: 'all_time', is_latest: false,
+  }
   const options = includeAll ? [allOption, ...items] : items
   const latestItem = items.find((item) => item.is_latest)
   const [open, setOpen] = useState(false)
@@ -35,7 +37,7 @@ export default function SeasonDropdown({
 
   const currentLabel = value === 'all'
     ? 'Total histórico'
-    : `${getSeasonLabel(value, items)}${latestItem?.season === value ? ' · Actual' : ''}`
+    : `${getSeasonLabel(value, items)}${latestItem && seasonItemValue(latestItem) === value ? ' · Actual' : ''}`
   const isCurrentWorldCup = isWorldCupSeason(value, items)
 
   function selectSeason(season: string) {
@@ -130,23 +132,24 @@ export default function SeasonDropdown({
       {open && (
         <ul className="season-dropdown__menu" role="listbox" aria-label="Seleccionar temporada">
           {options.map((item, index) => {
+            const itemValue = seasonItemValue(item)
             const isWorldCup = item.is_world_cup === true
             const label = item.season === 'all'
               ? 'Todas las temporadas'
-              : getSeasonLabel(item.season, items)
+              : item.label || getSeasonLabel(itemValue, items)
             return (
               <li
-                key={item.season}
+                key={itemValue}
                 role="option"
                 tabIndex={0}
-                aria-selected={value === item.season}
+                aria-selected={value === itemValue}
                 className={[
                   'season-dropdown__item',
-                  value === item.season ? 'season-dropdown__item--active' : '',
+                  value === itemValue ? 'season-dropdown__item--active' : '',
                   isWorldCup ? 'season-dropdown__item--wc' : '',
                 ].filter(Boolean).join(' ')}
-                onClick={() => selectSeason(item.season)}
-                onKeyDown={(event) => handleOptionKeyDown(event, item.season, index)}
+                onClick={() => selectSeason(itemValue)}
+                onKeyDown={(event) => handleOptionKeyDown(event, itemValue, index)}
               >
                 <span>{label}</span>
                 {isWorldCup && (

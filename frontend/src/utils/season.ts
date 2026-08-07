@@ -10,7 +10,7 @@ export function seasonLabel(season: string): string {
 
 export function getSeasonLabel(season: string, items?: SeasonItem[]): string {
   if (items) {
-    const item = items.find((candidate) => candidate.season === season)
+    const item = items.find((candidate) => candidate.key === season || candidate.season === season)
     if (item?.label) return item.label
     if (item?.is_world_cup) return `Mundial ${item.season}`
   }
@@ -19,7 +19,9 @@ export function getSeasonLabel(season: string, items?: SeasonItem[]): string {
 
 export function isWorldCupSeason(season: string, items?: SeasonItem[]): boolean {
   if (!items) return false
-  return items.some((item) => item.season === season && item.is_world_cup === true)
+  return items.some((item) => (
+    (item.key === season || item.season === season) && item.kind === 'tournament'
+  ))
 }
 
 export function isSeasonReceivingWcPoints(
@@ -27,9 +29,9 @@ export function isSeasonReceivingWcPoints(
   items?: SeasonItem[],
 ): boolean {
   if (!items) return false
-  const worldCupItem = items.find((item) => item.is_world_cup)
-  if (!worldCupItem) return false
-  const worldCupYear = parseInt(worldCupItem.season, 10)
-  const seasonYear = parseInt(season, 10)
-  return seasonYear === worldCupYear - 1
+  return items.some((item) => item.key === season && item.includes_world_cup === true)
+}
+
+export function seasonItemValue(item: SeasonItem): string {
+  return item.key || item.season
 }

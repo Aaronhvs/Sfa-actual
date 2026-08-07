@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from sfa.domain.ports import RankedPlayerDTO, SFAScoreRepositoryProtocol
+from sfa.domain.ports import RankedPlayerDTO, SeasonRepositoryProtocol, SFAScoreRepositoryProtocol
 
 ALL_SEASONS_SENTINEL = "all"
 DEFAULT_PAGE = 1
@@ -24,6 +24,7 @@ class RankingPagination:
 @dataclass(frozen=True)
 class RankingResult:
     season: str
+    scope: str | None
     total: int
     ranking: list[RankedPlayerDTO]
     pagination: RankingPagination
@@ -34,6 +35,7 @@ class GetRankingUseCaseProtocol(Protocol):
     async def execute(
         self,
         season: str | None = None,
+        scope: str | None = None,
         position: str | None = None,
         competition_id: int | None = None,
         limit: int = DEFAULT_LIMIT,
@@ -51,13 +53,16 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
         self,
         score_repo: SFAScoreRepositoryProtocol,
         default_rules_version_id: int | None = None,
+        season_repo: SeasonRepositoryProtocol | None = None,
     ) -> None:
         self._score_repo = score_repo
         self._default_rules_version_id = default_rules_version_id
+        self._season_repo = season_repo
 
     async def execute(
         self,
         season: str | None = None,
+        scope: str | None = None,
         position: str | None = None,
         competition_id: int | None = None,
         limit: int = DEFAULT_LIMIT,
@@ -76,12 +81,58 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
         if rules_version_id is None:
             rules_version_id = self._default_rules_version_id
 
-        if season is None:
+        if season is not None and scope is not None:
+            raise ValueError("scope and season are mutually exclusive")
+
+        if scope == ALL_SEASONS_SENTINEL:
+            season = ALL_SEASONS_SENTINEL
+        elif self._season_repo is not None and (scope is not None or season is None):
+            resolved_scope = await self._season_repo.resolve_scope(scope)
+            if resolved_scope is None:
+                return RankingResult(
+                    season="",
+                    scope=None,
+                    total=0,
+                    ranking=[],
+                    pagination=self._pagination(page, limit, 0),
+                )
+            rules_version_id = await self._score_repo.resolve_rules_version_id_for_scope(
+                resolved_scope,
+                rules_version_id,
+            )
+            ranking = await self._score_repo.get_ranking_for_scope(
+                resolved_scope,
+                position,
+                competition_id,
+                limit,
+                offset,
+                name,
+                bonus_label,
+                rules_version_id,
+                use_total,
+            )
+            total = await self._score_repo.get_ranking_total_for_scope(
+                resolved_scope,
+                position,
+                competition_id,
+                name,
+                bonus_label,
+                rules_version_id,
+            )
+            return RankingResult(
+                season=resolved_scope.sources[0].season,
+                scope=resolved_scope.key,
+                total=total,
+                ranking=ranking,
+                pagination=self._pagination(page, limit, total),
+            )
+        elif season is None:
             season = await self._score_repo.latest_season()
 
         if season is None:
             return RankingResult(
                 season="",
+                scope=None,
                 total=0,
                 ranking=[],
                 pagination=self._pagination(page, limit, 0),
@@ -96,6 +147,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
             )
             return RankingResult(
                 season=ALL_SEASONS_SENTINEL,
+                scope=ALL_SEASONS_SENTINEL,
                 total=total,
                 ranking=ranking,
                 pagination=self._pagination(page, limit, total),
@@ -114,6 +166,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
         )
         return RankingResult(
             season=season,
+            scope=None,
             total=total,
             ranking=ranking,
             pagination=self._pagination(page, limit, total),

@@ -33,6 +33,7 @@ class RankingPaginationSchema(BaseModel):
 
 class RankingResponseSchema(BaseModel):
     season: str
+    scope: str | None = None
     total: int
     ranking: list[RankedPlayerSchema]
     pagination: RankingPaginationSchema

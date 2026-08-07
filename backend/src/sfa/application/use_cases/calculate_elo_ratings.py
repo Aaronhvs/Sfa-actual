@@ -38,18 +38,24 @@ class CalculateEloRatingsUseCase:
         source: str = "elo_v1",
         use_seed_baseline: bool = False,
         require_seed_baseline: bool = False,
+        initialize_missing_seed_baseline: bool = False,
     ) -> CalculateEloRatingsResult:
         try:
             seeded = await self._repo.get_all_teams_with_elo(season, competition_ids)
             seed_by_team = {row.team_id: row.elo_seed_raw for row in seeded}
             current_elo_by_team = {row.team_id: row.elo_raw for row in seeded}
             fixtures = await self._repo.get_fixtures_for_elo_recalc(season, competition_ids)
+            fixture_team_ids = {
+                team_id
+                for fixture in fixtures
+                for team_id in (fixture.home_team_id, fixture.away_team_id)
+            }
+            if use_seed_baseline and initialize_missing_seed_baseline:
+                for team_id in fixture_team_ids:
+                    if seed_by_team.get(team_id) is None:
+                        seed_by_team[team_id] = ELO_DEFAULT
+                    current_elo_by_team.setdefault(team_id, seed_by_team[team_id])
             if use_seed_baseline and require_seed_baseline:
-                fixture_team_ids = {
-                    team_id
-                    for fixture in fixtures
-                    for team_id in (fixture.home_team_id, fixture.away_team_id)
-                }
                 missing_seed_team_ids = sorted(
                     team_id
                     for team_id in fixture_team_ids
@@ -107,6 +113,7 @@ class CalculateEloRatingsUseCase:
                     strength_normalized=self._calculator.normalize(elo_raw),
                     source=source,
                     competition_ids=team_competition_ids,
+                    elo_seed_raw=(seed_by_team.get(team_id) if use_seed_baseline else None),
                 )
                 teams_updated += 1
 

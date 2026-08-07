@@ -11,14 +11,27 @@ from sfa.domain.ports import (
     PlayerFixtureDTO,
     PlayerSeasonStatsDTO,
 )
+from sfa.domain.season_scope import AwardPeriodScope
 from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
 from sfa.infrastructure.models.player_stats.models import PlayerStats
-from sfa.infrastructure.models.scoring_rules.models import ScoringRulesVersion
 from sfa.infrastructure.models.scores.models import SFASeasonScore
+from sfa.infrastructure.models.scoring_rules.models import ScoringRulesVersion
 from sfa.infrastructure.models.teams.models import Team
+
+
+def _fixture_scope_filter(scope: AwardPeriodScope):
+    return or_(
+        *[
+            and_(
+                Fixture.season == source.season,
+                Fixture.competition_id.in_(source.competition_ids),
+            )
+            for source in scope.sources
+        ]
+    )
 
 
 class PlayerEventRepository(PlayerEventRepositoryProtocol):
@@ -70,10 +83,11 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
         season: str | None = None,
         competition_id: int | None = None,
         rules_version_id: int | None = None,
+        scope: AwardPeriodScope | None = None,
     ) -> list[PlayerEventDTO]:
         home_alias = Team.__table__.alias("ht")
         away_alias = Team.__table__.alias("at")
-        historical_scores = season is None and rules_version_id is None
+        historical_scores = season is None and rules_version_id is None and scope is None
         if historical_scores:
             score_ranked = (
                 select(
@@ -151,6 +165,8 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
         )
         if season is not None:
             stmt = stmt.where(Fixture.season == season)
+        if scope is not None:
+            stmt = stmt.where(_fixture_scope_filter(scope))
         if competition_id is not None:
             stmt = stmt.where(Fixture.competition_id == competition_id)
 
@@ -166,6 +182,7 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
         rival: str | None = None,
         date: datetime.date | None = None,
         rules_version_id: int | None = None,
+        scope: AwardPeriodScope | None = None,
     ) -> list[PlayerFixtureDTO]:
         home_alias = Team.__table__.alias("ht")
         away_alias = Team.__table__.alias("at")
@@ -191,7 +208,7 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
             .where(SFASeasonScore.team_id.is_not(None))
             .subquery()
         )
-        historical_scores = season is None and rules_version_id is None
+        historical_scores = season is None and rules_version_id is None and scope is None
         if historical_scores:
             score_ranked = (
                 select(
@@ -317,6 +334,8 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
         )
         if season is not None:
             stmt = stmt.where(Fixture.season == season)
+        if scope is not None:
+            stmt = stmt.where(_fixture_scope_filter(scope))
         if competition_id is not None:
             stmt = stmt.where(Fixture.competition_id == competition_id)
         if competition_name is not None:
@@ -373,6 +392,7 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
         player_id: int,
         competition_id: int | None,
         season: str | None,
+        scope: AwardPeriodScope | None = None,
     ) -> PlayerSeasonStatsDTO | None:
         weighted_pass_accuracy = func.coalesce(
             func.sum(PlayerStats.passes_completed) * 100.0 / func.nullif(func.sum(PlayerStats.passes_total), 0),
@@ -413,6 +433,8 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
             stmt = stmt.where(Fixture.competition_id == competition_id)
         if season is not None:
             stmt = stmt.where(PlayerStats.season == season)
+        if scope is not None:
+            stmt = stmt.where(_fixture_scope_filter(scope))
         row = (await self._session.execute(stmt)).mappings().one_or_none()
         if row is None or row["matches"] == 0:
             return None
@@ -425,7 +447,7 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
         return PlayerSeasonStatsDTO(
             player_id=player_id,
             competition_id=competition_id,
-            season=season or "all",
+            season=(scope.key if scope is not None else season or "all"),
             matches=int(row["matches"]),
             minutes=int(row["minutes"]),
             goals=int(row["goals"]),
