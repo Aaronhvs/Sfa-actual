@@ -8,11 +8,10 @@ import RankingExplanationModal from '../components/ranking/RankingExplanationMod
 import ShowcaseCard from '../components/ranking/ShowcaseCard'
 import TopRankingNarrativeCarousel from '../components/ranking/TopRankingNarrativeCarousel'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
-import WorldCupBanner from '../components/shared/WorldCupBanner'
 import WorldCupPageHeader from '../components/shared/WorldCupPageHeader'
 import WcLiveChip from '../components/shared/WcLiveChip'
 import { useCountUp } from '../hooks/useCountUp'
-import { isSeasonReceivingWcPoints, isWorldCupSeason } from '../utils/season'
+import { isWorldCupSeason } from '../utils/season'
 
 const PAGE_SIZE = 12
 const HERO_RANKING_OFFSET = 3
@@ -79,8 +78,6 @@ export default function RankingPage() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const didMountFiltersRef = useRef(false)
   const isWcSeason = isWorldCupSeason(season, seasonItems)
-  const showWcBanner = isSeasonReceivingWcPoints(season, seasonItems)
-  const wcSeason = seasonItems.find((item) => item.is_world_cup)?.key
   const selectedSeasonItem = seasonItems.find((item) => item.key === season)
   const explanationScope = isWcSeason ? 'world_cup' : 'award_period'
   const pageSize = PAGE_SIZE
@@ -386,17 +383,6 @@ export default function RankingPage() {
       {isWcSeason && (
         <div className="rp-world-cup-match-preview">
           <WcLiveChip />
-        </div>
-      )}
-
-      {showWcBanner && !isWcSeason && (
-        <div className="rp-wc-banner-wrap">
-          <WorldCupBanner
-            onViewWorldCup={wcSeason ? () => {
-              setSeason(wcSeason)
-              setSearchParams({ scope: wcSeason }, { replace: true })
-            } : undefined}
-          />
         </div>
       )}
 

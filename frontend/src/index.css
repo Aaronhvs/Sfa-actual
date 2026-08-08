@@ -9129,12 +9129,6 @@ body.mode-tournament .main-content {
   background: var(--tm-bg);
 }
 
-.rp-wc-banner-wrap {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 48px;
-}
-
 .rp-tournament-season-bar {
   max-width: 1200px;
   margin: 0 auto;
@@ -9192,109 +9186,6 @@ body.mode-tournament .main-content {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-.wc-banner {
-  background: color-mix(in srgb, var(--tm-sun) 4%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tm-sun) 20%, transparent);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  margin: 0 0 16px;
-  animation: wcBannerIn 300ms var(--tm-ease) both;
-}
-
-.wc-banner__inner {
-  background: color-mix(in srgb, var(--tm-sun) 5%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tm-text) 5%, transparent);
-  border-radius: 3px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.wc-banner__left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.wc-banner__eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--tm-sun);
-}
-
-.wc-banner__text {
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.wc-banner__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.wc-banner__cta {
-  min-height: 36px;
-  background: color-mix(in srgb, var(--tm-sun) 12%, transparent);
-  border: 1px solid var(--tm-border-sun);
-  border-radius: 3px;
-  color: var(--tm-sun);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 6px 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 150ms var(--tm-ease),
-    transform 100ms var(--tm-ease);
-}
-
-.wc-banner__cta:active {
-  transform: scale(0.97);
-}
-
-.wc-banner__dismiss {
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  border: 0;
-  color: var(--text-faint);
-  cursor: pointer;
-  border-radius: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    color 150ms var(--tm-ease),
-    transform 100ms var(--tm-ease);
-}
-
-.wc-banner__dismiss:active {
-  transform: scale(0.92);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .wc-banner__cta:hover {
-    background: color-mix(in srgb, var(--tm-sun) 20%, transparent);
-  }
-
-  .wc-banner__dismiss:hover {
-    color: var(--text-dim);
   }
 }
 
@@ -9388,7 +9279,6 @@ body.mode-tournament .main-content {
 }
 
 @media (max-width: 768px) {
-  .rp-wc-banner-wrap,
   .rp-tournament-season-bar {
     padding-inline: 16px;
   }
@@ -9405,28 +9295,9 @@ body.mode-tournament .main-content {
     font-size: 2.2rem;
   }
 
-  .wc-banner__inner {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .wc-banner__actions {
-    width: 100%;
-  }
-
-  .wc-banner__cta {
-    flex: 1;
-    min-height: 44px;
-  }
-
-  .wc-banner__dismiss {
-    width: 44px;
-    height: 44px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wc-banner,
   .wc-page-header__content,
   .pp-national-badge {
     animation: none;
