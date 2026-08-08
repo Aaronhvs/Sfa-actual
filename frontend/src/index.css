@@ -3238,8 +3238,8 @@ img { display: block; }
 /* ─── Context label (below filters) ─────────────────────────── */
 .rp-context-label {
   font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.2em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
   color: var(--text-faint);
   text-transform: uppercase;
   margin-bottom: 20px;
@@ -8414,7 +8414,7 @@ body.mode-tournament .player-page--wc::before {
 
 .ranking-cards-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -8638,15 +8638,15 @@ body.mode-tournament .player-page--wc::before {
   gap: 5px;
   width: fit-content;
   max-width: 100%;
-  padding: 3px 7px;
+  padding: 4px 8px;
   border: 1px solid rgba(201,168,76,0.42);
   border-radius: 3px;
   background: rgba(201,168,76,0.11);
   color: var(--gold);
   font-family: var(--font-mono);
-  font-size: 0.54rem;
-  line-height: 1;
-  letter-spacing: 0.08em;
+  font-size: 0.6875rem;
+  line-height: 1.1;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.18), 0 8px 18px rgba(0,0,0,0.16);
@@ -8655,9 +8655,9 @@ body.mode-tournament .player-page--wc::before {
 
 .b1-player-badge b {
   font-family: var(--font-display);
-  font-size: 0.58rem;
-  font-weight: 850;
-  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .b1-player-badge i {
@@ -8744,9 +8744,10 @@ body.mode-tournament .player-page--wc::before {
 
 .rc-stat-lbl {
   font-family: 'Space Mono', monospace;
-  font-size: 0.44rem;
-  letter-spacing: 0.12em;
-  color: rgba(255,255,255,0.35);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.72);
   text-transform: uppercase;
   margin-top: 3px;
 }
@@ -8767,13 +8768,13 @@ body.mode-tournament .player-page--wc::before {
 
 @media (max-width: 1200px) {
   .ranking-cards-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 960px) {
   .ranking-cards-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -9329,9 +9330,10 @@ body.mode-tournament .main-content {
 .player-showcase-card::before {
   background: linear-gradient(
     to bottom,
-    transparent 42%,
-    rgba(10, 10, 10, 0.12) 58%,
-    rgba(10, 10, 10, 0.78) 100%
+    transparent 36%,
+    rgba(10, 10, 10, 0.18) 50%,
+    rgba(10, 10, 10, 0.82) 76%,
+    rgba(10, 10, 10, 0.98) 100%
   );
 }
 
@@ -9352,6 +9354,8 @@ body.mode-tournament .main-content {
 
 .psc-name {
   font-size: 1.45rem;
+  line-height: 1.04;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.98);
 }
 
 .player-showcase-card--first .psc-name {
@@ -9380,11 +9384,13 @@ body.mode-tournament .main-content {
 
 .psc-tag {
   display: block;
-  padding: 3px 7px;
-  font-size: 0.44rem;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(10, 10, 10, 0.68);
-  border-color: rgba(255, 255, 255, 0.14);
+  padding: 4px 7px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  background: rgba(10, 10, 10, 0.88);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .psc-team-crest {
@@ -9411,15 +9417,22 @@ body.mode-tournament .main-content {
 }
 
 .psc-stat-main .psc-stat-lbl {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.psc-stat-lbl {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
 
 .ranking-card::before {
   background: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.84) 0%,
-    rgba(0, 0, 0, 0.34) 38%,
-    rgba(0, 0, 0, 0.02) 68%,
+    rgba(0, 0, 0, 0.97) 0%,
+    rgba(0, 0, 0, 0.68) 42%,
+    rgba(0, 0, 0, 0.12) 68%,
     transparent 100%
   );
 }
@@ -9449,9 +9462,13 @@ body.mode-tournament .main-content {
 
 .rc-top-meta .rc-pos-badge {
   position: static;
-  padding: 3px 6px;
-  font-size: 0.48rem;
-  letter-spacing: 0.08em;
+  padding: 4px 7px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  background: rgba(10, 10, 10, 0.88);
 }
 
 .rc-top-meta .rc-team-logo {
@@ -9465,6 +9482,8 @@ body.mode-tournament .main-content {
 }
 
 .rc-name {
+  font-size: clamp(0.95rem, 1.15vw, 1.1rem);
+  line-height: 1.12;
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -9473,6 +9492,7 @@ body.mode-tournament .main-content {
   white-space: normal;
   text-overflow: clip;
   text-wrap: balance;
+  text-shadow: 0 2px 7px rgba(0, 0, 0, 0.98);
 }
 
 .season-dropdown__trigger {
@@ -13607,7 +13627,7 @@ body.mode-tournament .main-content {
 .rp-season-picker__hint {
   color: var(--text-faint);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -13688,8 +13708,8 @@ body.mode-tournament .main-content {
   }
 
   .wc-page-header__eyebrow {
-    font-size: 0.5rem;
-    letter-spacing: 0.16em;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
   }
 
   .wc-page-header__title {
@@ -13709,7 +13729,7 @@ body.mode-tournament .main-content {
 
   .wc-page-header__subtitle {
     margin-top: 7px;
-    font-size: 0.52rem;
+    font-size: 0.75rem;
     letter-spacing: 0.09em;
   }
 
@@ -13736,7 +13756,7 @@ body.mode-tournament .main-content {
 
   .rp-season-picker__hint {
     color: var(--tm-sun);
-    font-size: 0.53rem;
+    font-size: 0.6875rem;
   }
 
   .rp-season-picker__hint::after {
@@ -13842,6 +13862,8 @@ body.mode-tournament .main-content {
   }
 
   .psc-mobile-podium {
+    position: relative;
+    z-index: 3;
     height: 100%;
     display: flex;
     align-items: center;
@@ -13951,7 +13973,7 @@ body.mode-tournament .main-content {
   .psc-mobile-podium__bar span {
     color: var(--tm-sun);
     font-family: var(--font-mono);
-    font-size: 0.52rem;
+    font-size: 0.625rem;
     font-weight: 700;
     white-space: nowrap;
   }
@@ -13959,8 +13981,8 @@ body.mode-tournament .main-content {
   .psc-mobile-podium__bar .b1-player-badge {
     max-width: 100%;
     margin-top: 1px;
-    padding: 2px 5px;
-    font-size: 0.46rem;
+    padding: 3px 6px;
+    font-size: 0.625rem;
     letter-spacing: 0.05em;
     overflow: hidden;
     color: var(--tm-sun);
@@ -13970,13 +13992,13 @@ body.mode-tournament .main-content {
   .psc-mobile-podium__bar .b1-player-badge b {
     min-width: 0;
     overflow: hidden;
-    font-size: 0.5rem;
+    font-size: 0.625rem;
     text-overflow: ellipsis;
   }
 
   .psc-mobile-podium__bar .b1-player-badge i {
     color: var(--text);
-    font-size: 0.44rem;
+    font-size: 0.625rem;
   }
 
   .rp-table-section,
@@ -14047,7 +14069,7 @@ body.mode-tournament .main-content {
     color: var(--text-faint);
     font-family: var(--font-display);
     font-size: 1.15rem;
-    font-weight: 850;
+    font-weight: 800;
     text-align: center;
   }
 
@@ -14095,7 +14117,7 @@ body.mode-tournament .main-content {
     overflow: hidden;
     color: var(--text-faint);
     font-family: var(--font-body);
-    font-size: 0.56rem;
+    font-size: 0.6875rem;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -14103,10 +14125,10 @@ body.mode-tournament .main-content {
   .rc-mobile-row__identity .b1-player-badge {
     justify-self: start;
     max-width: 100%;
-    padding: 2px 5px;
+    padding: 3px 6px;
     color: var(--gold);
     font-family: var(--font-mono);
-    font-size: 0.46rem;
+    font-size: 0.625rem;
     letter-spacing: 0.05em;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -14115,13 +14137,13 @@ body.mode-tournament .main-content {
   .rc-mobile-row__identity .b1-player-badge b {
     min-width: 0;
     overflow: hidden;
-    font-size: 0.5rem;
+    font-size: 0.625rem;
     text-overflow: ellipsis;
   }
 
   .rc-mobile-row__identity .b1-player-badge i {
     color: var(--text);
-    font-size: 0.44rem;
+    font-size: 0.625rem;
   }
 
   .rc-mobile-row__score {
@@ -14142,8 +14164,9 @@ body.mode-tournament .main-content {
   .rc-mobile-row__score span {
     color: var(--text-faint);
     font-family: var(--font-mono);
-    font-size: 0.42rem;
-    letter-spacing: 0.08em;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
   }
 }
 
@@ -14269,7 +14292,7 @@ body.mode-tournament .main-content {
 .filter-select__label {
   color: var(--text-faint);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -14552,8 +14575,8 @@ body.mode-tournament .main-content {
 
 .rp-ranking-total small {
   font-family: var(--font-mono);
-  font-size: 0.52rem;
-  letter-spacing: 0.09em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -15410,8 +15433,8 @@ body.mode-tournament .main-content {
   display: block;
   min-height: 12px;
   color: var(--text-faint);
-  font-size: 0.58rem;
-  letter-spacing: 0.16em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
 }
 
 .rp-control-deck .rp-season-picker__label small {
@@ -15654,7 +15677,7 @@ body.mode-tournament .main-content {
   .rp-control-deck .rp-season-picker__hint {
     margin-bottom: 6px;
     color: var(--text-faint);
-    font-size: 0.55rem;
+    font-size: 0.6875rem;
   }
 
   .rp-control-deck .rp-season-picker__hint::after {
@@ -16592,7 +16615,7 @@ body.mode-tournament .main-content {
   .rp-control-deck .wc-live-chip__minute,
   .rp-control-deck .wc-live-chip__more,
   .rp-control-deck .rp-season-picker__hint {
-    font-size: 0.54rem;
+    font-size: 0.6875rem;
     letter-spacing: 0.075em;
   }
 
@@ -16619,17 +16642,18 @@ body.mode-tournament .main-content {
 
   .psc-mobile-podium__bar span,
   .rc-mobile-row__score > span {
-    font-size: 0.58rem;
+    font-size: 0.625rem;
   }
 
   .psc-mobile-podium__ga b,
   .rc-mobile-row__ga b {
-    font-size: 0.66rem;
+    font-size: 0.75rem;
   }
 
   .psc-mobile-podium__ga i,
   .rc-mobile-row__ga i {
-    font-size: 0.48rem;
+    color: var(--text-dim);
+    font-size: 0.625rem;
   }
 
   .rc-mobile-row__identity strong {
@@ -16639,7 +16663,7 @@ body.mode-tournament .main-content {
   }
 
   .rc-mobile-row__identity span {
-    font-size: 0.62rem;
+    font-size: 0.6875rem;
   }
 
   .wmd-player__name {
@@ -17349,22 +17373,22 @@ body.mode-tournament .main-content {
 
 .top-narrative__story strong {
   color: var(--text);
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 850;
-  letter-spacing: 0.02em;
-  line-height: 1.14;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.45;
   text-transform: none;
 }
 
 .top-narrative__body p {
   max-width: 72ch;
   margin: 0;
-  color: var(--text);
+  color: var(--text-dim);
   display: -webkit-box;
   overflow: hidden;
-  font-size: 0.82rem;
-  line-height: 1.35;
+  font-size: 0.875rem;
+  line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -17404,7 +17428,7 @@ body.mode-tournament .main-content {
 
 .top-narrative__link {
   grid-area: action;
-  min-height: 36px;
+  min-height: 40px;
   align-self: center;
   padding: 0 14px;
   display: inline-flex;
@@ -17415,8 +17439,8 @@ body.mode-tournament .main-content {
   background: rgba(201,168,76,0.075);
   color: var(--text);
   font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 850;
+  font-size: 0.75rem;
+  font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -17440,7 +17464,7 @@ body.mode-tournament .main-content {
 }
 
 .top-narrative__tabs button {
-  min-height: 30px;
+  min-height: 36px;
   padding: 0 9px;
   display: inline-flex;
   align-items: center;
@@ -17463,9 +17487,9 @@ body.mode-tournament .main-content {
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-display);
-  font-size: 0.66rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -17608,13 +17632,13 @@ body.mode-tournament .main-content {
   }
 
   .top-narrative__story strong {
-    font-size: 0.82rem;
+    font-size: 0.875rem;
     white-space: normal;
   }
 
   .top-narrative__body p {
-    font-size: 0.78rem;
-    line-height: 1.32;
+    font-size: 0.875rem;
+    line-height: 1.5;
   }
 
   .top-narrative__chips {
@@ -17623,6 +17647,7 @@ body.mode-tournament .main-content {
 
   .top-narrative__link {
     width: 100%;
+    min-height: 44px;
     justify-content: center;
   }
 
@@ -17633,10 +17658,10 @@ body.mode-tournament .main-content {
 
   .top-narrative__tabs button {
     min-width: 78px;
-    min-height: 30px;
+    min-height: 44px;
   }
 
   .top-narrative__tabs strong {
-    font-size: 0.62rem;
+    font-size: 0.75rem;
   }
 }

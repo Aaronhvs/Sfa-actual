@@ -122,7 +122,7 @@ export default function ShowcaseCard({ player, podiumPlace, scope, isWorldCup = 
       </div>
 
       <div className="psc-content">
-        <div className="psc-name">{player.name}</div>
+        <div className="psc-name" title={player.name}>{player.name}</div>
         <B1Badge player={player} />
         <div className="psc-divider" />
         <div className="psc-stats">

@@ -120,7 +120,7 @@ export default function RankingCard({
 
       <div className="rc-content">
         <div className="rc-name-row">
-          <div className="rc-name">{player.name}</div>
+          <div className="rc-name" title={player.name}>{player.name}</div>
           <B1Badge player={player} />
         </div>
         <div className="rc-divider" />
