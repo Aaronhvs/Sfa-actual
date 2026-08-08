@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from sfa.domain.ports import RankedPlayerDTO
 from sfa.domain.ranking_explanation_ports import (
@@ -19,19 +19,18 @@ from sfa.domain.ranking_explanation_ports import (
     RankingExplanationWriteResultDTO,
     RankingPlayerExplanationDTO,
 )
-from sfa.infrastructure.models.enums import EventType
+from sfa.domain.season_scope import AwardPeriodScope
 from sfa.infrastructure.models import (
     Competition,
     Fixture,
-    Player,
     PlayerEvent,
     PlayerEventScore,
     PlayerStats,
     SFASeasonScore,
     Team,
 )
+from sfa.infrastructure.models.enums import EventType
 from sfa.infrastructure.models.ranking_explanations.models import RankingPlayerExplanation
-
 
 PUBLIC_STATUSES = ("generated", "fallback")
 STAGE_LABELS_ES = {
@@ -118,6 +117,22 @@ TEAM_NAMES_ES = {
 }
 
 
+def _source_filter(
+    season_column: Any,
+    competition_column: Any,
+    source_scope: AwardPeriodScope,
+) -> Any:
+    return or_(
+        *(
+            and_(
+                season_column == source.season,
+                competition_column.in_(source.competition_ids),
+            )
+            for source in source_scope.sources
+        )
+    )
+
+
 def _replace_full_terms(text: str, replacements: dict[str, str]) -> str:
     result = text
     for source, target in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
@@ -134,6 +149,7 @@ class RankingExplanationRepository:
         self,
         request: RankingExplanationRequestDTO,
         ranked_players: list[RankedPlayerDTO],
+        source_scope: AwardPeriodScope | None = None,
     ) -> list[RankingExplanationEvidenceDTO]:
         if not ranked_players:
             return []
@@ -141,10 +157,18 @@ class RankingExplanationRepository:
         comparison = self._comparison(ranked_players)
         evidence_items: list[RankingExplanationEvidenceDTO] = []
         for ranked in ranked_players:
-            score_rows = await self._score_rows(ranked.player_id, request)
-            top_events = await self._top_events(ranked.player_id, request)
-            match_summaries = await self._match_summaries(ranked.player_id, request)
-            stat_profile = await self._stat_profile(ranked.player_id, request)
+            score_rows = await self._score_rows(ranked.player_id, request, source_scope)
+            top_events = await self._top_events(ranked.player_id, request, source_scope)
+            match_summaries = await self._match_summaries(
+                ranked.player_id,
+                request,
+                source_scope,
+            )
+            stat_profile = await self._stat_profile(
+                ranked.player_id,
+                request,
+                source_scope,
+            )
             score_total = round(float(ranked.total_pts or 0), 2)
             achievement_bonus = round(
                 sum(float(row.get("achievement_bonus_pts") or 0) for row in score_rows),
@@ -155,10 +179,18 @@ class RankingExplanationRepository:
                 "methodology": self._methodology_context(),
                 "scope": {
                     "season": request.season,
+                    "scope_key": request.scope_key,
                     "competition_id": request.competition_id,
                     "rules_version_id": request.rules_version_id,
                     "scope": request.scope,
                     "use_total": request.use_total,
+                    "position": request.position,
+                    "bonus_label": request.bonus_label,
+                    "context_label": self._context_label(
+                        request,
+                        ranked,
+                        source_scope,
+                    ),
                 },
                 "player": {
                     "id": ranked.player_id,
@@ -337,10 +369,16 @@ class RankingExplanationRepository:
             updated += int(result.rowcount or 0)
         return updated
 
-    async def _score_rows(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
+    async def _score_rows(
+        self,
+        player_id: int,
+        request: RankingExplanationRequestDTO,
+        source_scope: AwardPeriodScope | None = None,
+    ) -> list[dict[str, Any]]:
         stmt = (
             select(
                 SFASeasonScore.competition_id,
+                SFASeasonScore.season,
                 Competition.name.label("competition"),
                 Team.name.label("team"),
                 SFASeasonScore.total_pts,
@@ -352,14 +390,28 @@ class RankingExplanationRepository:
             .outerjoin(Team, Team.id == SFASeasonScore.team_id)
             .where(
                 SFASeasonScore.player_id == player_id,
-                SFASeasonScore.season == request.season,
             )
         )
+        if source_scope is None:
+            stmt = stmt.where(SFASeasonScore.season == request.season)
+        else:
+            stmt = stmt.where(
+                _source_filter(
+                    SFASeasonScore.season,
+                    SFASeasonScore.competition_id,
+                    source_scope,
+                )
+            )
         stmt = self._apply_score_scope(stmt, request)
         rows = (await self._session.execute(stmt)).mappings().all()
         return [self._clean(self._localize_evidence(dict(row))) for row in rows]
 
-    async def _stat_profile(self, player_id: int, request: RankingExplanationRequestDTO) -> dict[str, Any]:
+    async def _stat_profile(
+        self,
+        player_id: int,
+        request: RankingExplanationRequestDTO,
+        source_scope: AwardPeriodScope | None = None,
+    ) -> dict[str, Any]:
         stmt = (
             select(
                 func.coalesce(func.sum(PlayerStats.minutes), 0).label("minutes"),
@@ -384,9 +436,18 @@ class RankingExplanationRepository:
             .join(Fixture, Fixture.id == PlayerStats.fixture_id)
             .where(
                 PlayerStats.player_id == player_id,
-                PlayerStats.season == request.season,
             )
         )
+        if source_scope is None:
+            stmt = stmt.where(PlayerStats.season == request.season)
+        else:
+            stmt = stmt.where(
+                _source_filter(
+                    PlayerStats.season,
+                    Fixture.competition_id,
+                    source_scope,
+                )
+            )
         if request.competition_id is not None:
             stmt = stmt.where(Fixture.competition_id == request.competition_id)
         row = (await self._session.execute(stmt)).mappings().first()
@@ -451,7 +512,12 @@ class RankingExplanationRepository:
         }
         return self._clean(profile)
 
-    async def _top_events(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
+    async def _top_events(
+        self,
+        player_id: int,
+        request: RankingExplanationRequestDTO,
+        source_scope: AwardPeriodScope | None = None,
+    ) -> list[dict[str, Any]]:
         home = aliased(Team)
         away = aliased(Team)
         stmt = (
@@ -479,11 +545,20 @@ class RankingExplanationRepository:
             .join(away, away.id == Fixture.away_team_id)
             .where(
                 PlayerEventScore.player_id == player_id,
-                PlayerEventScore.season == request.season,
             )
             .order_by(PlayerEventScore.final_points.desc())
             .limit(5)
         )
+        if source_scope is None:
+            stmt = stmt.where(PlayerEventScore.season == request.season)
+        else:
+            stmt = stmt.where(
+                _source_filter(
+                    PlayerEventScore.season,
+                    PlayerEventScore.competition_id,
+                    source_scope,
+                )
+            )
         if request.competition_id is not None:
             stmt = stmt.where(PlayerEventScore.competition_id == request.competition_id)
         if request.rules_version_id is not None:
@@ -491,7 +566,12 @@ class RankingExplanationRepository:
         rows = (await self._session.execute(stmt)).mappings().all()
         return [self._enrich_event_context(self._localize_evidence(dict(row))) for row in rows]
 
-    async def _match_summaries(self, player_id: int, request: RankingExplanationRequestDTO) -> list[dict[str, Any]]:
+    async def _match_summaries(
+        self,
+        player_id: int,
+        request: RankingExplanationRequestDTO,
+        source_scope: AwardPeriodScope | None = None,
+    ) -> list[dict[str, Any]]:
         home = aliased(Team)
         away = aliased(Team)
         stmt = (
@@ -521,10 +601,19 @@ class RankingExplanationRepository:
             .join(away, away.id == Fixture.away_team_id)
             .where(
                 PlayerEventScore.player_id == player_id,
-                PlayerEventScore.season == request.season,
             )
             .order_by(Fixture.played_at.asc(), PlayerEvent.minute.asc())
         )
+        if source_scope is None:
+            stmt = stmt.where(PlayerEventScore.season == request.season)
+        else:
+            stmt = stmt.where(
+                _source_filter(
+                    PlayerEventScore.season,
+                    PlayerEventScore.competition_id,
+                    source_scope,
+                )
+            )
         if request.competition_id is not None:
             stmt = stmt.where(PlayerEventScore.competition_id == request.competition_id)
         if request.rules_version_id is not None:
@@ -593,6 +682,18 @@ class RankingExplanationRepository:
         summaries.sort(key=lambda item: float(item.get("total_points") or 0), reverse=True)
         return [self._clean(self._localize_evidence(item)) for item in summaries[:6]]
 
+    def _context_label(
+        self,
+        request: RankingExplanationRequestDTO,
+        ranked: RankedPlayerDTO,
+        source_scope: AwardPeriodScope | None,
+    ) -> str:
+        if request.competition_id is not None:
+            return str(self._localize_name(ranked.competition_name))
+        if source_scope is not None:
+            return source_scope.label
+        return request.season
+
     def _methodology_context(self) -> dict[str, Any]:
         return {
             "product_thesis": (
@@ -603,13 +704,19 @@ class RankingExplanationRepository:
                 "El rendimiento sostenido partido a partido es mas fuerte que una sola noche aislada.",
                 "La dificultad del rival puede restar o elevar el valor de una accion.",
                 "La fase importa: no vale igual aparecer en grupos que en una ronda de eliminacion.",
-                "El recorrido del equipo y los perfiles especiales, como veterano o promesa, son contexto adicional.",
+                (
+                    "El recorrido del equipo y los perfiles especiales, como veterano o "
+                    "promesa, son contexto adicional."
+                ),
                 "El bonus de perfil no debe presentarse como la unica razon si el rendimiento base ya es alto.",
                 "Una participacion de gol vale distinto segun la posicion: en defensas y laterales es mas rara.",
                 "La eficiencia tambien importa: precision de pase, tiros a puerta, conversion, duelos y regates.",
             ],
             "multiplier_glossary": {
-                "m1": "dificultad del rival; menor que 1 castiga si el rival era inferior, mayor que 1 premia rival fuerte",
+                "m1": (
+                    "dificultad del rival; menor que 1 castiga si el rival era inferior, "
+                    "mayor que 1 premia rival fuerte"
+                ),
                 "m2": "importancia de la fase o torneo",
                 "m3": "contexto del marcador; sube si la accion llega con tension o cambia el partido",
                 "m4": "dificultad tecnica de la accion; sube si la definicion o jugada fue mas compleja",
@@ -622,16 +729,25 @@ class RankingExplanationRepository:
                 "No menciones equipos o rivales que no aparezcan en allowed_names.",
                 "Usa dieciseisavos, octavos, cuartos, semifinal o final cuando corresponda.",
                 "No uses palabras como scope, ranking peers, knockout, score, stage o bonus label.",
-                "No repitas que SFA no mide minutos; explica por que las acciones del jugador fueron relevantes.",
+                (
+                    "No repitas que SFA no mide minutos; explica por que las acciones "
+                    "del jugador fueron relevantes."
+                ),
             ],
             "positional_lens": {
                 "DC": (
                     "central: recalca aportes de gol/asistencia si aparecen, "
                     "porque son diferenciales para un defensor"
                 ),
-                "LAT": "lateral: valora ida y vuelta, oportunidades creadas, asistencias, duelos y acciones defensivas",
+                "LAT": (
+                    "lateral: valora ida y vuelta, oportunidades creadas, asistencias, "
+                    "duelos y acciones defensivas"
+                ),
                 "GK": "arquero: prioriza atajadas, goles evitados, seguridad y contexto defensivo",
-                "MC": "mediocampista: valora control, precision de pase, duelos, oportunidades creadas y ritmo del partido",
+                "MC": (
+                    "mediocampista: valora control, precision de pase, duelos, "
+                    "oportunidades creadas y ritmo del partido"
+                ),
                 "MCO": (
                     "mediapunta: valora creatividad, oportunidades creadas, asistencias "
                     "y llegada al area"

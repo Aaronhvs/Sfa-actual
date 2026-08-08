@@ -77,9 +77,9 @@ class DeterministicRankingExplanationWriter:
         match_summaries = data.get("match_summaries", [])
         breakdown = data.get("breakdown", {})
 
-        name = player["name"]
-        rank = player["rank"]
-        total = round(float(player["total_pts"]), 2)
+        name = str(player.get("name") or f"Jugador {player.get('id', '')}").strip()
+        rank = int(player.get("rank") or evidence.rank)
+        total = round(float(player.get("total_pts") or 0), 2)
         matches = int(player.get("matches") or 0)
         goals = int(player.get("goals") or 0)
         assists = int(player.get("assists") or 0)
@@ -88,6 +88,16 @@ class DeterministicRankingExplanationWriter:
         b1_label = player.get("b1_bonus_label")
         b1_pts = round(float(player.get("b1_bonus_pts") or 0), 2)
         achievement = round(float(player.get("achievement_bonus_pts") or 0), 2)
+        scope_context = data.get("scope") or {}
+        context_label = str(scope_context.get("context_label") or evidence.season)
+        position_filter = scope_context.get("position")
+        bonus_filter = scope_context.get("bonus_label")
+        filter_parts = []
+        if position_filter:
+            filter_parts.append(f"entre jugadores {position_filter}")
+        if bonus_filter:
+            filter_parts.append(f"con perfil {str(bonus_filter).lower()}")
+        filter_context = f" {' y '.join(filter_parts)}" if filter_parts else ""
 
         impact_parts = []
         if goals:
@@ -126,12 +136,14 @@ class DeterministicRankingExplanationWriter:
             )
 
         short = (
-            f"#{rank}: {name} suma {total:g} pts en {matches} partidos: "
+            f"#{rank} en {context_label}{filter_context}: {name} suma {total:g} pts "
+            f"en {matches} partidos: "
             f"{', '.join(impact_parts[:2])}."
         )
         long = (
-            f"{name} aparece en el puesto {rank} porque sus acciones pesaron en contexto: "
-            f"el motor SFA pondera rival, fase, minuto y marcador. En este torneo acumula "
+            f"{name} aparece en el puesto {rank} de {context_label}{filter_context} "
+            f"porque sus acciones pesaron en contexto: "
+            f"el motor SFA pondera rival, fase, minuto y marcador. En este contexto acumula "
             f"{total:g} pts en {matches} partidos"
         )
         if ppg:
@@ -209,6 +221,8 @@ class OpenAICompatibleRankingExplanationWriter:
             "explicitamente en el JSON. Si el evento es goal_penalty, di de penal y "
             "no lo vendas como remate dificil: su valor esta en el momento. "
             "Solo puedes mencionar nombres propios que aparezcan en allowed_names o player.name. "
+            "Respeta scope.context_label, scope.position y scope.bonus_label: explica siempre el "
+            "puesto dentro de ese contexto visible y no como si fuera el ranking global. "
             "Si necesitas nombrar un rival, usa exactamente el nombre en espanol que aparece en el JSON. "
             "Cero jerga interna en el texto final. Prohibido escribir M1, M2, M3, M4, mvisit, xG, "
             "PSxG, multiplicador, puntos base, scope, ranking peers, knockout, score, stage, JSON. "

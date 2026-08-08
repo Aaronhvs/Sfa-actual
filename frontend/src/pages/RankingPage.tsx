@@ -82,8 +82,8 @@ export default function RankingPage() {
   const showWcBanner = isSeasonReceivingWcPoints(season, seasonItems)
   const wcSeason = seasonItems.find((item) => item.is_world_cup)?.key
   const selectedSeasonItem = seasonItems.find((item) => item.key === season)
+  const explanationScope = isWcSeason ? 'world_cup' : 'award_period'
   const pageSize = PAGE_SIZE
-  const isMainRankingView = !position && !bonusFilter && !competition && !debouncedSearch
   const usesHeroRankingLayout = !debouncedSearch
   const rankingLimit = usesHeroRankingLayout && page === 0 ? PAGE_SIZE + HERO_RANKING_OFFSET : PAGE_SIZE
   const rankingOffset = usesHeroRankingLayout && page > 0
@@ -195,26 +195,48 @@ export default function RankingPage() {
   }, [position, competition, season, page, rankingLimit, rankingOffset, debouncedSearch, bonusFilter])
 
   useEffect(() => {
-    const shouldLoadNarratives = (
-      isWcSeason
-      && page === 0
-      && isMainRankingView
-      && players.length >= 3
-    )
+    const shouldLoadNarratives = page === 0
+      && usesHeroRankingLayout
+      && season !== 'all'
+      && selectedSeasonItem != null
+      && players.length >= HERO_RANKING_OFFSET
     if (!shouldLoadNarratives) {
       setRankingExplanations([])
       return
     }
+    setRankingExplanations([])
+    let cancelled = false
     fetchRankingExplanations({
-      season: selectedSeasonItem?.season ?? '2026',
-      competition_id: WORLD_CUP_COMPETITION_ID,
-      scope: 'world_cup',
+      season: selectedSeasonItem.season,
+      competition_id: isWcSeason ? WORLD_CUP_COMPETITION_ID : competition,
+      scope: explanationScope,
+      scope_key: selectedSeasonItem.key,
+      position: position || undefined,
+      bonus_label: bonusFilter || undefined,
       limit: HERO_RANKING_OFFSET,
       use_total: true,
     })
-      .then((data) => setRankingExplanations(data.explanations))
-      .catch(() => setRankingExplanations([]))
-  }, [isWcSeason, page, isMainRankingView, players.length, selectedSeasonItem?.season])
+      .then((data) => {
+        if (!cancelled) setRankingExplanations(data.explanations)
+      })
+      .catch(() => {
+        if (!cancelled) setRankingExplanations([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [
+    bonusFilter,
+    competition,
+    explanationScope,
+    isWcSeason,
+    page,
+    players.length,
+    position,
+    season,
+    selectedSeasonItem,
+    usesHeroRankingLayout,
+  ])
 
   const showHero = page === 0 && usesHeroRankingLayout && players.length >= HERO_RANKING_OFFSET
   const top3 = showHero ? players.slice(0, HERO_RANKING_OFFSET) : []
@@ -403,7 +425,7 @@ export default function RankingPage() {
 
       {!loadingRanking && !error && (
         <>
-          {showHero && isWcSeason && rankingExplanations.length > 0 && (
+          {showHero && rankingExplanations.length > 0 && (
             <TopRankingNarrativeCarousel
               players={top3}
               explanations={rankingExplanations}

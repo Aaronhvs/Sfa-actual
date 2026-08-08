@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from sfa.domain.ports import RankedPlayerDTO
+from sfa.domain.season_scope import AwardPeriodScope
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,9 @@ class RankingExplanationRequestDTO:
     limit: int = 10
     use_total: bool = True
     force: bool = False
+    scope_key: str | None = None
+    position: str | None = None
+    bonus_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -86,6 +90,7 @@ class RankingExplanationRepositoryProtocol(Protocol):
         self,
         request: RankingExplanationRequestDTO,
         ranked_players: list[RankedPlayerDTO],
+        source_scope: AwardPeriodScope | None = None,
     ) -> list[RankingExplanationEvidenceDTO]: ...
 
     async def get_cached_for_scope(

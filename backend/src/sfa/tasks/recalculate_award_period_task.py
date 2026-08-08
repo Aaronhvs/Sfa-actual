@@ -103,8 +103,24 @@ async def _run(
                 text("SELECT pg_advisory_unlock(:key)"), {"key": lock_key}
             )
             await lock_session.commit()
+    from sfa.tasks.generate_ranking_explanations_task import (
+        generate_ranking_explanations_task,
+    )
+
+    explanation_task = generate_ranking_explanations_task.delay(
+        scope.sources[0].season,
+        rules_version_id,
+        None,
+        "award_period",
+        3,
+        False,
+        True,
+        scope.key,
+    )
     logger.info(
-        "[recalculate_award_period_task] DONE scope=%s rules_version_id=%d",
+        "[recalculate_award_period_task] DONE scope=%s rules_version_id=%d "
+        "explanations_task_id=%s",
         scope_key,
         rules_version_id,
+        explanation_task.id,
     )

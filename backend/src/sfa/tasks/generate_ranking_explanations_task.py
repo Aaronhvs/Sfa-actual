@@ -23,8 +23,20 @@ def generate_ranking_explanations_task(
     limit: int = 10,
     force: bool = False,
     use_total: bool = True,
+    scope_key: str | None = None,
 ) -> None:
-    asyncio.run(_run(season, rules_version_id, competition_id, scope, limit, force, use_total))
+    asyncio.run(
+        _run(
+            season,
+            rules_version_id,
+            competition_id,
+            scope,
+            limit,
+            force,
+            use_total,
+            scope_key,
+        )
+    )
 
 
 async def _run(
@@ -35,12 +47,13 @@ async def _run(
     limit: int,
     force: bool,
     use_total: bool,
+    scope_key: str | None = None,
 ) -> None:
     from sfa.application.use_cases.generate_ranking_explanations import (
         GenerateRankingExplanationsUseCase,
     )
-    from sfa.domain.ranking_explanation_ports import RankingExplanationRequestDTO
     from sfa.core.config import get_settings
+    from sfa.domain.ranking_explanation_ports import RankingExplanationRequestDTO
     from sfa.infrastructure.database import AsyncSessionLocal
     from sfa.infrastructure.providers.ranking_explanation_writer import (
         DeterministicRankingExplanationWriter,
@@ -49,6 +62,7 @@ async def _run(
     from sfa.infrastructure.repositories.ranking_explanation_repository import (
         RankingExplanationRepository,
     )
+    from sfa.infrastructure.repositories.season_repository import SeasonRepository
     from sfa.infrastructure.repositories.sfa_score_repository import SFAScoreRepository
 
     logger.info(
@@ -78,6 +92,7 @@ async def _run(
             score_repo=SFAScoreRepository(session),
             explanation_repo=RankingExplanationRepository(session),
             writer=writer,
+            season_repo=SeasonRepository(session),
         )
         result = await use_case.execute(
             RankingExplanationRequestDTO(
@@ -88,12 +103,14 @@ async def _run(
                 limit=min(max(limit, 1), 10),
                 use_total=use_total,
                 force=force,
+                scope_key=scope_key,
             )
         )
         await session.commit()
 
     logger.info(
-        "[generate_ranking_explanations_task] DONE season=%s scope=%s generated=%s fallback=%s skipped=%s failed=%s cost=%s",
+        "[generate_ranking_explanations_task] DONE season=%s scope=%s generated=%s "
+        "fallback=%s skipped=%s failed=%s cost=%s",
         result.season,
         result.scope,
         result.generated,

@@ -40,6 +40,7 @@ class GenerateRankingExplanationsRequestSchema(BaseModel):
     limit: int = Field(default=10, ge=1, le=10)
     force: bool = False
     use_total: bool = True
+    scope_key: str | None = None
 
 
 class GenerateRankingExplanationsQueuedSchema(BaseModel):

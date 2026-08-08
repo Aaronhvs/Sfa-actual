@@ -11,12 +11,16 @@ from sfa.api.v1.schemas.ranking_explanations import (
 from sfa.application.use_cases.get_player_ranking_explanation import GetPlayerRankingExplanationUseCase
 from sfa.application.use_cases.get_ranking_explanations import GetRankingExplanationsUseCase
 from sfa.core.dependencies import (
-    get_scoring_rules_version_repository,
     get_player_ranking_explanation_use_case,
     get_ranking_explanations_use_case,
+    get_scoring_rules_version_repository,
     require_admin_key,
 )
 from sfa.domain.ranking_explanation_ports import RankingExplanationRequestDTO
+from sfa.domain.season_scope import (
+    InconsistentScopeRulesVersionError,
+    ScopeNotFoundError,
+)
 from sfa.infrastructure.repositories.scoring_rules_version_repository import (
     ScoringRulesVersionRepository,
 )
@@ -35,10 +39,13 @@ async def get_ranking_explanations(
     competition_id: int | None = Query(default=None),
     rules_version_id: int | None = Query(default=None),
     scope: str = Query(default="ranking"),
+    scope_key: str | None = Query(default=None),
+    position: str | None = Query(default=None),
+    bonus_label: str | None = Query(default=None),
     limit: int = Query(default=10, ge=1, le=10),
     use_total: bool = Query(default=True),
 ) -> RankingExplanationsResponseSchema:
-    if rules_version_id is None:
+    if rules_version_id is None and scope_key is None:
         active = await ver_repo.get_active_version()
         rules_version_id = active.id if active else None
     request = RankingExplanationRequestDTO(
@@ -48,8 +55,16 @@ async def get_ranking_explanations(
         scope=scope,
         limit=limit,
         use_total=use_total,
+        scope_key=scope_key,
+        position=position,
+        bonus_label=bonus_label,
     )
-    explanations = await use_case.execute(request)
+    try:
+        explanations = await use_case.execute(request)
+    except ScopeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InconsistentScopeRulesVersionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return RankingExplanationsResponseSchema(
         season=season,
         scope=scope,
@@ -72,9 +87,10 @@ async def get_player_ranking_explanation(
     competition_id: int | None = Query(default=None),
     rules_version_id: int | None = Query(default=None),
     scope: str = Query(default="ranking"),
+    scope_key: str | None = Query(default=None),
     use_total: bool = Query(default=True),
 ) -> RankingPlayerExplanationSchema:
-    if rules_version_id is None:
+    if rules_version_id is None and scope_key is None:
         active = await ver_repo.get_active_version()
         rules_version_id = active.id if active else None
     request = RankingExplanationRequestDTO(
@@ -83,6 +99,7 @@ async def get_player_ranking_explanation(
         rules_version_id=rules_version_id,
         scope=scope,
         use_total=use_total,
+        scope_key=scope_key,
     )
     explanation = await use_case.execute(player_id, request)
     if explanation is None:
@@ -108,5 +125,6 @@ async def trigger_generate_ranking_explanations(
         body.limit,
         body.force,
         body.use_total,
+        body.scope_key,
     )
     return GenerateRankingExplanationsQueuedSchema(task_id=task.id)

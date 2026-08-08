@@ -202,8 +202,19 @@ async def get_ranking_explanation_writer() -> DeterministicRankingExplanationWri
 
 async def get_ranking_explanations_use_case(
     repo: Annotated[RankingExplanationRepository, Depends(get_ranking_explanation_repository)],
+    score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    writer: Annotated[
+        DeterministicRankingExplanationWriter,
+        Depends(get_ranking_explanation_writer),
+    ],
 ) -> GetRankingExplanationsUseCase:
-    return GetRankingExplanationsUseCase(repo)
+    return GetRankingExplanationsUseCase(
+        repo,
+        score_repo=score_repo,
+        season_repo=season_repo,
+        fallback_writer=writer,
+    )
 
 
 async def get_player_ranking_explanation_use_case(

@@ -160,6 +160,9 @@ export async function fetchRankingExplanations(params: {
   competition_id?: number
   rules_version_id?: number
   scope?: string
+  scope_key?: string
+  position?: string
+  bonus_label?: string
   limit?: number
   use_total?: boolean
 }): Promise<RankingExplanationsResponse> {
@@ -168,6 +171,9 @@ export async function fetchRankingExplanations(params: {
   if (params.competition_id != null) q.set('competition_id', String(params.competition_id))
   if (params.rules_version_id != null) q.set('rules_version_id', String(params.rules_version_id))
   if (params.scope) q.set('scope', params.scope)
+  if (params.scope_key) q.set('scope_key', params.scope_key)
+  if (params.position) q.set('position', params.position)
+  if (params.bonus_label) q.set('bonus_label', params.bonus_label)
   if (params.limit != null) q.set('limit', String(params.limit))
   q.set('use_total', params.use_total === false ? 'false' : 'true')
   const qs = q.toString()
