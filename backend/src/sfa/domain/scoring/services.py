@@ -335,7 +335,6 @@ class ShootoutDecider:
 
         for _, event in shootout_events:
             team = event.team_external_id
-            other = away_team_external_id if team == home_team_external_id else home_team_external_id
             attempts[team] += 1
             if not is_missed_penalty_event(event):
                 scored[team] += 1
@@ -348,8 +347,12 @@ class ShootoutDecider:
             home_remaining = max(0, 5 - home_attempts)
             away_remaining = max(0, 5 - away_attempts)
             closed_in_first_five = (
-                home_score > away_score + away_remaining
-                or away_score > home_score + home_remaining
+                home_attempts <= 5
+                and away_attempts <= 5
+                and (
+                    home_score > away_score + away_remaining
+                    or away_score > home_score + home_remaining
+                )
             )
             closed_in_sudden_death = (
                 home_attempts >= 5

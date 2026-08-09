@@ -70,11 +70,26 @@ def test_shootout_decider_accepts_provider_detail_variants() -> None:
         _goal(120, 1, detail="Penalty Shootout", source_sequence=2, extra_minute=2),
         _goal(120, 2, detail="Missed Penalty Shootout", source_sequence=3, extra_minute=2),
         _goal(120, 1, detail="Penalty Shootout", source_sequence=4, extra_minute=3),
+        _goal(120, 2, detail="Missed Penalty Shootout", source_sequence=5, extra_minute=3),
     ]
 
     decisive = ShootoutDecider.decisive_event_ids(1, 2, events)
 
     assert decisive == {id(events[-1])}
+
+
+def test_shootout_decider_does_not_close_recoverable_three_nil_lead() -> None:
+    events = [
+        _goal(120, 1, detail="Penalty Shootout", source_sequence=0, extra_minute=1),
+        _goal(120, 2, detail="Missed Penalty Shootout", source_sequence=1, extra_minute=1),
+        _goal(120, 1, detail="Penalty Shootout", source_sequence=2, extra_minute=2),
+        _goal(120, 2, detail="Missed Penalty Shootout", source_sequence=3, extra_minute=2),
+        _goal(120, 1, detail="Penalty Shootout", source_sequence=4, extra_minute=3),
+    ]
+
+    decisive = ShootoutDecider.decisive_event_ids(1, 2, events)
+
+    assert decisive == set()
 
 
 def test_shootout_decider_marks_sudden_death_miss_as_decisive() -> None:
