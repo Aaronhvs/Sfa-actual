@@ -1,0 +1,24 @@
+@baseUrl = http://localhost:8000/api/v1
+@adminKey = change-me
+
+### Recalculate the complete 2025/2026 award period
+POST {{baseUrl}}/admin/individual-honors/recalculate?scope=season-2025&rules_version_id=4
+X-Admin-Key: {{adminKey}}
+
+### Read one player's honors in the award period
+GET {{baseUrl}}/players/1/individual-honors?scope=season-2025
+
+### Read one player's World Cup honors
+GET {{baseUrl}}/players/1/individual-honors?scope=world-cup-2026
+
+### Read all historical honors for the active rules version
+GET {{baseUrl}}/players/1/individual-honors?season=all
+
+### Unknown scope returns a conflict response
+GET {{baseUrl}}/players/1/individual-honors?scope=season-missing
+
+### Scope and season are mutually exclusive
+GET {{baseUrl}}/players/1/individual-honors?scope=season-2025&season=all
+
+### Admin authorization is required
+POST {{baseUrl}}/admin/individual-honors/recalculate?scope=season-2025&rules_version_id=4

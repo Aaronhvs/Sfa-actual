@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingPlayerExplanation, SeasonItem } from '../types'
-import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerExplanation, fetchPlayerFixtures, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
+import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingPlayerExplanation, SeasonItem } from '../types'
+import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerExplanation, fetchPlayerFixtures, fetchPlayerIndividualHonors, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
 import PlayerHeader from '../components/player/PlayerHeader'
 import PlayerNarrativeAnalysis from '../components/player/PlayerNarrativeAnalysis'
 import StatBar from '../components/player/StatBar'
@@ -12,6 +12,7 @@ import PointsBreakdown from '../components/player/PointsBreakdown'
 import FixtureList from '../components/player/FixtureList'
 import PerformanceChart from '../components/player/PerformanceChart'
 import CompetitionJourney from '../components/player/CompetitionJourney'
+import IndividualHonors from '../components/player/IndividualHonors'
 
 function safeRankingReturnTo(value: string | null): string | null {
   if (!value || value.startsWith('//')) return null
@@ -43,6 +44,7 @@ export default function PlayerPage() {
   const [fixtures, setFixtures] = useState<PlayerFixture[]>([])
   const [seasonStats, setSeasonStats] = useState<PlayerSeasonStats | null>(null)
   const [achievements, setAchievements] = useState<PlayerCompetitionAchievement[]>([])
+  const [individualHonors, setIndividualHonors] = useState<PlayerIndividualHonor[]>([])
   const [analysis, setAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [loading, setLoading] = useState(true)
   const [seasonChanging, setSeasonChanging] = useState(false)
@@ -98,6 +100,7 @@ export default function PlayerPage() {
           fetchPlayerFixtures(playerId, requestSeason, requestScope),
           statsRequest,
           fetchPlayerAchievements(playerId, requestSeason, requestScope),
+          fetchPlayerIndividualHonors(playerId, requestSeason, requestScope),
           fetchPlayerExplanation({
             player_id: playerId,
             season: p.season,
@@ -106,11 +109,12 @@ export default function PlayerPage() {
           }),
         ])
       })
-      .then(([ev, fx, stats, playerAchievements, playerAnalysis]) => {
+      .then(([ev, fx, stats, playerAchievements, playerHonors, playerAnalysis]) => {
         setEvents(ev)
         setFixtures(fx)
         setSeasonStats(stats)
         setAchievements(playerAchievements)
+        setIndividualHonors(playerHonors)
         setAnalysis(playerAnalysis)
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
@@ -138,6 +142,7 @@ export default function PlayerPage() {
     const playerId = Number(id)
     setSeasonChanging(true)
     setError(null)
+    setIndividualHonors([])
     const isAll = season === 'all'
     const requestScope = isAll ? undefined : season
     const requestSeason = isAll ? 'all' : undefined
@@ -148,6 +153,7 @@ export default function PlayerPage() {
       fetchPlayerFixtures(playerId, requestSeason, requestScope),
       statsRequest,
       fetchPlayerAchievements(playerId, requestSeason, requestScope),
+      fetchPlayerIndividualHonors(playerId, requestSeason, requestScope),
       fetchPlayerExplanation({
         player_id: playerId,
         season: selectedSeasonItem?.season ?? player.season,
@@ -155,12 +161,13 @@ export default function PlayerPage() {
         scope: explanationScope,
       }),
     ])
-      .then(([p, ev, fx, stats, playerAchievements, playerAnalysis]) => {
+      .then(([p, ev, fx, stats, playerAchievements, playerHonors, playerAnalysis]) => {
         setPlayer(p)
         setEvents(ev)
         setFixtures(fx)
         setSeasonStats(stats)
         setAchievements(playerAchievements)
+        setIndividualHonors(playerHonors)
         setAnalysis(playerAnalysis)
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
@@ -236,6 +243,8 @@ export default function PlayerPage() {
         <PlayerNarrativeAnalysis explanation={analysis} />
 
         <CompetitionJourney achievements={achievements} historical={season === 'all'} />
+
+        <IndividualHonors honors={individualHonors} historical={season === 'all'} />
 
         <PerformanceChart fixtures={fixtures} playerTeam={player.team} />
 

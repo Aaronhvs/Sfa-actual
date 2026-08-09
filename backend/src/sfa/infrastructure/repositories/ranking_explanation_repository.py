@@ -23,6 +23,7 @@ from sfa.domain.season_scope import AwardPeriodScope
 from sfa.infrastructure.models import (
     Competition,
     Fixture,
+    IndividualHonorModel,
     PlayerEvent,
     PlayerEventScore,
     PlayerStats,
@@ -53,6 +54,12 @@ ACTION_LABELS_ES = {
     "corner_assist": "asistencia de corner",
     "stats": "estadisticas",
     "key_pass": "oportunidad creada",
+}
+HONOR_LABELS_ES = {
+    "top_scorer": "Bota de oro",
+    "top_assister": "M\u00e1ximo asistidor",
+    "best_dribbler": "Mejor regateador",
+    "duel_king": "Rey de los duelos",
 }
 COMPETITION_NAMES_ES = {
     "World Cup": "Mundial",
@@ -169,10 +176,18 @@ class RankingExplanationRepository:
                 request,
                 source_scope,
             )
+            individual_honors = await self._individual_honors(
+                ranked.player_id,
+                request,
+                source_scope,
+            )
             score_total = round(float(ranked.total_pts or 0), 2)
             achievement_bonus = round(
                 sum(float(row.get("achievement_bonus_pts") or 0) for row in score_rows),
                 2,
+            )
+            individual_honor_bonus = sum(
+                int(honor.get("bonus_pts") or 0) for honor in individual_honors
             )
             breakdown = self._merge_breakdown(score_rows)
             evidence = {
@@ -209,12 +224,14 @@ class RankingExplanationRepository:
                     "b1_bonus_pts": round(float(ranked.b1_bonus_pts or 0), 2),
                     "b1_bonus_label": ranked.b1_bonus_label,
                     "achievement_bonus_pts": achievement_bonus,
+                    "individual_honor_bonus_pts": individual_honor_bonus,
                 },
                 "breakdown": breakdown,
                 "score_rows": score_rows,
                 "top_events": top_events,
                 "match_summaries": match_summaries,
                 "stat_profile": stat_profile,
+                "individual_honors": individual_honors,
                 "comparison": comparison.get(ranked.player_id, {}),
             }
             evidence = self._localize_evidence(evidence)
@@ -405,6 +422,53 @@ class RankingExplanationRepository:
         stmt = self._apply_score_scope(stmt, request)
         rows = (await self._session.execute(stmt)).mappings().all()
         return [self._clean(self._localize_evidence(dict(row))) for row in rows]
+
+    async def _individual_honors(
+        self,
+        player_id: int,
+        request: RankingExplanationRequestDTO,
+        source_scope: AwardPeriodScope | None = None,
+    ) -> list[dict[str, Any]]:
+        scope_key = source_scope.key if source_scope is not None else request.scope_key
+        if not request.use_total or scope_key is None or request.rules_version_id is None:
+            return []
+
+        stmt = (
+            select(
+                IndividualHonorModel.honor_type,
+                IndividualHonorModel.context_label,
+                IndividualHonorModel.metric_value,
+                IndividualHonorModel.metric_total,
+                IndividualHonorModel.metric_rate,
+                IndividualHonorModel.awarded_bonus_pts.label("bonus_pts"),
+            )
+            .where(
+                IndividualHonorModel.player_id == player_id,
+                IndividualHonorModel.scope_key == scope_key,
+                IndividualHonorModel.rules_version_id == request.rules_version_id,
+            )
+            .order_by(
+                IndividualHonorModel.awarded_bonus_pts.desc(),
+                IndividualHonorModel.honor_type,
+            )
+        )
+        if request.competition_id is not None:
+            stmt = stmt.where(
+                IndividualHonorModel.competition_id == request.competition_id
+            )
+
+        rows = (await self._session.execute(stmt)).mappings().all()
+        return [
+            self._clean(
+                {
+                    **dict(row),
+                    "label": HONOR_LABELS_ES.get(
+                        str(row["honor_type"]), str(row["honor_type"])
+                    ),
+                }
+            )
+            for row in rows
+        ]
 
     async def _stat_profile(
         self,

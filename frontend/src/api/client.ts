@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -239,6 +239,24 @@ export async function fetchPlayerAchievements(
   if (scope) params.set('scope', scope)
   const data = await get<PlayerCompetitionAchievement[]>(
     `/players/${id}/achievements?${params.toString()}`,
+  )
+  setCache(key, data)
+  return data
+}
+
+export async function fetchPlayerIndividualHonors(
+  id: number,
+  season?: string,
+  scope?: string,
+): Promise<PlayerIndividualHonor[]> {
+  const key = `individual-honors:${id}:${season ?? ''}:${scope ?? ''}:active`
+  const cached = getCached<PlayerIndividualHonor[]>(key)
+  if (cached) return cached
+  const params = new URLSearchParams()
+  if (season) params.set('season', season)
+  if (scope) params.set('scope', scope)
+  const data = await get<PlayerIndividualHonor[]>(
+    `/players/${id}/individual-honors?${params.toString()}`,
   )
   setCache(key, data)
   return data

@@ -131,3 +131,17 @@ class PlayerCompetitionAchievementSchema(BaseModel):
     phase: str
     title_count: int = Field(ge=0)
     bonus_pts: float = Field(ge=0)
+
+
+class PlayerIndividualHonorSchema(BaseModel):
+    honor_id: int
+    honor_type: str
+    scope_key: str
+    scope_label: str
+    context_label: str
+    source_season: str
+    competition_id: int | None
+    metric_value: float = Field(ge=0)
+    metric_total: int | None = Field(default=None, ge=0)
+    metric_rate: float | None = Field(default=None, ge=0, le=1)
+    bonus_pts: int = Field(ge=0)

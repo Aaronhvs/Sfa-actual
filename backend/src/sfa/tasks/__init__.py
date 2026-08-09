@@ -18,6 +18,7 @@ from .enrichment_tasks import (
 from .generate_ranking_explanations_task import generate_ranking_explanations_task
 from .infer_all_competition_achievements_task import infer_all_competition_achievements_task
 from .infer_competition_achievements_task import infer_competition_achievements_task
+from .infer_individual_honors_task import infer_individual_honors_task
 from .ingest_fixture_events_task import ingest_fixture_events_task
 from .ingest_today_task import ingest_today_task
 from .ingestion_tasks import ingest_all_competitions_task, ingest_competition_task
@@ -30,6 +31,7 @@ __all__ = [
     "enrich_player_birth_dates_task",
     "infer_competition_achievements_task",
     "infer_all_competition_achievements_task",
+    "infer_individual_honors_task",
     "calculate_scores_for_rules_version_task",
     "calculate_team_strengths_task",
     "seed_clubelo_task",

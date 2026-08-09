@@ -11,6 +11,7 @@ from sfa.infrastructure.repositories import (
     CompetitionAchievementRepository,
     CompetitionRepository,
     EnrichPositionRepository,
+    IndividualHonorRepository,
     InferAchievementsRepository,
     PlayerEventRepository,
     PlayerEventScoreRepository,
@@ -133,6 +134,9 @@ from sfa.application.use_cases.get_player_achievements import GetPlayerAchieveme
 from sfa.application.use_cases.get_player_detail import GetPlayerDetailUseCase
 from sfa.application.use_cases.get_player_events import GetPlayerEventsUseCase
 from sfa.application.use_cases.get_player_fixtures import GetPlayerFixturesUseCase
+from sfa.application.use_cases.get_player_individual_honors import (
+    GetPlayerIndividualHonorsUseCase,
+)
 from sfa.application.use_cases.get_player_ranking_explanation import (
     GetPlayerRankingExplanationUseCase,
 )
@@ -397,6 +401,29 @@ async def get_competition_achievement_repository(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CompetitionAchievementRepository:
     return CompetitionAchievementRepository(db)
+
+
+async def get_individual_honor_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> IndividualHonorRepository:
+    return IndividualHonorRepository(db)
+
+
+async def get_player_individual_honors_use_case(
+    honor_repo: Annotated[IndividualHonorRepository, Depends(get_individual_honor_repository)],
+    ver_repo: Annotated[
+        ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)
+    ],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
+) -> GetPlayerIndividualHonorsUseCase:
+    active = await ver_repo.get_active_version()
+    return GetPlayerIndividualHonorsUseCase(
+        honor_repo,
+        season_repo,
+        score_repo,
+        default_rules_version_id=active.id if active else None,
+    )
 
 
 async def get_player_achievements_use_case(

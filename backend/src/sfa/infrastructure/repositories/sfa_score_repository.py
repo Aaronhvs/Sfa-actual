@@ -16,6 +16,7 @@ from sfa.domain.ports import (
 )
 from sfa.domain.season_scope import AwardPeriodScope, InconsistentScopeRulesVersionError, ScopeKind
 from sfa.infrastructure.models.competitions.models import Competition
+from sfa.infrastructure.models.individual_honors.models import IndividualHonorModel
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
@@ -238,6 +239,28 @@ def _scope_filter(model, scope: AwardPeriodScope):
     )
 
 
+def _honor_bonus_subquery(
+    scope_key: str,
+    rules_version_id: int,
+    competition_id: int | None = None,
+):
+    filters = [
+        IndividualHonorModel.scope_key == scope_key,
+        IndividualHonorModel.rules_version_id == rules_version_id,
+    ]
+    if competition_id is not None:
+        filters.append(IndividualHonorModel.competition_id == competition_id)
+    return (
+        select(
+            IndividualHonorModel.player_id,
+            func.sum(IndividualHonorModel.awarded_bonus_pts).label("honor_bonus_pts"),
+        )
+        .where(*filters)
+        .group_by(IndividualHonorModel.player_id)
+        .subquery()
+    )
+
+
 def _breakdown_count(
     breakdown: dict[str, dict[str, float | int]], *actions: str
 ) -> int:
@@ -305,6 +328,17 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             sum(float(row["total_pts"] or 0) + float(row["achievement_bonus_pts"] or 0) for row in rows),
             2,
         )
+        honor_bonus = float(
+            await self._session.scalar(
+                select(func.coalesce(func.sum(IndividualHonorModel.awarded_bonus_pts), 0)).where(
+                    IndividualHonorModel.player_id == player_id,
+                    IndividualHonorModel.scope_key == scope.key,
+                    IndividualHonorModel.rules_version_id == rules_version_id,
+                )
+            )
+            or 0
+        )
+        total_pts = round(total_pts + honor_bonus, 2)
         per_player = (
             select(
                 SFASeasonScore.player_id,
@@ -317,8 +351,20 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .group_by(SFASeasonScore.player_id)
             .subquery()
         )
+        honor_agg = _honor_bonus_subquery(scope.key, rules_version_id)
+        ranked_totals = (
+            select(
+                per_player.c.player_id,
+                (
+                    per_player.c.sum_pts
+                    + func.coalesce(honor_agg.c.honor_bonus_pts, 0)
+                ).label("sum_pts"),
+            )
+            .outerjoin(honor_agg, honor_agg.c.player_id == per_player.c.player_id)
+            .subquery()
+        )
         global_rank = int(
-            (await self._session.scalar(select(func.count()).where(per_player.c.sum_pts > total_pts)))
+            (await self._session.scalar(select(func.count()).where(ranked_totals.c.sum_pts > total_pts)))
             or 0
         ) + 1
         b1_pts, b1_label = await self._get_b1_bonus_for_scope(
@@ -542,6 +588,11 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .group_by(SFASeasonScore.player_id)
             .subquery()
         )
+        honor_agg = (
+            _honor_bonus_subquery(_scope.key, rules_version_id, competition_id)
+            if use_total and _scope is not None and rules_version_id is not None
+            else None
+        )
         b1_filters = [
             _scope_filter(PlayerEventScore, _scope)
             if _scope is not None
@@ -609,8 +660,17 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .subquery()
         )
 
-        order_col = _ranking_order_column(bonus_label, agg.c.sum_pts, agg.c.sum_goals, agg.c.sum_assists)
-        rank_col = func.rank().over(order_by=[order_col.desc(), agg.c.sum_pts.desc()]).label("rank")
+        contextual_total_pts = (
+            agg.c.sum_pts + func.coalesce(honor_agg.c.honor_bonus_pts, 0)
+            if honor_agg is not None
+            else agg.c.sum_pts
+        )
+        order_col = _ranking_order_column(
+            bonus_label, contextual_total_pts, agg.c.sum_goals, agg.c.sum_assists
+        )
+        rank_col = func.rank().over(
+            order_by=[order_col.desc(), contextual_total_pts.desc()]
+        ).label("rank")
         stmt = (
             select(
                 rank_col,
@@ -622,7 +682,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 Player.position,
                 Competition.name.label("competition_name"),
                 best_comp.c.competition_id.label("competition_id"),
-                agg.c.sum_pts.label("total_pts"),
+                contextual_total_pts.label("total_pts"),
                 agg.c.sum_matches.label("matches_played"),
                 Player.photo_url,
                 agg.c.sum_goals.label("goals"),
@@ -637,8 +697,10 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .join(Team, best_comp.c.team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
             .outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
-            .order_by(order_col.desc(), agg.c.sum_pts.desc())
         )
+        if honor_agg is not None:
+            stmt = stmt.outerjoin(honor_agg, Player.id == honor_agg.c.player_id)
+        stmt = stmt.order_by(order_col.desc(), contextual_total_pts.desc())
         if position is not None:
             stmt = stmt.where(_position_filter(position))
         if bonus_label in {"Promesa", "Veterano"}:

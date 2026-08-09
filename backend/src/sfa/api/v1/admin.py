@@ -6,12 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sfa.api.v1.schemas.ingestion_status import (
     CompetitionIngestionStatusResponseSchema,
 )
+from sfa.application.use_cases.enrich_player_birth_dates import EnrichPlayerBirthDatesUseCase
 from sfa.application.use_cases.fix_player_positions import (
     FixPlayerPositionsResult,
     FixPlayerPositionsUseCase,
 )
 from sfa.application.use_cases.get_ingestion_status import GetIngestionStatusUseCase
-from sfa.application.use_cases.enrich_player_birth_dates import EnrichPlayerBirthDatesUseCase
 from sfa.core.dependencies import (
     get_db,
     get_enrich_player_birth_dates_use_case,
@@ -58,6 +58,22 @@ async def trigger_ingest_all(
     """Trigger ingestion of all configured leagues as an async Celery task."""
     task = ingest_all_competitions_task.delay(season, force)
     return {"task_id": task.id, "season": season, "force": force}
+
+
+@router.post("/individual-honors/recalculate", status_code=status.HTTP_202_ACCEPTED)
+async def trigger_individual_honors_recalculation(
+    scope: str = Query(...),
+    rules_version_id: int = Query(..., ge=1),
+):
+    from sfa.tasks.infer_individual_honors_task import infer_individual_honors_task
+
+    task = infer_individual_honors_task.delay(scope, rules_version_id)
+    return {
+        "task_id": task.id,
+        "scope": scope,
+        "rules_version_id": rules_version_id,
+        "status": "queued",
+    }
 
 
 @router.get(

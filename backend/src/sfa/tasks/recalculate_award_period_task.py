@@ -98,6 +98,26 @@ async def _run(
                     queue_explanations=False,
                 )
                 recalculated_seasons.add(source.season)
+
+            from sfa.application.use_cases.infer_individual_honors import (
+                InferIndividualHonorsUseCase,
+            )
+            from sfa.infrastructure.repositories.individual_honor_repository import (
+                IndividualHonorRepository,
+            )
+
+            honor_use_case = InferIndividualHonorsUseCase(
+                IndividualHonorRepository(lock_session),
+                SeasonRepository(lock_session),
+                ScoringRulesVersionRepository(lock_session),
+            )
+            await honor_use_case.execute(scope.key, rules_version_id)
+            available_scopes = await SeasonRepository(lock_session).get_available_seasons()
+            source_seasons = {source.season for source in scope.sources}
+            for item in available_scopes:
+                if item.kind == "tournament" and item.season in source_seasons and item.key:
+                    await honor_use_case.execute(item.key, rules_version_id)
+            await lock_session.commit()
         finally:
             await lock_session.execute(
                 text("SELECT pg_advisory_unlock(:key)"), {"key": lock_key}

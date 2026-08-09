@@ -10,6 +10,7 @@ from sfa.api.v1.schemas.players import (
     PlayerDetailSchema,
     PlayerEventSchema,
     PlayerFixtureSchema,
+    PlayerIndividualHonorSchema,
     PlayerSeasonStatsSchema,
 )
 from sfa.application.use_cases.get_player_achievements import GetPlayerAchievementsUseCase
@@ -19,12 +20,16 @@ from sfa.application.use_cases.get_player_detail import (
 )
 from sfa.application.use_cases.get_player_events import GetPlayerEventsUseCase
 from sfa.application.use_cases.get_player_fixtures import GetPlayerFixturesUseCase
+from sfa.application.use_cases.get_player_individual_honors import (
+    GetPlayerIndividualHonorsUseCase,
+)
 from sfa.application.use_cases.get_player_season_stats import GetPlayerSeasonStatsUseCase
 from sfa.core.dependencies import (
     get_player_achievements_use_case,
     get_player_detail_use_case,
     get_player_events_use_case,
     get_player_fixtures_use_case,
+    get_player_individual_honors_use_case,
     get_player_season_stats_use_case,
 )
 from sfa.domain.season_scope import InconsistentScopeRulesVersionError, ScopeNotFoundError
@@ -154,6 +159,37 @@ async def get_player_achievements(
     return [
         PlayerCompetitionAchievementSchema(**dataclasses.asdict(achievement))
         for achievement in achievements
+    ]
+
+
+@router.get(
+    "/players/{player_id}/individual-honors",
+    response_model=list[PlayerIndividualHonorSchema],
+)
+async def get_player_individual_honors(
+    player_id: int,
+    use_case: Annotated[
+        GetPlayerIndividualHonorsUseCase,
+        Depends(get_player_individual_honors_use_case),
+    ],
+    scope: str | None = Query(default=None),
+    season: str | None = Query(default=None),
+    rules_version_id: int | None = Query(default=None),
+):
+    if scope is not None and season is not None:
+        raise HTTPException(status_code=422, detail="scope and season are mutually exclusive")
+    try:
+        honors = await use_case.execute(
+            player_id,
+            scope_key=scope or (season if season != "all" else None),
+            all_history=(season == "all"),
+            rules_version_id=rules_version_id,
+        )
+    except (ScopeNotFoundError, InconsistentScopeRulesVersionError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return [
+        PlayerIndividualHonorSchema(**dataclasses.asdict(honor))
+        for honor in honors
     ]
 
 

@@ -518,6 +518,32 @@ _DEFAULT_ACHIEVEMENT_PHASE_BONUSES: dict[str, dict[str, int]] = {
     },
 }
 
+_DEFAULT_INDIVIDUAL_HONOR_POINTS: dict[str, dict[str, int]] = {
+    "award_period": {
+        "top_scorer": 3000, "top_assister": 2500,
+        "best_dribbler": 1500, "duel_king": 1200,
+    },
+    "world_cup": {
+        "top_scorer": 3000, "top_assister": 2200,
+        "best_dribbler": 1500, "duel_king": 1200,
+    },
+    "champions_league": {
+        "top_scorer": 2200, "top_assister": 1700,
+        "best_dribbler": 1200, "duel_king": 1000,
+    },
+    "domestic_league": {
+        "top_scorer": 1200, "top_assister": 1000,
+        "best_dribbler": 700, "duel_king": 600,
+    },
+}
+
+_DEFAULT_INDIVIDUAL_HONOR_THRESHOLDS: dict[str, dict[str, int]] = {
+    "award_period": {"min_minutes": 900, "min_dribble_attempts": 60},
+    "world_cup": {"min_minutes": 180, "min_dribble_attempts": 10},
+    "champions_league": {"min_minutes": 360, "min_dribble_attempts": 20},
+    "domestic_league": {"min_minutes": 600, "min_dribble_attempts": 40},
+}
+
 _DEFAULT_CUP_LOWER_DIV_STRENGTHS: dict[str, float] = {
     "second_division": 35.0,
     "third_division": 18.0,
@@ -564,6 +590,9 @@ class ScoringConfig:
     cup_lower_div_strengths: dict[str, float] = field(default_factory=dict)
     achievement_phase_bonuses: dict[str, dict[str, int]] = field(default_factory=dict)
     competition_bonus_weights: dict[str, float] = field(default_factory=dict)
+    individual_honor_points: dict[str, dict[str, int]] = field(default_factory=dict)
+    individual_honor_thresholds: dict[str, dict[str, int]] = field(default_factory=dict)
+    individual_honor_bonus_cap: int = 8000
     enable_midfield_control_bonuses: bool = False
     midfield_control_bonus_cap_per_match: int = 180
     enable_performance_based_achievement_bonus: bool = False
@@ -622,6 +651,14 @@ class ScoringConfig:
             raise ValueError(
                 f"stats_m2_attenuation must be in (0, 1], got {self.stats_m2_attenuation}"
             )
+        if self.individual_honor_bonus_cap < 0:
+            raise ValueError("individual_honor_bonus_cap cannot be negative")
+        for category, points in self.individual_honor_points.items():
+            if not category or any(value < 0 for value in points.values()):
+                raise ValueError("individual_honor_points must use named categories and non-negative values")
+        for category, thresholds in self.individual_honor_thresholds.items():
+            if not category or any(value < 0 for value in thresholds.values()):
+                raise ValueError("individual_honor_thresholds cannot contain negative values")
         if self.b1_enabled:
             if not (0 <= self.b1_young_min_age <= self.b1_young_max_age <= 99):
                 raise ValueError(
@@ -696,6 +733,11 @@ class ScoringConfig:
             cup_lower_div_strengths=dict(_DEFAULT_CUP_LOWER_DIV_STRENGTHS),
             achievement_phase_bonuses={k: dict(v) for k, v in _DEFAULT_ACHIEVEMENT_PHASE_BONUSES.items()},
             competition_bonus_weights=dict(_DEFAULT_COMPETITION_BONUS_WEIGHTS),
+            individual_honor_points={k: dict(v) for k, v in _DEFAULT_INDIVIDUAL_HONOR_POINTS.items()},
+            individual_honor_thresholds={
+                k: dict(v) for k, v in _DEFAULT_INDIVIDUAL_HONOR_THRESHOLDS.items()
+            },
+            individual_honor_bonus_cap=8000,
             enable_midfield_control_bonuses=True,
             midfield_control_bonus_cap_per_match=180,
             enable_performance_based_achievement_bonus=True,
@@ -787,6 +829,19 @@ class ScoringConfig:
                 },
                 achievement_phase_bonuses=achievement_bonuses,
                 competition_bonus_weights=dict(d.get("competition_bonus_weights", {})),
+                individual_honor_points={
+                    category: {honor: int(points) for honor, points in values.items()}
+                    for category, values in d.get(
+                        "individual_honor_points", _DEFAULT_INDIVIDUAL_HONOR_POINTS
+                    ).items()
+                },
+                individual_honor_thresholds={
+                    category: {name: int(value) for name, value in values.items()}
+                    for category, values in d.get(
+                        "individual_honor_thresholds", _DEFAULT_INDIVIDUAL_HONOR_THRESHOLDS
+                    ).items()
+                },
+                individual_honor_bonus_cap=int(d.get("individual_honor_bonus_cap", 8000)),
                 enable_midfield_control_bonuses=bool(d.get("enable_midfield_control_bonuses", False)),
                 midfield_control_bonus_cap_per_match=int(d.get("midfield_control_bonus_cap_per_match", 180)),
                 enable_performance_based_achievement_bonus=bool(
@@ -847,6 +902,15 @@ class ScoringConfig:
                 k: dict(v) for k, v in self.achievement_phase_bonuses.items()
             },
             "competition_bonus_weights": dict(self.competition_bonus_weights),
+            "individual_honor_points": {
+                category: dict(points)
+                for category, points in self.individual_honor_points.items()
+            },
+            "individual_honor_thresholds": {
+                category: dict(thresholds)
+                for category, thresholds in self.individual_honor_thresholds.items()
+            },
+            "individual_honor_bonus_cap": self.individual_honor_bonus_cap,
             "enable_midfield_control_bonuses": self.enable_midfield_control_bonuses,
             "midfield_control_bonus_cap_per_match": self.midfield_control_bonus_cap_per_match,
             "enable_performance_based_achievement_bonus": self.enable_performance_based_achievement_bonus,

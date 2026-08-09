@@ -360,3 +360,17 @@ export interface PlayerCompetitionAchievement {
   title_count: number
   bonus_pts: number
 }
+
+export interface PlayerIndividualHonor {
+  honor_id: number
+  honor_type: 'top_scorer' | 'top_assister' | 'best_dribbler' | 'duel_king'
+  scope_key: string
+  scope_label: string
+  context_label: string
+  source_season: string
+  competition_id: number | null
+  metric_value: number
+  metric_total: number | null
+  metric_rate: number | null
+  bonus_pts: number
+}
