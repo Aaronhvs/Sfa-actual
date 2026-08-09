@@ -28,25 +28,22 @@ const STAGE_LABELS: Record<string, string> = {
   'semi-finals': 'Semifinales',
   semi_final: 'Semifinal',
   semifinals: 'Semifinales',
-  fourth_place: 'Cuarto puesto',
+  'fourth place': 'Cuarto puesto',
   winner: 'Campeón',
   champion: 'Campeón',
-  runner_up: 'Subcampeón',
+  'runner up': 'Subcampeón',
 }
 
 const PHASE_BADGES: Record<string, string> = {
-  runner_up: '2',
+  'runner up': '2',
   final: 'F',
-  fourth_place: '4º',
-  semi_final: '4',
+  'fourth place': '4º',
+  'semi final': '4',
   semifinal: '4',
-  quarter_final: '8',
+  'quarter final': '8',
   'quarter-finals': '8',
-  round_of_16: '8',
   'round of 16': '8',
-  round_of_32: '16',
   'round of 32': '16',
-  group_stage: 'FG',
   'group stage': 'FG',
 }
 

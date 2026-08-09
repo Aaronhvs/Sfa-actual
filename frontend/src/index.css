@@ -1268,7 +1268,7 @@ img { display: block; }
 }
 
 .competition-journey__list {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .competition-journey__item {
@@ -1336,9 +1336,8 @@ img { display: block; }
 }
 
 .competition-journey__body strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
 }
 
 .competition-journey__body small,
@@ -1365,9 +1364,15 @@ img { display: block; }
   }
 
   .competition-journey__item {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-columns: 34px minmax(0, 1fr);
     gap: 10px;
     padding: 11px 12px;
+  }
+
+  .competition-journey__result {
+    grid-column: 2;
+    justify-items: start;
+    text-align: left;
   }
 
   .competition-journey__icon {
