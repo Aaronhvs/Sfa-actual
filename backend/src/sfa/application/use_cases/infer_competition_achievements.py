@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
 
 from sfa.domain.infer_achievements_ports import (
     InferAchievementsRepositoryPort,
     InferAchievementsResult,
     InferAllAchievementsResult,
     KnockoutFixtureDTO,
+)
+from sfa.domain.scoring.achievement_categories import (
+    TERMINAL_KNOCKOUT_PHASES,
+    get_competition_category,
 )
 from sfa.domain.scoring.entities import CompetitionAchievement
 from sfa.domain.scoring_ports import (
@@ -16,25 +19,6 @@ from sfa.domain.scoring_ports import (
 )
 
 logger = logging.getLogger(__name__)
-
-COMPETITION_CATEGORY_MAP: dict[str, str] = {
-    "World Cup":             "world_cup",
-    "Champions League":      "champions_league",
-    "Europa League":         "europa_league",
-    "Conference League":     "conference_league",
-    "FA Cup":                "domestic_cup_major",
-    "Copa del Rey":          "domestic_cup_major",
-    "DFB-Pokal":             "domestic_cup_major",
-    "Coppa Italia":          "domestic_cup_major",
-    "Coupe de France":       "domestic_cup_major",
-    "EFL Cup":               "domestic_cup_minor",
-    "Community Shield":      "domestic_cup_minor",
-    "Supercopa de España":   "domestic_cup_minor",
-    "Supercoppa Italiana":   "domestic_cup_minor",
-    "DFL-Supercup":          "domestic_cup_minor",
-    "Trophée des Champions": "domestic_cup_minor",
-    "UEFA Super Cup":        "domestic_cup_minor",
-}
 
 STAGE_TO_PHASE: dict[str, str] = {
     "final":        "winner",
@@ -109,7 +93,7 @@ class InferCompetitionAchievementsUseCase:
             )
 
         competition_name = await self._infer_repo.get_competition_name(competition_id)
-        category = COMPETITION_CATEGORY_MAP.get(competition_name)
+        category = get_competition_category(competition_name)
         if category is None:
             logger.warning(
                 "[InferCompetitionAchievementsUseCase] competition '%s' not in "
@@ -173,17 +157,66 @@ class InferCompetitionAchievementsUseCase:
 
         if "final" in teams_at_stage:
             final_fixtures = [fx for fx in fixtures if fx.stage == "final"]
+            final_team_ids = {
+                team_id
+                for fixture in final_fixtures
+                for team_id in (fixture.home_team_id, fixture.away_team_id)
+            }
             winner_id, runner_up_id = await self._resolve_final_winner(final_fixtures)
             if winner_id is not None and runner_up_id is not None:
                 phase_teams["winner"] = {winner_id}
                 phase_teams["runner_up"] = {runner_up_id}
                 terminal_phase_team_ids.update({winner_id, runner_up_id})
             else:
-                logger.info(
-                    "[InferCompetitionAchievementsUseCase] competition_id=%d season=%s: "
-                    "final winner undetermined, skipping winner/runner_up phases",
-                    competition_id, season,
+                existing = await self._achievement_repo.get_achievements_for_season(
+                    competition_id, season
                 )
+                preserved_candidates: dict[str, set[int]] = {}
+                for achievement in existing:
+                    if (
+                        achievement.phase in TERMINAL_KNOCKOUT_PHASES
+                        and achievement.team_id in final_team_ids
+                    ):
+                        preserved_candidates.setdefault(
+                            achievement.phase, set()
+                        ).add(achievement.team_id)
+                preserved_team_ids = {
+                    team_id
+                    for team_ids in preserved_candidates.values()
+                    for team_id in team_ids
+                }
+                complete_terminal_result = (
+                    set(preserved_candidates) == TERMINAL_KNOCKOUT_PHASES
+                    and all(
+                        len(team_ids) == 1
+                        for team_ids in preserved_candidates.values()
+                    )
+                    and len(preserved_team_ids) == 2
+                    and preserved_team_ids == final_team_ids
+                )
+                if complete_terminal_result:
+                    preserved = {
+                        phase: next(iter(team_ids))
+                        for phase, team_ids in preserved_candidates.items()
+                    }
+                    for phase, team_id in preserved.items():
+                        phase_teams[phase] = {team_id}
+                    terminal_phase_team_ids.update(preserved_team_ids)
+                    logger.info(
+                        "[InferCompetitionAchievementsUseCase] competition_id=%d "
+                        "season=%s preserved authoritative final result=%s",
+                        competition_id,
+                        season,
+                        preserved,
+                    )
+                else:
+                    logger.info(
+                        "[InferCompetitionAchievementsUseCase] competition_id=%d "
+                        "season=%s final winner undetermined and no complete "
+                        "authoritative result, skipping terminal phases",
+                        competition_id,
+                        season,
+                    )
 
         if "third_place" in teams_at_stage:
             for fx in [fx for fx in fixtures if fx.stage == "third_place"]:

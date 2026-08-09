@@ -48,6 +48,19 @@ class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort)
         self._next_id += 1
         return new_ach.id
 
+    async def replace_achievement_for_phase(
+        self, achievement: CompetitionAchievement
+    ) -> int:
+        self.achievements = [
+            existing for existing in self.achievements
+            if not (
+                existing.competition_id == achievement.competition_id
+                and existing.season == achievement.season
+                and existing.phase == achievement.phase
+            )
+        ]
+        return await self.upsert_achievement(achievement)
+
     async def get_achievements_for_season(self, competition_id, season): return []
     async def upsert_player_bonus(self, bonus): pass
     async def get_team_total_minutes(self, team_id, competition_id, season): return 0
@@ -79,6 +92,7 @@ class TestRegisterCompetitionAchievementUseCase:
         result = await use_case.execute(
             competition_id=2, team_id=5, season="2024",
             phase="winner", rules_version_id=1,
+            competition_name="Champions League",
         )
 
         assert result.status == "registered"
@@ -97,6 +111,7 @@ class TestRegisterCompetitionAchievementUseCase:
         result = await use_case.execute(
             competition_id=2, team_id=5, season="2024",
             phase="invented_phase_xyz", rules_version_id=1,
+            competition_name="Champions League",
         )
 
         assert result.status == "failed"
@@ -111,10 +126,16 @@ class TestRegisterCompetitionAchievementUseCase:
             ach_repo, FakeScoringRulesVersionRepository(version)
         )
 
-        await use_case.execute(competition_id=2, team_id=5, season="2024",
-                               phase="winner", rules_version_id=1)
-        await use_case.execute(competition_id=2, team_id=5, season="2024",
-                               phase="winner", rules_version_id=1)
+        await use_case.execute(
+            competition_id=2, team_id=5, season="2024",
+            phase="winner", rules_version_id=1,
+            competition_name="Champions League",
+        )
+        await use_case.execute(
+            competition_id=2, team_id=5, season="2024",
+            phase="winner", rules_version_id=1,
+            competition_name="Champions League",
+        )
 
         assert len(ach_repo.achievements) == 1  # upsert, not duplicate
 
@@ -128,7 +149,56 @@ class TestRegisterCompetitionAchievementUseCase:
         result = await use_case.execute(
             competition_id=2, team_id=5, season="2024",
             phase="winner", rules_version_id=999,
+            competition_name="Champions League",
         )
 
         assert result.status == "failed"
         assert "not found" in (result.error or "").lower()
+
+    @pytest.mark.anyio
+    async def test_champions_runner_up_is_registered_with_zero_points(self):
+        ach_repo = FakeCompetitionAchievementRepository()
+        use_case = RegisterCompetitionAchievementUseCase(
+            ach_repo, FakeScoringRulesVersionRepository(_make_version())
+        )
+
+        result = await use_case.execute(
+            competition_id=10,
+            team_id=42,
+            season="2025",
+            phase="runner_up",
+            rules_version_id=1,
+            competition_name="Champions League",
+        )
+
+        assert result.status == "registered"
+        assert len(ach_repo.achievements) == 1
+        assert ach_repo.achievements[0].bonus_points == 0
+
+    @pytest.mark.anyio
+    async def test_singular_phase_replaces_previous_team(self):
+        ach_repo = FakeCompetitionAchievementRepository()
+        use_case = RegisterCompetitionAchievementUseCase(
+            ach_repo, FakeScoringRulesVersionRepository(_make_version())
+        )
+
+        await use_case.execute(
+            competition_id=3,
+            team_id=41,
+            season="2025",
+            phase="champion",
+            rules_version_id=1,
+            competition_name="Premier League",
+        )
+        await use_case.execute(
+            competition_id=3,
+            team_id=42,
+            season="2025",
+            phase="champion",
+            rules_version_id=1,
+            competition_name="Premier League",
+        )
+
+        assert len(ach_repo.achievements) == 1
+        assert ach_repo.achievements[0].team_id == 42
+        assert ach_repo.achievements[0].bonus_points == 7000

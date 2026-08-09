@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 import pytest
 
 from sfa.application.use_cases.infer_competition_achievements import (
-    InferAllCompetitionAchievementsUseCase,
     InferCompetitionAchievementsUseCase,
 )
 from sfa.domain.infer_achievements_ports import (
@@ -15,7 +14,6 @@ from sfa.domain.infer_achievements_ports import (
 from sfa.domain.scoring.entities import CompetitionAchievement, ScoringRulesVersion
 from sfa.domain.scoring.value_objects import ScoringConfig
 from sfa.domain.scoring_ports import CompetitionAchievementRepositoryPort, ScoringRulesVersionRepositoryPort
-
 
 # ─── Fakes ───────────────────────────────────────────────────────────────────
 
@@ -52,9 +50,13 @@ class FakeInferAchievementsRepository(InferAchievementsRepositoryPort):
 
 
 class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
-    def __init__(self):
+    def __init__(
+        self,
+        existing: list[CompetitionAchievement] | None = None,
+    ):
         self.upserted: list[CompetitionAchievement] = []
         self.deleted: list[tuple[int, str]] = []
+        self.existing = existing or []
         self._next_id = 1
 
     async def upsert_achievement(self, achievement: CompetitionAchievement) -> int:
@@ -69,7 +71,11 @@ class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort)
         self.deleted.append((competition_id, season))
 
     async def get_achievements_for_season(self, competition_id: int, season: str) -> list[CompetitionAchievement]:
-        return []
+        return [
+            achievement for achievement in self.existing
+            if achievement.competition_id == competition_id
+            and achievement.season == season
+        ]
 
     async def upsert_player_bonus(self, bonus) -> None:
         pass
@@ -125,12 +131,13 @@ class FakeScoringRulesVersionRepository(ScoringRulesVersionRepositoryPort):
 def _make_use_case(
     fixtures=None, goals=None, shootout_goals=None,
     competition_name="Champions League", all_knockout_ids=None,
+    existing_achievements=None,
 ):
     infer_repo = FakeInferAchievementsRepository(
         fixtures=fixtures, goals=goals, shootout_goals=shootout_goals,
         competition_name=competition_name, all_knockout_ids=all_knockout_ids,
     )
-    achievement_repo = FakeCompetitionAchievementRepository()
+    achievement_repo = FakeCompetitionAchievementRepository(existing_achievements)
     rules_repo = FakeScoringRulesVersionRepository()
     uc = InferCompetitionAchievementsUseCase(infer_repo, achievement_repo, rules_repo)
     return uc, achievement_repo
@@ -182,6 +189,112 @@ async def test_final_winner_skips_winner_runner_up_when_all_tied():
     assert result.skipped is False
     assert {a.phase for a in repo.upserted} == {"semi_final"}
     assert {a.team_id for a in repo.upserted} == {10, 20}
+
+
+@pytest.mark.anyio
+async def test_indeterminate_final_preserves_complete_authoritative_result():
+    fixtures = [
+        KnockoutFixtureDTO(
+            fixture_id=1,
+            stage="final",
+            home_team_id=99,
+            away_team_id=42,
+        )
+    ]
+    existing = [
+        CompetitionAchievement(
+            id=1, competition_id=10, team_id=99, season="2025",
+            phase="winner", bonus_points=5000, weight=1.0,
+            created_at=datetime.now(timezone.utc),
+        ),
+        CompetitionAchievement(
+            id=2, competition_id=10, team_id=42, season="2025",
+            phase="runner_up", bonus_points=0, weight=1.0,
+            created_at=datetime.now(timezone.utc),
+        ),
+    ]
+    uc, repo = _make_use_case(
+        fixtures=fixtures,
+        existing_achievements=existing,
+    )
+
+    result = await uc.execute(
+        competition_id=10, season="2025", rules_version_id=3
+    )
+
+    phases = {achievement.phase: achievement for achievement in repo.upserted}
+    assert result.achievements_upserted == 2
+    assert phases["winner"].team_id == 99
+    assert phases["winner"].bonus_points == 5000
+    assert phases["runner_up"].team_id == 42
+    assert phases["runner_up"].bonus_points == 0
+
+
+@pytest.mark.anyio
+async def test_indeterminate_final_does_not_preserve_non_finalist_achievements():
+    fixtures = [
+        KnockoutFixtureDTO(
+            fixture_id=1,
+            stage="final",
+            home_team_id=99,
+            away_team_id=42,
+        )
+    ]
+    existing = [
+        CompetitionAchievement(
+            id=1, competition_id=10, team_id=61, season="2025",
+            phase="winner", bonus_points=5000, weight=1.0,
+            created_at=datetime.now(timezone.utc),
+        ),
+        CompetitionAchievement(
+            id=2, competition_id=10, team_id=3, season="2025",
+            phase="runner_up", bonus_points=0, weight=1.0,
+            created_at=datetime.now(timezone.utc),
+        ),
+    ]
+    uc, repo = _make_use_case(
+        fixtures=fixtures,
+        existing_achievements=existing,
+    )
+
+    await uc.execute(competition_id=10, season="2025", rules_version_id=3)
+
+    assert {achievement.phase for achievement in repo.upserted} == {"semi_final"}
+    assert {achievement.team_id for achievement in repo.upserted} == {42, 99}
+
+
+@pytest.mark.anyio
+async def test_inferred_final_result_replaces_previous_authoritative_result():
+    fixtures = [
+        KnockoutFixtureDTO(
+            fixture_id=1,
+            stage="final",
+            home_team_id=99,
+            away_team_id=42,
+        )
+    ]
+    existing = [
+        CompetitionAchievement(
+            id=1, competition_id=10, team_id=42, season="2025",
+            phase="winner", bonus_points=5000, weight=1.0,
+            created_at=datetime.now(timezone.utc),
+        ),
+        CompetitionAchievement(
+            id=2, competition_id=10, team_id=99, season="2025",
+            phase="runner_up", bonus_points=0, weight=1.0,
+            created_at=datetime.now(timezone.utc),
+        ),
+    ]
+    uc, repo = _make_use_case(
+        fixtures=fixtures,
+        goals={1: {99: 2, 42: 1}},
+        existing_achievements=existing,
+    )
+
+    await uc.execute(competition_id=10, season="2025", rules_version_id=3)
+
+    phases = {achievement.phase: achievement.team_id for achievement in repo.upserted}
+    assert phases == {"winner": 99, "runner_up": 42}
 
 
 @pytest.mark.anyio

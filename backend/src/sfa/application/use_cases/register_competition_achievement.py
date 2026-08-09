@@ -3,6 +3,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from sfa.domain.scoring.achievement_categories import (
+    SINGULAR_ACHIEVEMENT_PHASES,
+    UNSCORED_PHASES_BY_CATEGORY,
+    get_competition_category,
+)
 from sfa.domain.scoring.entities import CompetitionAchievement
 from sfa.domain.scoring_ports import (
     CompetitionAchievementRepositoryPort,
@@ -46,23 +51,30 @@ class RegisterCompetitionAchievementUseCase:
 
         config = rules_version.config
 
-        # Resolve bonus_points and weight from config
-        bonus_points: int | None = None
-        weight: float | None = None
-
-        for category, phases in config.achievement_phase_bonuses.items():
-            if phase in phases:
-                bonus_points = phases[phase]
-                break
-
-        if bonus_points is None:
-            valid_phases = [
-                p for phases in config.achievement_phase_bonuses.values()
-                for p in phases
-            ]
+        category = get_competition_category(competition_name)
+        if category is None:
             return RegisterAchievementResult(
                 achievement_id=0, status="failed",
-                error=f"Phase '{phase}' not found in config. Valid: {sorted(set(valid_phases))}",
+                error=f"Competition category not found for '{competition_name}'",
+            )
+
+        category_phases = config.achievement_phase_bonuses.get(category, {})
+        bonus_points = category_phases.get(phase)
+        if bonus_points is None and phase in UNSCORED_PHASES_BY_CATEGORY.get(
+            category, frozenset()
+        ):
+            bonus_points = 0
+        if bonus_points is None:
+            valid_phases = set(category_phases) | set(
+                UNSCORED_PHASES_BY_CATEGORY.get(category, frozenset())
+            )
+            return RegisterAchievementResult(
+                achievement_id=0,
+                status="failed",
+                error=(
+                    f"Phase '{phase}' not valid for {competition_name}. "
+                    f"Valid: {sorted(valid_phases)}"
+                ),
             )
 
         weight = config.competition_bonus_weights.get(competition_name, 1.0)
@@ -83,7 +95,12 @@ class RegisterCompetitionAchievementUseCase:
                 achievement_id=0, status="failed", error=str(exc),
             )
 
-        achievement_id = await self._achievement_repo.upsert_achievement(achievement)
+        if phase in SINGULAR_ACHIEVEMENT_PHASES:
+            achievement_id = await self._achievement_repo.replace_achievement_for_phase(
+                achievement
+            )
+        else:
+            achievement_id = await self._achievement_repo.upsert_achievement(achievement)
 
         logger.info(
             "[RegisterCompetitionAchievementUseCase] achievement_id=%d "
