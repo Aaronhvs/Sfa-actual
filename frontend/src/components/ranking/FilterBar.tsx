@@ -34,49 +34,55 @@ export default function FilterBar({
 }: Props) {
   return (
     <div className="filter-bar" aria-label="Filtros del ranking">
-      <label className="filter-select">
-        <span className="filter-select__label">Posici&oacute;n</span>
-        <select
-          value={position}
-          onChange={(event) => onPosition(event.target.value)}
-          aria-label="Filtrar por posici&oacute;n"
-        >
-          <option value="">Todas las posiciones</option>
-          {POSITIONS.map((item) => (
-            <option key={item.value} value={item.value}>{item.label}</option>
-          ))}
-        </select>
+      <label className={`filter-select${position ? ' filter-select--active' : ''}`}>
+        <span className="filter-select__face">
+          <span className="filter-select__label">Posici&oacute;n</span>
+          <select
+            value={position}
+            onChange={(event) => onPosition(event.target.value)}
+            aria-label="Filtrar por posici&oacute;n"
+          >
+            <option value="">Todas las posiciones</option>
+            {POSITIONS.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
+        </span>
       </label>
 
-      <label className="filter-select">
-        <span className="filter-select__label">Perfil</span>
-        <select
-          value={bonusFilter}
-          onChange={(event) => onBonusFilter(event.target.value)}
-          aria-label="Filtrar por promesa o veterano"
-        >
-          <option value="">Todos los perfiles</option>
-          <option value="Promesa">Promesas</option>
-          <option value="Veterano">Veteranos</option>
-          <option value="Goleador">Goleadores</option>
-          <option value="Asistidor">Asistidores</option>
-        </select>
+      <label className={`filter-select${bonusFilter ? ' filter-select--active' : ''}`}>
+        <span className="filter-select__face">
+          <span className="filter-select__label">Perfil</span>
+          <select
+            value={bonusFilter}
+            onChange={(event) => onBonusFilter(event.target.value)}
+            aria-label="Filtrar por promesa o veterano"
+          >
+            <option value="">Todos los perfiles</option>
+            <option value="Promesa">Promesas</option>
+            <option value="Veterano">Veteranos</option>
+            <option value="Goleador">Goleadores</option>
+            <option value="Asistidor">Asistidores</option>
+          </select>
+        </span>
       </label>
 
-      <label className="filter-select">
-        <span className="filter-select__label">Competici&oacute;n</span>
-        <select
-          value={competition ?? ''}
-          onChange={(event) => {
-            onCompetition(event.target.value ? Number(event.target.value) : undefined)
-          }}
-          aria-label="Filtrar por competici&oacute;n"
-        >
-          <option value="">Todas las competiciones</option>
-          {competitions.map((item) => (
-            <option key={item.id} value={item.id}>{item.name}</option>
-          ))}
-        </select>
+      <label className={`filter-select${competition !== undefined ? ' filter-select--active' : ''}`}>
+        <span className="filter-select__face">
+          <span className="filter-select__label">Competici&oacute;n</span>
+          <select
+            value={competition ?? ''}
+            onChange={(event) => {
+              onCompetition(event.target.value ? Number(event.target.value) : undefined)
+            }}
+            aria-label="Filtrar por competici&oacute;n"
+          >
+            <option value="">Todas las competiciones</option>
+            {competitions.map((item) => (
+              <option key={item.id} value={item.id}>{item.name}</option>
+            ))}
+          </select>
+        </span>
       </label>
 
       <label className="filter-bar__search">

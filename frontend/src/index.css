@@ -14264,30 +14264,76 @@ body.mode-tournament .main-content {
 .filter-select {
   min-width: 0;
   position: relative;
+  min-height: 53px;
+  display: block;
+  padding: 0 0 3px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+.filter-select::before {
+  content: '';
+  position: absolute;
+  inset: 3px 0 0;
+  z-index: -1;
+  background: #090a0a;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 4px;
+}
+
+.filter-select__face {
+  position: relative;
   min-height: 50px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 3px;
   padding: 8px 38px 8px 13px;
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface) 92%, white 8%),
+    color-mix(in srgb, var(--surface) 96%, #000 4%)
+  );
   border: 1px solid var(--border-sub);
   border-radius: 4px;
-  cursor: pointer;
+  transform: translateY(0);
   transition:
+    transform 240ms cubic-bezier(0.3, 0.7, 0.4, 1),
     border-color 180ms cubic-bezier(0.23, 1, 0.32, 1),
-    background-color 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 180ms cubic-bezier(0.23, 1, 0.32, 1),
     box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.filter-select:hover {
+.filter-select:hover .filter-select__face {
   border-color: rgba(255,255,255,0.16);
-  background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+  transform: translateY(-1px);
 }
 
-.filter-select:focus-within {
+.filter-select:active .filter-select__face {
+  transform: translateY(2px);
+  transition-duration: 80ms;
+}
+
+.filter-select:focus-within .filter-select__face {
   border-color: var(--gold);
-  box-shadow: 0 0 0 2px rgba(201,168,76,0.12);
+  box-shadow: 0 0 0 2px rgba(201,168,76,0.14);
+}
+
+.filter-select--active .filter-select__face {
+  border-color: rgba(201,168,76,0.58);
+  background: linear-gradient(
+    180deg,
+    rgba(201,168,76,0.13),
+    color-mix(in srgb, var(--surface) 95%, #000 5%)
+  );
+}
+
+.filter-select--active::before {
+  background: color-mix(in srgb, var(--gold-dim) 32%, #070707 68%);
+  border-color: rgba(201,168,76,0.25);
 }
 
 .filter-select__label {
@@ -14299,6 +14345,10 @@ body.mode-tournament .main-content {
   text-transform: uppercase;
   pointer-events: none;
   line-height: 1;
+}
+
+.filter-select--active .filter-select__label {
+  color: var(--gold-light);
 }
 
 .filter-select select {
@@ -14322,7 +14372,7 @@ body.mode-tournament .main-content {
   color-scheme: dark;
 }
 
-.filter-select::after {
+.filter-select__face::after {
   content: '';
   position: absolute;
   right: 13px;
@@ -14336,8 +14386,15 @@ body.mode-tournament .main-content {
   pointer-events: none;
 }
 
-.filter-select:focus-within::after {
+.filter-select:focus-within .filter-select__face::after,
+.filter-select--active .filter-select__face::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23C9A84C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-select__face {
+    transition: none;
+  }
 }
 
 .filter-bar__search {
