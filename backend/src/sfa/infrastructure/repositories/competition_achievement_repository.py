@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sfa.domain.scoring.entities import CompetitionAchievement, PlayerAchievementBonus
 from sfa.domain.scoring_ports import (
     CompetitionAchievementRepositoryPort,
+    LeagueChampionCandidateDTO,
     PlayerCompetitionAchievementDTO,
 )
 from sfa.domain.season_scope import AwardPeriodScope
@@ -20,7 +21,10 @@ from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.scores.models import SFASeasonScore
+from sfa.infrastructure.models.standings.models import StandingSnapshot
 from sfa.infrastructure.models.teams.models import Team
+
+_COMPLETED_FIXTURE_STATUSES = {"FT", "AET", "PEN", "AWD", "WO"}
 
 
 class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
@@ -51,6 +55,43 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         result = await self._session.execute(stmt)
         await self._session.flush()
         return result.scalar_one()
+
+    async def clear_achievement_bonuses(
+        self,
+        competition_id: int,
+        season: str,
+        rules_version_id: int,
+    ) -> None:
+        await self._session.execute(
+            delete(PlayerAchievementBonusModel).where(
+                PlayerAchievementBonusModel.competition_id == competition_id,
+                PlayerAchievementBonusModel.season == season,
+                PlayerAchievementBonusModel.rules_version_id == rules_version_id,
+            )
+        )
+        await self._session.execute(
+            update(SFASeasonScore)
+            .where(
+                SFASeasonScore.competition_id == competition_id,
+                SFASeasonScore.season == season,
+                SFASeasonScore.rules_version_id == rules_version_id,
+            )
+            .values(achievement_bonus_pts=0)
+        )
+        await self._session.flush()
+
+    async def replace_achievement_for_phase(
+        self, achievement: CompetitionAchievement
+    ) -> int:
+        stmt = delete(CompetitionAchievementModel).where(
+            CompetitionAchievementModel.competition_id == achievement.competition_id,
+            CompetitionAchievementModel.season == achievement.season,
+            CompetitionAchievementModel.phase == achievement.phase,
+            CompetitionAchievementModel.team_id != achievement.team_id,
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
+        return await self.upsert_achievement(achievement)
 
     async def delete_achievements_for_competition_season(
         self, competition_id: int, season: str
@@ -266,6 +307,85 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
             )
             for row in rows
         ]
+
+    async def get_domestic_league_leaders(
+        self, season: str, league_names: list[str]
+    ) -> list[LeagueChampionCandidateDTO]:
+        latest_matchdays = (
+            select(
+                StandingSnapshot.competition_id,
+                func.max(StandingSnapshot.matchday).label("matchday"),
+            )
+            .where(StandingSnapshot.season == season)
+            .group_by(StandingSnapshot.competition_id)
+            .subquery()
+        )
+        latest_rows = (
+            select(
+                StandingSnapshot.competition_id,
+                StandingSnapshot.team_id,
+                StandingSnapshot.season,
+                StandingSnapshot.matchday,
+                StandingSnapshot.position,
+                func.count().over(
+                    partition_by=StandingSnapshot.competition_id
+                ).label("team_count"),
+            )
+            .join(
+                latest_matchdays,
+                and_(
+                    latest_matchdays.c.competition_id
+                    == StandingSnapshot.competition_id,
+                    latest_matchdays.c.matchday == StandingSnapshot.matchday,
+                ),
+            )
+            .where(StandingSnapshot.season == season)
+            .subquery()
+        )
+        regular_fixture_counts = (
+            select(
+                Fixture.competition_id,
+                func.count(Fixture.id).label("regular_fixture_count"),
+                func.count(Fixture.id).filter(
+                    ~Fixture.status.in_(_COMPLETED_FIXTURE_STATUSES)
+                ).label("pending_fixture_count"),
+            )
+            .where(
+                Fixture.season == season,
+                Fixture.stage == "regular",
+            )
+            .group_by(Fixture.competition_id)
+            .subquery()
+        )
+        stmt = (
+            select(
+                latest_rows.c.competition_id,
+                Competition.name.label("competition_name"),
+                latest_rows.c.team_id,
+                latest_rows.c.season,
+                latest_rows.c.matchday,
+                latest_rows.c.team_count,
+                func.coalesce(
+                    regular_fixture_counts.c.regular_fixture_count, 0
+                ).label("regular_fixture_count"),
+                func.coalesce(
+                    regular_fixture_counts.c.pending_fixture_count, 0
+                ).label("pending_fixture_count"),
+            )
+            .join(Competition, Competition.id == latest_rows.c.competition_id)
+            .outerjoin(
+                regular_fixture_counts,
+                regular_fixture_counts.c.competition_id
+                == latest_rows.c.competition_id,
+            )
+            .where(
+                Competition.name.in_(league_names),
+                latest_rows.c.position == 1,
+            )
+            .order_by(Competition.name)
+        )
+        rows = (await self._session.execute(stmt)).mappings().all()
+        return [LeagueChampionCandidateDTO(**dict(row)) for row in rows]
 
     async def get_competition_ids_for_season(self, season: str) -> list[int]:
         stmt = (

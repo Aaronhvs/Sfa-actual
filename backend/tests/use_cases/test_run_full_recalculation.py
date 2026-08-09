@@ -5,6 +5,7 @@ import pytest
 from sfa.application.use_cases.run_full_recalculation import RunFullRecalculationUseCase
 from sfa.domain.scoring.entities import CompetitionAchievement, ScoringRulesVersion
 from sfa.domain.scoring.value_objects import ScoringConfig
+from sfa.domain.scoring_ports import LeagueChampionCandidateDTO
 from tests.use_cases.test_calculate_scores_for_rules_version import (
     FakePlayerEventScoreRepository,
     FakeScoringRulesVersionRepository,
@@ -87,3 +88,78 @@ async def test_full_recalculation_returns_failed_when_rules_version_missing():
     assert result.status == "failed"
     assert result.events_calculated == 0
     assert result.achievement_bonuses_created == 0
+
+
+@pytest.mark.anyio
+async def test_full_recalculation_infers_league_champion_before_bonuses():
+    event_repo = FakePlayerEventScoreRepository(events=[_make_goal_event()])
+    achievement_repo = FakeCompetitionAchievementRepository(
+        team_minutes=900,
+        player_minutes=450,
+        player_ids=[10],
+        rank_in_team=1,
+        avg_rating=8.0,
+        league_leaders=[
+            LeagueChampionCandidateDTO(
+                competition_id=1,
+                competition_name="Premier League",
+                team_id=1,
+                season="2024",
+                matchday=38,
+                team_count=20,
+                regular_fixture_count=380,
+                pending_fixture_count=0,
+            )
+        ],
+    )
+    use_case = RunFullRecalculationUseCase(
+        rules_version_repo=FakeScoringRulesVersionRepository(_make_version()),
+        event_score_repo=event_repo,
+        achievement_repo=achievement_repo,
+    )
+
+    result = await use_case.execute(
+        rules_version_id=3,
+        season="2024",
+        force_recalculate=True,
+    )
+
+    assert result.status == "completed"
+    assert result.competitions_with_bonuses == 1
+    assert result.achievement_bonuses_created == 1
+    assert len(achievement_repo.replaced_achievements) == 1
+    assert achievement_repo.replaced_achievements[0].phase == "champion"
+    assert len(achievement_repo.upserted_bonuses) == 1
+
+
+@pytest.mark.anyio
+async def test_full_recalculation_can_skip_league_champion_inference():
+    achievement_repo = FakeCompetitionAchievementRepository(
+        league_leaders=[
+            LeagueChampionCandidateDTO(
+                competition_id=1,
+                competition_name="Premier League",
+                team_id=1,
+                season="2024",
+                matchday=38,
+                team_count=20,
+                regular_fixture_count=380,
+                pending_fixture_count=0,
+            )
+        ]
+    )
+    use_case = RunFullRecalculationUseCase(
+        rules_version_repo=FakeScoringRulesVersionRepository(_make_version()),
+        event_score_repo=FakePlayerEventScoreRepository(events=[_make_goal_event()]),
+        achievement_repo=achievement_repo,
+    )
+
+    result = await use_case.execute(
+        rules_version_id=3,
+        season="2024",
+        force_recalculate=True,
+        infer_achievements=False,
+    )
+
+    assert result.status == "completed"
+    assert achievement_repo.replaced_achievements == []

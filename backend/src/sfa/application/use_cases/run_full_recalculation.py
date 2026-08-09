@@ -12,6 +12,9 @@ from sfa.application.use_cases.calculate_scores_for_rules_version import (
 from sfa.application.use_cases.infer_competition_achievements import (
     InferAllCompetitionAchievementsUseCase,
 )
+from sfa.application.use_cases.infer_league_champions import (
+    InferLeagueChampionsUseCase,
+)
 from sfa.application.use_cases.refresh_league_achievement_bonuses import (
     RefreshLeagueAchievementBonusesUseCase,
 )
@@ -94,6 +97,24 @@ class RunFullRecalculationUseCase:
                 infer_result.competitions_processed,
                 infer_result.competitions_skipped,
                 infer_result.total_achievements_upserted,
+            )
+
+        if infer_achievements:
+            infer_league_uc = InferLeagueChampionsUseCase(
+                achievement_repo=self._achievement_repo,
+                rules_version_repo=self._rules_version_repo,
+            )
+            infer_league_result = await infer_league_uc.execute(
+                season=season,
+                rules_version_id=rules_version_id,
+            )
+            logger.info(
+                "[RunFullRecalculationUseCase] infer_league_champions: "
+                "candidates=%d inferred=%d skipped=%d status=%s",
+                infer_league_result.candidates_found,
+                infer_league_result.champions_inferred,
+                infer_league_result.candidates_skipped,
+                infer_league_result.status,
             )
 
         refresh_uc = RefreshLeagueAchievementBonusesUseCase(

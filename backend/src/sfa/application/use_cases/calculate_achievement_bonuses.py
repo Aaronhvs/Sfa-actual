@@ -94,6 +94,11 @@ class CalculateAchievementBonusesUseCase:
             )
 
         config = rules_version.config
+        await self._achievement_repo.clear_achievement_bonuses(
+            competition_id=competition_id,
+            season=season,
+            rules_version_id=rules_version_id,
+        )
         achievements = await self._achievement_repo.get_achievements_for_season(
             competition_id, season
         )

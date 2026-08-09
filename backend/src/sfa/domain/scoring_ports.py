@@ -132,6 +132,18 @@ class PlayerCompetitionAchievementDTO:
     bonus_pts: float
 
 
+@dataclass(frozen=True)
+class LeagueChampionCandidateDTO:
+    competition_id: int
+    competition_name: str
+    team_id: int
+    season: str
+    matchday: int
+    team_count: int
+    regular_fixture_count: int
+    pending_fixture_count: int
+
+
 @runtime_checkable
 class ScoringRulesVersionRepositoryPort(Protocol):
     async def get_active_version(self) -> ScoringRulesVersion | None: ...
@@ -278,6 +290,17 @@ class TeamStrengthRepositoryPort(Protocol):
 class CompetitionAchievementRepositoryPort(Protocol):
     async def upsert_achievement(self, achievement: CompetitionAchievement) -> int: ...
 
+    async def clear_achievement_bonuses(
+        self,
+        competition_id: int,
+        season: str,
+        rules_version_id: int,
+    ) -> None: ...
+
+    async def replace_achievement_for_phase(
+        self, achievement: CompetitionAchievement
+    ) -> int: ...
+
     async def delete_achievements_for_competition_season(
         self, competition_id: int, season: str
     ) -> None: ...
@@ -330,6 +353,10 @@ class CompetitionAchievementRepositoryPort(Protocol):
     async def get_achievements_for_domestic_leagues(
         self, season: str, league_names: list[str]
     ) -> list[tuple[CompetitionAchievement, str]]: ...
+
+    async def get_domestic_league_leaders(
+        self, season: str, league_names: list[str]
+    ) -> list[LeagueChampionCandidateDTO]: ...
 
     async def get_player_achievements(
         self,

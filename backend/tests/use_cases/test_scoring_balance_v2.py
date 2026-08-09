@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 
 import pytest
@@ -57,6 +58,7 @@ class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort)
         player_ids=None,
         rank_in_team=5,
         avg_rating=7.5,
+        league_leaders=None,
     ):
         self._achievements = achievements or []
         self._team_minutes = team_minutes
@@ -64,13 +66,39 @@ class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort)
         self._player_ids = player_ids or []
         self._rank_in_team = rank_in_team
         self._avg_rating = avg_rating
+        self._league_leaders = league_leaders or []
         self.upserted_bonuses: list[PlayerAchievementBonus] = []
         self.upserted_achievements: list[CompetitionAchievement] = []
+        self.replaced_achievements: list[CompetitionAchievement] = []
         self.season_score_updates: list[dict] = []
+        self.cleared_achievement_bonuses: list[dict] = []
 
     async def upsert_achievement(self, achievement) -> int:
         self.upserted_achievements.append(achievement)
         return 1
+
+    async def clear_achievement_bonuses(
+        self, competition_id, season, rules_version_id
+    ) -> None:
+        self.cleared_achievement_bonuses.append({
+            "competition_id": competition_id,
+            "season": season,
+            "rules_version_id": rules_version_id,
+        })
+
+    async def replace_achievement_for_phase(self, achievement) -> int:
+        persisted = replace(achievement, id=achievement.id or len(self._achievements) + 1)
+        self._achievements = [
+            existing for existing in self._achievements
+            if not (
+                existing.competition_id == achievement.competition_id
+                and existing.season == achievement.season
+                and existing.phase == achievement.phase
+            )
+        ]
+        self._achievements.append(persisted)
+        self.replaced_achievements.append(persisted)
+        return persisted.id or 1
 
     async def get_achievements_for_season(self, competition_id, season):
         return [
@@ -106,6 +134,9 @@ class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort)
         self, season: str, league_names: list[str]
     ) -> list[tuple]:
         return []
+
+    async def get_domestic_league_leaders(self, season, league_names):
+        return [leader for leader in self._league_leaders if leader.season == season]
 
     async def get_player_achievements(self, player_id, rules_version_id, season=None):
         return []
@@ -406,6 +437,30 @@ async def test_achievement_bonus_retrocompat_when_flag_disabled():
     await use_case.execute(season="2024", competition_id=1, rules_version_id=3)
     # performance disabled: 5000 * 1.0 * 0.7375 = 3687.5
     assert repo.upserted_bonuses[0].final_bonus == pytest.approx(3687.5)
+
+
+@pytest.mark.anyio
+async def test_achievement_bonus_rebuild_clears_stale_totals_first():
+    rv = ScoringRulesVersion(
+        id=3, name="v2", version="2.0", description="", is_active=True,
+        config=ScoringConfig.default_v2(), created_at=datetime.now(timezone.utc),
+    )
+    repo = FakeCompetitionAchievementRepository()
+    use_case = CalculateAchievementBonusesUseCase(
+        achievement_repo=repo,
+        rules_version_repo=FakeScoringRulesVersionRepository(version=rv),
+    )
+
+    result = await use_case.execute(
+        season="2024", competition_id=1, rules_version_id=3
+    )
+
+    assert result.status == "completed"
+    assert repo.cleared_achievement_bonuses == [{
+        "competition_id": 1,
+        "season": "2024",
+        "rules_version_id": 3,
+    }]
 
 
 @pytest.mark.anyio
