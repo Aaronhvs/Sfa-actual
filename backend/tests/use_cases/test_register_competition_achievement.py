@@ -156,7 +156,7 @@ class TestRegisterCompetitionAchievementUseCase:
         assert "not found" in (result.error or "").lower()
 
     @pytest.mark.anyio
-    async def test_champions_runner_up_is_registered_with_zero_points(self):
+    async def test_champions_runner_up_is_registered_with_points(self):
         ach_repo = FakeCompetitionAchievementRepository()
         use_case = RegisterCompetitionAchievementUseCase(
             ach_repo, FakeScoringRulesVersionRepository(_make_version())
@@ -173,7 +173,7 @@ class TestRegisterCompetitionAchievementUseCase:
 
         assert result.status == "registered"
         assert len(ach_repo.achievements) == 1
-        assert ach_repo.achievements[0].bonus_points == 0
+        assert ach_repo.achievements[0].bonus_points == 11000
 
     @pytest.mark.anyio
     async def test_singular_phase_replaces_previous_team(self):

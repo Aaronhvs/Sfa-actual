@@ -33,10 +33,10 @@ const MULTIPLICADORES = [
     id: 'M2',
     color: 'var(--met-green)',
     nombre: 'Fase de Competición',
-    rango: '1.0× - 1.5×',
+    rango: '1.15× - 1.90×',
     descripcion: 'Una semifinal de Champions vale más que la fase de grupos. A mayor trascendencia del partido, mayor multiplicador.',
-    detalle: 'La fase del torneo determina M2: fase de grupos = 1.0, octavos = 1.1, cuartos = 1.2, semifinal = 1.35, final = 1.5. En liga, los partidos directos por el título aplican un bonus.',
-    ejemplo: { bajo: 'Fase de grupos → ×1.0', alto: 'Final Champions → ×1.5' },
+    detalle: 'En Champions, la fase determina M2: grupos = 1.15, octavos = 1.30, cuartos = 1.45, semifinal = 1.65 y final = 1.90. En liga, los partidos directos por el título aplican un bonus.',
+    ejemplo: { bajo: 'Fase de grupos → ×1.15', alto: 'Final Champions → ×1.90' },
   },
   {
     id: 'M3',
@@ -77,9 +77,10 @@ const POSICIONES = [
 ]
 
 const LOGROS = [
-  { comp: 'Champions League', fase: 'Campeón', pts: 18000, weight: 1, color: 'var(--met-yellow)', grupo: 'internacional' },
-  { comp: 'Champions League', fase: 'Semifinal', pts: 9000, weight: 1, color: 'var(--met-yellow)', grupo: 'internacional' },
-  { comp: 'Champions League', fase: 'Cuartos', pts: 5500, weight: 1, color: 'var(--met-yellow)', grupo: 'internacional' },
+  { comp: 'Champions League', fase: 'Campeón', pts: 15000, weight: 1, color: 'var(--met-yellow)', grupo: 'internacional' },
+  { comp: 'Champions League', fase: 'Subcampeón', pts: 11000, weight: 1, color: 'var(--met-yellow)', grupo: 'internacional' },
+  { comp: 'Champions League', fase: 'Semifinal', pts: 6500, weight: 1, color: 'var(--met-yellow)', grupo: 'internacional' },
+  { comp: 'Champions League', fase: 'Cuartos', pts: 3500, weight: 1, color: 'var(--met-yellow)', grupo: 'internacional' },
   { comp: 'Europa League', fase: 'Campeón', pts: 7000, weight: 0.75, color: 'var(--met-orange)', grupo: 'internacional' },
   { comp: 'Liga doméstica', fase: 'Campeón', pts: 14000, weight: 0.95, color: 'var(--met-blue)', grupo: 'domestico' },
   { comp: 'Liga doméstica', fase: 'Subcampeón', pts: 5000, weight: 0.95, color: 'var(--met-blue)', grupo: 'domestico' },
@@ -90,7 +91,7 @@ const LOGROS = [
 const EJEMPLO_FILAS = [
   { concepto: 'Base (EXT · Gol)', valor: '550 pts' },
   { concepto: 'M1 rival fuerte (Bayern, 82 pts)', valor: '× 1.80' },
-  { concepto: 'M2 semifinal Champions', valor: '× 1.35' },
+  { concepto: 'M2 semifinal Champions', valor: '× 1.65' },
   { concepto: 'M3 minuto 78, empate a 1', valor: '× 1.42', nota: 'estimado' },
   { concepto: 'M4 xG bajo (remate difícil 0.08)', valor: '× 1.15' },
   { concepto: 'Mv (partido de visitante)', valor: '× 1.15' },
@@ -213,7 +214,7 @@ export default function MetodologiaPage() {
           <div className="met-formula__legend">
             <div className="met-formula__pill met-formula__pill--base"><strong>base</strong>Puntos base según posición y acción</div>
             <div className="met-formula__pill met-formula__pill--m1"><strong>M1</strong>Fuerza del rival (0.6 - 1.8×)</div>
-            <div className="met-formula__pill met-formula__pill--m2"><strong>M2</strong>Fase de la competición (1.0 - 1.5×)</div>
+            <div className="met-formula__pill met-formula__pill--m2"><strong>M2</strong>Fase Champions (1.15 - 1.90×)</div>
             <div className="met-formula__pill met-formula__pill--m3"><strong>M3</strong>Momento del partido (minuto + marcador)</div>
             <div className="met-formula__pill met-formula__pill--m4"><strong>M4</strong>Dificultad del disparo (xG)</div>
             <div className="met-formula__pill met-formula__pill--mv"><strong>Mv</strong>Bonus visitante (1.15× fuera de casa)</div>

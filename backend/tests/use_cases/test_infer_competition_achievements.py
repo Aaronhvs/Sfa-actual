@@ -225,9 +225,9 @@ async def test_indeterminate_final_preserves_complete_authoritative_result():
     phases = {achievement.phase: achievement for achievement in repo.upserted}
     assert result.achievements_upserted == 2
     assert phases["winner"].team_id == 99
-    assert phases["winner"].bonus_points == 5000
+    assert phases["winner"].bonus_points == 15000
     assert phases["runner_up"].team_id == 42
-    assert phases["runner_up"].bonus_points == 0
+    assert phases["runner_up"].bonus_points == 11000
 
 
 @pytest.mark.anyio

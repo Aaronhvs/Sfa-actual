@@ -8,7 +8,7 @@ Stage names match ROUND_TO_STAGE in api_football.py:
   "group", "round_of_16", "quarter", "semi", "final", "regular"
 
 Stage factors rationale:
-  - CL: highest stakes globally (1.5 group → 2.8 final)
+  - CL: progressive importance without duplicating the opponent ELO signal
   - Domestic leagues: neutral 1.0 (no stage concept for regular season)
   - Copa del Rey / Supercopa: moderate (0.9 regular → 1.4 final)
   - Other national cups (FA Cup, Coupe de France, DFB-Pokal, Coppa Italia):
@@ -24,11 +24,11 @@ DB = dict(host="localhost", port=5432, user="sfa", password="sfa", dbname="sfa")
 # Map (competition_name, stage) → stage_factor
 STAGE_SEEDS: list[tuple[str, str, float]] = [
     # Champions League
-    ("Champions League", "group",       1.5),
-    ("Champions League", "round_of_16", 1.8),
-    ("Champions League", "quarter",     2.0),
-    ("Champions League", "semi",        2.3),
-    ("Champions League", "final",       2.8),
+    ("Champions League", "group",       1.15),
+    ("Champions League", "round_of_16", 1.30),
+    ("Champions League", "quarter",     1.45),
+    ("Champions League", "semi",        1.65),
+    ("Champions League", "final",       1.90),
 
     # Domestic leagues — one "regular" stage covers all matchdays
     ("La Liga",       "regular", 1.0),

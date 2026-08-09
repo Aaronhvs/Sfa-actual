@@ -496,8 +496,8 @@ _DEFAULT_ACHIEVEMENT_PHASE_BONUSES: dict[str, dict[str, int]] = {
         "third_place": 5000, "runner_up": 6000, "winner": 9000,
     },
     "champions_league": {
-        "qualify_ko": 1000, "round_of_16": 1500, "quarter_final": 2200,
-        "semi_final": 3000, "winner": 5000,
+        "qualify_ko": 1000, "round_of_16": 2000, "quarter_final": 3500,
+        "semi_final": 6500, "runner_up": 11000, "winner": 15000,
     },
     "europa_league": {
         "qualify_ko": 700, "round_of_16": 1000, "quarter_final": 1500,

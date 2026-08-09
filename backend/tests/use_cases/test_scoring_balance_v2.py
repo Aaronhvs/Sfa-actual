@@ -343,14 +343,21 @@ def test_achievement_phase_bonuses_domestic_league_exists():
     assert config.achievement_phase_bonuses["domestic_league"]["champion"] == 7000
 
 
-def test_achievement_phase_bonuses_champions_league_winner_5000():
+def test_achievement_phase_bonuses_champions_league_are_normalized():
     config = ScoringConfig.default_v2()
-    assert config.achievement_phase_bonuses["champions_league"]["winner"] == 5000
+    assert config.achievement_phase_bonuses["champions_league"] == {
+        "qualify_ko": 1000,
+        "round_of_16": 2000,
+        "quarter_final": 3500,
+        "semi_final": 6500,
+        "runner_up": 11000,
+        "winner": 15000,
+    }
 
 
-def test_achievement_phase_bonuses_runner_up_removed_from_ucl():
+def test_achievement_phase_bonuses_champions_runner_up_is_scored():
     config = ScoringConfig.default_v2()
-    assert "runner_up" not in config.achievement_phase_bonuses["champions_league"]
+    assert config.achievement_phase_bonuses["champions_league"]["runner_up"] == 11000
 
 
 # ─── Tests: performance_factor helpers ───────────────────────────────────────
