@@ -14472,6 +14472,10 @@ body.mode-tournament .main-content {
   white-space: nowrap;
 }
 
+.filter-select::after {
+  content: none;
+}
+
 .filter-select__face::after {
   content: '';
   position: absolute;
