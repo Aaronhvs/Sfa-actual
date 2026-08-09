@@ -12,6 +12,13 @@ function formatBonus(points: number): string {
   return Math.round(points).toLocaleString('es-ES')
 }
 
+function achievementTone(phase: string, champion: boolean): string {
+  if (champion) return 'champion'
+  if (phase === 'runner_up' || phase === 'final') return 'finalist'
+  if (phase === 'semi_final' || phase === 'quarter_final') return 'deep-run'
+  return 'knockout'
+}
+
 function TrophyIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -46,13 +53,14 @@ export default function CompetitionJourney({ achievements, historical }: Props) 
             <div className="competition-journey__list">
               {items.map((achievement) => {
                 const champion = achievement.title_count > 0
+                const tone = achievementTone(achievement.phase, champion)
                 const competition = competitionLabel(achievement.competition_name)
                 const teamName = competition === 'Mundial'
                   ? worldCupTeamNameFromString(achievement.team_name)
                   : achievement.team_name
                 return (
                   <article
-                    className={`competition-journey__item${champion ? ' competition-journey__item--champion' : ''}`}
+                    className={`competition-journey__item competition-journey__item--${tone}${champion ? ' competition-journey__item--champion' : ''}`}
                     key={achievement.achievement_id}
                   >
                     <span className="competition-journey__icon">

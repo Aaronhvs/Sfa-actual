@@ -13,6 +13,13 @@
   --met-violet:   #c864ff;
   --met-yellow:   #ffdc50;
   --met-red:      #ff6b6b;
+  --honor-scorer:   #e11d48;
+  --honor-assister: #0ea5e9;
+  --honor-dribbler: #8b5cf6;
+  --honor-duelist:  #10b981;
+  --honor-finalist: #f472b6;
+  --honor-deep-run: #fb923c;
+  --honor-knockout: #3b82f6;
   --neg:          #e05c5c;
   --text:         #ffffff;   /* primary — headlines, values */
   --text-dim:     #aaaaaa;   /* secondary — supporting info */
@@ -1269,10 +1276,15 @@ img { display: block; }
 
 .competition-journey__list {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  isolation: isolate;
 }
 
 .competition-journey__item {
+  --palmares-accent: var(--honor-knockout);
   display: grid;
+  position: relative;
   grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
@@ -1281,24 +1293,67 @@ img { display: block; }
   border: 1px solid var(--border-sub);
   border-radius: 4px;
   background: var(--surface2);
+  transform: translateZ(0);
+  transform-style: preserve-3d;
+  transition:
+    transform 300ms var(--ease-out),
+    border-color 240ms var(--ease-out),
+    background-color 240ms var(--ease-out);
+}
+
+.competition-journey__item::before,
+.individual-honors__item::before {
+  position: absolute;
+  content: "";
+  inset: 9px auto 9px 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--palmares-accent);
+  opacity: 0.55;
+  transform: scaleY(0.55);
+  transform-origin: center;
+  transition:
+    transform 300ms var(--ease-out),
+    opacity 240ms var(--ease-out);
 }
 
 .competition-journey__item--champion {
+  --palmares-accent: var(--gold);
   border-color: rgba(201,168,76,0.28);
+}
+
+.competition-journey__item--finalist {
+  --palmares-accent: var(--honor-finalist);
+}
+
+.competition-journey__item--deep-run {
+  --palmares-accent: var(--honor-deep-run);
+}
+
+.competition-journey__item--knockout {
+  --palmares-accent: var(--honor-knockout);
 }
 
 .competition-journey__icon {
   display: grid;
+  position: relative;
   width: 38px;
   height: 38px;
   place-items: center;
-  border: 1px solid var(--border-sub);
+  border: 1px solid color-mix(in srgb, var(--palmares-accent) 42%, transparent);
   border-radius: 50%;
-  color: var(--text-dim);
+  color: var(--palmares-accent);
+  background: color-mix(in srgb, var(--palmares-accent) 8%, var(--surface2));
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--palmares-accent) 16%, transparent);
   font-family: var(--font-display);
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
+  transform: translateZ(0);
+  transition:
+    transform 380ms cubic-bezier(0.175, 0.885, 0.32, 1.1),
+    background-color 240ms var(--ease-out),
+    box-shadow 240ms var(--ease-out);
 }
 
 .competition-journey__item--champion .competition-journey__icon {
@@ -1380,36 +1435,65 @@ img { display: block; }
 }
 
 .individual-honors__list {
+  display: grid;
   border-top: 1px solid var(--border-sub);
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  isolation: isolate;
 }
 
 .individual-honors__item {
+  --palmares-accent: var(--text-faint);
   display: grid;
+  position: relative;
   grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   min-height: 78px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border-sub);
-  transition: background-color 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translateZ(0);
+  transform-style: preserve-3d;
+  transition:
+    transform 300ms var(--ease-out),
+    background-color 240ms var(--ease-out);
 }
 
-.individual-honors__item:hover {
-  background: var(--surface2);
+.individual-honors__item--scorer {
+  --palmares-accent: var(--honor-scorer);
+}
+
+.individual-honors__item--assister {
+  --palmares-accent: var(--honor-assister);
+}
+
+.individual-honors__item--dribbler {
+  --palmares-accent: var(--honor-dribbler);
+}
+
+.individual-honors__item--duelist {
+  --palmares-accent: var(--honor-duelist);
 }
 
 .individual-honors__mark {
   display: grid;
+  position: relative;
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid var(--border-sub);
+  border: 1px solid color-mix(in srgb, var(--palmares-accent) 44%, transparent);
   border-radius: 4px;
-  color: var(--text-dim);
-  background: var(--bg-deep);
+  color: var(--palmares-accent);
+  background: color-mix(in srgb, var(--palmares-accent) 10%, var(--bg-deep));
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--palmares-accent) 18%, transparent);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0;
+  transform: translateZ(0);
+  transition:
+    transform 380ms cubic-bezier(0.175, 0.885, 0.32, 1.1),
+    background-color 240ms var(--ease-out),
+    box-shadow 240ms var(--ease-out);
 }
 
 .individual-honors__body,
@@ -1466,6 +1550,55 @@ img { display: block; }
   text-transform: uppercase;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .competition-journey__item:hover,
+  .individual-honors__item:hover {
+    z-index: 3;
+    transform: translateX(4px) translateZ(16px);
+  }
+
+  .competition-journey__item:hover {
+    border-color: color-mix(in srgb, var(--palmares-accent) 38%, var(--border-sub));
+    background: color-mix(in srgb, var(--palmares-accent) 5%, var(--surface2));
+  }
+
+  .individual-honors__item:hover {
+    background: color-mix(in srgb, var(--palmares-accent) 5%, var(--surface2));
+  }
+
+  .competition-journey__item:hover::before,
+  .individual-honors__item:hover::before {
+    opacity: 0.9;
+    transform: scaleY(1);
+  }
+
+  .competition-journey__item:hover .competition-journey__icon,
+  .individual-honors__item:hover .individual-honors__mark {
+    background: color-mix(in srgb, var(--palmares-accent) 18%, var(--surface2));
+    box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--palmares-accent) 28%, transparent);
+    transform: scale(1.18) translateZ(20px);
+  }
+
+  .competition-journey__item:hover + .competition-journey__item .competition-journey__icon,
+  .competition-journey__item:has(+ .competition-journey__item:hover) .competition-journey__icon,
+  .individual-honors__item:hover + .individual-honors__item .individual-honors__mark,
+  .individual-honors__item:has(+ .individual-honors__item:hover) .individual-honors__mark {
+    transform: scale(1.08) translateZ(10px);
+  }
+
+  .competition-journey__item:hover + .competition-journey__item + .competition-journey__item .competition-journey__icon,
+  .competition-journey__item:has(+ .competition-journey__item + .competition-journey__item:hover) .competition-journey__icon,
+  .individual-honors__item:hover + .individual-honors__item + .individual-honors__item .individual-honors__mark,
+  .individual-honors__item:has(+ .individual-honors__item + .individual-honors__item:hover) .individual-honors__mark {
+    transform: scale(1.04) translateZ(5px);
+  }
+
+  .competition-journey__item:active .competition-journey__icon,
+  .individual-honors__item:active .individual-honors__mark {
+    transform: scale(1.08) translateZ(8px);
+  }
+}
+
 .competition-journey__result {
   justify-items: end;
   text-align: right;
@@ -1518,6 +1651,17 @@ img { display: block; }
 }
 
 /* ─── Season actions ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .competition-journey__item,
+  .competition-journey__item::before,
+  .competition-journey__icon,
+  .individual-honors__item,
+  .individual-honors__item::before,
+  .individual-honors__mark {
+    transition: none;
+  }
+}
+
 .sa-card {
   padding: 20px 24px 24px;
 }

@@ -19,6 +19,13 @@ const HONOR_CODES: Record<string, string> = {
   duel_king: 'DL',
 }
 
+const HONOR_TONES: Record<string, string> = {
+  top_scorer: 'scorer',
+  top_assister: 'assister',
+  best_dribbler: 'dribbler',
+  duel_king: 'duelist',
+}
+
 function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('es-ES')
 }
@@ -62,7 +69,10 @@ export default function IndividualHonors({ honors, historical }: Props) {
             )}
             <div className="individual-honors__list">
               {items.map((honor) => (
-                <article className="individual-honors__item" key={honor.honor_id}>
+                <article
+                  className={`individual-honors__item individual-honors__item--${HONOR_TONES[honor.honor_type] ?? 'default'}`}
+                  key={honor.honor_id}
+                >
                   <span className="individual-honors__mark" aria-hidden="true">
                     {HONOR_CODES[honor.honor_type] ?? 'IN'}
                   </span>
