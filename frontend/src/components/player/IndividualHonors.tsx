@@ -19,13 +19,6 @@ const HONOR_CODES: Record<string, string> = {
   duel_king: 'DL',
 }
 
-const HONOR_TONES: Record<string, string> = {
-  top_scorer: 'scorer',
-  top_assister: 'assister',
-  best_dribbler: 'dribbler',
-  duel_king: 'duelist',
-}
-
 function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('es-ES')
 }
@@ -48,13 +41,15 @@ function evidence(honor: PlayerIndividualHonor): string {
 export default function IndividualHonors({ honors, historical }: Props) {
   if (honors.length === 0) return null
 
-  const grouped = honors.reduce<Record<string, PlayerIndividualHonor[]>>(
-    (groups, honor) => {
-      ;(groups[honor.scope_label] ??= []).push(honor)
-      return groups
-    },
-    {},
-  )
+  const grouped = historical
+    ? honors.reduce<Record<string, PlayerIndividualHonor[]>>(
+        (groups, honor) => {
+          ;(groups[honor.scope_label] ??= []).push(honor)
+          return groups
+        },
+        {},
+      )
+    : { current: honors }
 
   return (
     <section className="individual-honors" aria-labelledby="individual-honors-title">
@@ -74,13 +69,13 @@ export default function IndividualHonors({ honors, historical }: Props) {
                 const points = `+${formatNumber(honor.bonus_pts)} pts SFA`
                 return (
                   <article
-                    className={`individual-honors__item individual-honors__item--${HONOR_TONES[honor.honor_type] ?? 'default'}`}
+                    className="individual-honors__item"
                     key={honor.honor_id}
                     tabIndex={0}
                     aria-label={`${label} en ${honor.context_label}. ${metric}. ${points}.`}
                     onFocus={(event) => event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'center' })}
                   >
-                    <span className="individual-honors__face individual-honors__face--summary" aria-hidden="true">
+                    <span className="individual-honors__summary" aria-hidden="true">
                       <span className="individual-honors__mark">
                         {HONOR_CODES[honor.honor_type] ?? 'IN'}
                       </span>
@@ -89,8 +84,7 @@ export default function IndividualHonors({ honors, historical }: Props) {
                         <small>{honor.context_label}</small>
                       </span>
                     </span>
-                    <span className="individual-honors__face individual-honors__face--detail" aria-hidden="true">
-                      <small>{honor.context_label}</small>
+                    <span className="individual-honors__detail" aria-hidden="true">
                       <span>{metric}</span>
                       <strong>{points}</strong>
                     </span>
