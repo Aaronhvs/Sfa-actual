@@ -9431,9 +9431,10 @@ body.mode-tournament .main-content {
   background: linear-gradient(
     to top,
     rgba(0, 0, 0, 0.97) 0%,
-    rgba(0, 0, 0, 0.68) 42%,
-    rgba(0, 0, 0, 0.12) 68%,
-    transparent 100%
+    rgba(0, 0, 0, 0.82) 20%,
+    rgba(0, 0, 0, 0.3) 34%,
+    rgba(0, 0, 0, 0.06) 46%,
+    transparent 58%
   );
 }
 
