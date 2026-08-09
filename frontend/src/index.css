@@ -14289,7 +14289,7 @@ body.mode-tournament .main-content {
   min-height: 50px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 3px;
   padding: 8px 38px 8px 13px;
   background: linear-gradient(
@@ -14337,6 +14337,8 @@ body.mode-tournament .main-content {
 }
 
 .filter-select__label {
+  position: relative;
+  z-index: 2;
   color: var(--text-faint);
   font-family: var(--font-mono);
   font-size: 0.6875rem;
@@ -14352,9 +14354,13 @@ body.mode-tournament .main-content {
 }
 
 .filter-select select {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   width: 100%;
-  min-height: 0;
-  padding: 0;
+  height: 100%;
+  min-height: 100%;
+  padding: 22px 38px 6px 13px;
   color: var(--text);
   background: transparent;
   border: 0;
@@ -14379,6 +14385,7 @@ body.mode-tournament .main-content {
   top: 50%;
   width: 10px;
   height: 6px;
+  z-index: 2;
   transform: translateY(-50%);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A8F8B' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
