@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 
 const SOCIAL_LINKS = [
   {
+    id: 'instagram',
     label: 'Instagram',
     href: 'https://www.instagram.com/statsfootballaward/',
     icon: (
@@ -13,6 +14,7 @@ const SOCIAL_LINKS = [
     ),
   },
   {
+    id: 'youtube',
     label: 'YouTube',
     href: 'https://www.youtube.com/@StatsFootballAward',
     icon: (
@@ -23,6 +25,7 @@ const SOCIAL_LINKS = [
     ),
   },
   {
+    id: 'tiktok',
     label: 'TikTok',
     href: 'https://www.tiktok.com/@statsfootballaward',
     icon: (
@@ -33,6 +36,7 @@ const SOCIAL_LINKS = [
     ),
   },
   {
+    id: 'x',
     label: 'X',
     href: 'https://x.com/StatsfootballAw',
     icon: (
@@ -52,21 +56,31 @@ export default function Footer() {
             <img src="/blanco.png" alt="SFA" className="site-footer__logo-img" />
           </Link>
           <p className="site-footer__tagline">Estadísticas, contexto e impacto real en el fútbol.</p>
-          <div className="site-footer__socials" aria-label="Redes sociales de SFA">
+          <ul className="site-footer__socials" aria-label="Redes sociales de SFA">
             {SOCIAL_LINKS.map((social) => (
-              <a
-                key={social.label}
-                href={social.href}
-                target="_blank"
-                rel="noreferrer"
-                className="site-footer__social-link"
-                aria-label={`${social.label} de SFA`}
-                title={social.label}
-              >
-                {social.icon}
-              </a>
+              <li key={social.id} className="site-footer__social-item">
+                <a
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="site-footer__social-link"
+                  data-social={social.id}
+                  aria-label={`${social.label} de SFA`}
+                  aria-describedby={`footer-social-${social.id}`}
+                >
+                  <span className="site-footer__social-fill" aria-hidden="true" />
+                  {social.icon}
+                </a>
+                <span
+                  id={`footer-social-${social.id}`}
+                  className="site-footer__social-tooltip"
+                  role="tooltip"
+                >
+                  {social.label}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
         <nav className="site-footer__nav" aria-label="Pie de página">
