@@ -1,12 +1,22 @@
 import type { Competition } from '../../types'
+import RankingFilterSelect, { type RankingFilterOption } from './RankingFilterSelect'
 
-const POSITIONS: { value: string; label: string }[] = [
+const POSITIONS: RankingFilterOption[] = [
+  { value: '', label: 'Todas las posiciones' },
   { value: 'DEL', label: 'Delantero' },
   { value: 'EXT', label: 'Extremo' },
   { value: 'MCO', label: 'MC Ofensivo' },
   { value: 'MC', label: 'Mediocampista' },
   { value: 'DC', label: 'Def. Central' },
   { value: 'LAT', label: 'Lateral' },
+]
+
+const PROFILES: RankingFilterOption[] = [
+  { value: '', label: 'Todos los perfiles' },
+  { value: 'Promesa', label: 'Promesas' },
+  { value: 'Veterano', label: 'Veteranos' },
+  { value: 'Goleador', label: 'Goleadores' },
+  { value: 'Asistidor', label: 'Asistidores' },
 ]
 
 interface Props {
@@ -32,58 +42,38 @@ export default function FilterBar({
   search,
   onSearch,
 }: Props) {
+  const competitionOptions: RankingFilterOption[] = [
+    { value: '', label: 'Todas las competiciones' },
+    ...competitions.map((item) => ({ value: String(item.id), label: item.name })),
+  ]
+
   return (
     <div className="filter-bar" aria-label="Filtros del ranking">
-      <label className={`filter-select${position ? ' filter-select--active' : ''}`}>
-        <span className="filter-select__face">
-          <span className="filter-select__label">Posici&oacute;n</span>
-          <select
-            value={position}
-            onChange={(event) => onPosition(event.target.value)}
-            aria-label="Filtrar por posici&oacute;n"
-          >
-            <option value="">Todas las posiciones</option>
-            {POSITIONS.map((item) => (
-              <option key={item.value} value={item.value}>{item.label}</option>
-            ))}
-          </select>
-        </span>
-      </label>
+      <RankingFilterSelect
+        label="Posici&oacute;n"
+        ariaLabel="Filtrar por posici&oacute;n"
+        value={position}
+        options={POSITIONS}
+        onChange={onPosition}
+      />
 
-      <label className={`filter-select${bonusFilter ? ' filter-select--active' : ''}`}>
-        <span className="filter-select__face">
-          <span className="filter-select__label">Perfil</span>
-          <select
-            value={bonusFilter}
-            onChange={(event) => onBonusFilter(event.target.value)}
-            aria-label="Filtrar por promesa o veterano"
-          >
-            <option value="">Todos los perfiles</option>
-            <option value="Promesa">Promesas</option>
-            <option value="Veterano">Veteranos</option>
-            <option value="Goleador">Goleadores</option>
-            <option value="Asistidor">Asistidores</option>
-          </select>
-        </span>
-      </label>
+      <RankingFilterSelect
+        label="Perfil"
+        ariaLabel="Filtrar por promesa o veterano"
+        value={bonusFilter}
+        options={PROFILES}
+        onChange={onBonusFilter}
+      />
 
-      <label className={`filter-select${competition !== undefined ? ' filter-select--active' : ''}`}>
-        <span className="filter-select__face">
-          <span className="filter-select__label">Competici&oacute;n</span>
-          <select
-            value={competition ?? ''}
-            onChange={(event) => {
-              onCompetition(event.target.value ? Number(event.target.value) : undefined)
-            }}
-            aria-label="Filtrar por competici&oacute;n"
-          >
-            <option value="">Todas las competiciones</option>
-            {competitions.map((item) => (
-              <option key={item.id} value={item.id}>{item.name}</option>
-            ))}
-          </select>
-        </span>
-      </label>
+      <RankingFilterSelect
+        label="Competici&oacute;n"
+        ariaLabel="Filtrar por competici&oacute;n"
+        value={competition === undefined ? '' : String(competition)}
+        options={competitionOptions}
+        onChange={(nextCompetition) => {
+          onCompetition(nextCompetition ? Number(nextCompetition) : undefined)
+        }}
+      />
 
       <label className="filter-bar__search">
         <span className="sr-only">Buscar jugador o equipo</span>
