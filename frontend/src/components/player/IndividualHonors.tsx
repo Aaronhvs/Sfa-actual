@@ -68,25 +68,35 @@ export default function IndividualHonors({ honors, historical }: Props) {
               <p className="individual-honors__scope">{scopeLabel}</p>
             )}
             <div className="individual-honors__list">
-              {items.map((honor) => (
-                <article
-                  className={`individual-honors__item individual-honors__item--${HONOR_TONES[honor.honor_type] ?? 'default'}`}
-                  key={honor.honor_id}
-                >
-                  <span className="individual-honors__mark" aria-hidden="true">
-                    {HONOR_CODES[honor.honor_type] ?? 'IN'}
-                  </span>
-                  <span className="individual-honors__body">
-                    <strong>{HONOR_LABELS[honor.honor_type] ?? honor.honor_type}</strong>
-                    <small>{honor.context_label}</small>
-                    <span>{evidence(honor)}</span>
-                  </span>
-                  <span className="individual-honors__points">
-                    <strong>+{formatNumber(honor.bonus_pts)}</strong>
-                    <small>pts SFA</small>
-                  </span>
-                </article>
-              ))}
+              {items.map((honor) => {
+                const label = HONOR_LABELS[honor.honor_type] ?? honor.honor_type
+                const metric = evidence(honor)
+                const points = `+${formatNumber(honor.bonus_pts)} pts SFA`
+                return (
+                  <article
+                    className={`individual-honors__item individual-honors__item--${HONOR_TONES[honor.honor_type] ?? 'default'}`}
+                    key={honor.honor_id}
+                    tabIndex={0}
+                    aria-label={`${label} en ${honor.context_label}. ${metric}. ${points}.`}
+                    onFocus={(event) => event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'center' })}
+                  >
+                    <span className="individual-honors__face individual-honors__face--summary" aria-hidden="true">
+                      <span className="individual-honors__mark">
+                        {HONOR_CODES[honor.honor_type] ?? 'IN'}
+                      </span>
+                      <span className="individual-honors__body">
+                        <strong>{label}</strong>
+                        <small>{honor.context_label}</small>
+                      </span>
+                    </span>
+                    <span className="individual-honors__face individual-honors__face--detail" aria-hidden="true">
+                      <small>{honor.context_label}</small>
+                      <span>{metric}</span>
+                      <strong>{points}</strong>
+                    </span>
+                  </article>
+                )
+              })}
             </div>
           </div>
         ))}

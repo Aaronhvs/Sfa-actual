@@ -55,6 +55,10 @@ export default function CompetitionJourney({ achievements, historical }: Props) 
                 const champion = achievement.title_count > 0
                 const tone = achievementTone(achievement.phase, champion)
                 const competition = competitionLabel(achievement.competition_name)
+                const phase = champion ? 'Campe\u00f3n' : phaseLabel(achievement.phase)
+                const bonus = achievement.bonus_pts > 0
+                  ? `+${formatBonus(achievement.bonus_pts)} pts SFA`
+                  : 'Sin puntos adicionales'
                 const teamName = competition === 'Mundial'
                   ? worldCupTeamNameFromString(achievement.team_name)
                   : achievement.team_name
@@ -62,30 +66,24 @@ export default function CompetitionJourney({ achievements, historical }: Props) 
                   <article
                     className={`competition-journey__item competition-journey__item--${tone}${champion ? ' competition-journey__item--champion' : ''}`}
                     key={achievement.achievement_id}
+                    tabIndex={0}
+                    aria-label={`${phase} de ${competition}. ${teamName}, ${seasonLabel(achievement.season)}. ${bonus}.`}
+                    onFocus={(event) => event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'center' })}
                   >
-                    <span className="competition-journey__icon">
-                      {champion ? <TrophyIcon /> : phaseBadge(achievement.phase)}
+                    <span className="competition-journey__face competition-journey__face--summary" aria-hidden="true">
+                      <span className="competition-journey__icon">
+                        {champion ? <TrophyIcon /> : phaseBadge(achievement.phase)}
+                      </span>
+                      <span className="competition-journey__body">
+                        <small>{phase}</small>
+                        <strong>{competition}</strong>
+                      </span>
                     </span>
-                    <span className="competition-journey__body">
-                      <strong>{competition}</strong>
+                    <span className="competition-journey__face competition-journey__face--detail" aria-hidden="true">
                       <small>{teamName}</small>
-                    </span>
-                    <span className="competition-journey__result">
-                      {champion ? (
-                        <>
-                          <strong>+{formatBonus(achievement.bonus_pts)}</strong>
-                          <small>pts por el t&iacute;tulo</small>
-                        </>
-                      ) : (
-                        <>
-                          <strong>{phaseLabel(achievement.phase)}</strong>
-                          <small>
-                            {achievement.bonus_pts > 0
-                              ? `+${formatBonus(achievement.bonus_pts)} pts por fase alcanzada`
-                              : 'fase alcanzada'}
-                          </small>
-                        </>
-                      )}
+                      <span>{seasonLabel(achievement.season)}</span>
+                      <strong>{bonus}</strong>
+                      <small>{champion ? 'por el t\u00edtulo' : 'por fase alcanzada'}</small>
                     </span>
                   </article>
                 )
