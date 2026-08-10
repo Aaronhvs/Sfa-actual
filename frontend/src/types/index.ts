@@ -173,8 +173,17 @@ export interface PlayerFixture {
 
 export interface CompareResponse {
   season: string
+  scope: string | null
   player_a: PlayerDetail
   player_b: PlayerDetail
+  player_a_analytics: ComparePlayerAnalytics
+  player_b_analytics: ComparePlayerAnalytics
+}
+
+export interface ComparePlayerAnalytics {
+  stats: PlayerSeasonStats | null
+  events: PlayerEvent[]
+  fixtures: PlayerFixture[]
 }
 
 export interface PlayerSeasonStats {
@@ -205,6 +214,7 @@ export interface PlayerSeasonStats {
   penalty_won: number
   saves: number
   goals_conceded: number
+  rating_avg: number | null
   dribble_success_rate: number | null
   duel_win_rate: number | null
 }

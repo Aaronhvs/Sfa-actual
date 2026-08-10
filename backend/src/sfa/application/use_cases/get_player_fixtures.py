@@ -24,6 +24,8 @@ class GetPlayerFixturesUseCaseProtocol(Protocol):
         competition_name: str | None = None,
         rival: str | None = None,
         date: datetime.date | None = None,
+        rules_version_id: int | None = None,
+        scope: str | None = None,
     ) -> list[PlayerFixtureDTO]: ...
 
 

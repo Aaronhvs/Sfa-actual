@@ -12,7 +12,11 @@ from sfa.domain.ports import (
 @runtime_checkable
 class GetPlayerSeasonStatsUseCaseProtocol(Protocol):
     async def execute(
-        self, player_id: int, competition_id: int | None, season: str,
+        self,
+        player_id: int,
+        competition_id: int | None,
+        season: str | None,
+        scope: str | None = None,
     ) -> PlayerSeasonStatsDTO | None: ...
 
 

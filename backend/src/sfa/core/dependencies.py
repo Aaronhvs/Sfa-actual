@@ -276,8 +276,25 @@ async def get_player_season_stats_use_case(
 
 async def get_compare_players_use_case(
     score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
+    event_repo: Annotated[PlayerEventRepository, Depends(get_player_event_repository)],
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    ver_repo: Annotated[
+        ScoringRulesVersionRepository,
+        Depends(get_scoring_rules_version_repository),
+    ],
 ) -> ComparePlayersUseCase:
-    return ComparePlayersUseCase(score_repo)
+    active = await ver_repo.get_active_version()
+    detail_uc = GetPlayerDetailUseCase(
+        score_repo,
+        default_rules_version_id=active.id if active else None,
+        season_repo=season_repo,
+    )
+    return ComparePlayersUseCase(
+        detail_uc=detail_uc,
+        events_uc=GetPlayerEventsUseCase(event_repo, season_repo, score_repo),
+        fixtures_uc=GetPlayerFixturesUseCase(event_repo, season_repo, score_repo),
+        stats_uc=GetPlayerSeasonStatsUseCase(event_repo, season_repo),
+    )
 
 
 async def get_list_competitions_use_case(

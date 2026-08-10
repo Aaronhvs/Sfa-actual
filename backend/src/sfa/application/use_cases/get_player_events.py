@@ -17,6 +17,8 @@ class GetPlayerEventsUseCaseProtocol(Protocol):
         player_id: int,
         season: str | None = None,
         competition_id: int | None = None,
+        rules_version_id: int | None = None,
+        scope: str | None = None,
     ) -> list[PlayerEventDTO]: ...
 
 

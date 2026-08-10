@@ -103,14 +103,14 @@ export async function fetchPlayerFixtures(id: number, season?: string, scope?: s
   return data
 }
 
-export async function fetchCompare(playerA: number, playerB: number, season?: string): Promise<CompareResponse> {
-  const key = `compare:${playerA}:${playerB}:${season ?? ''}`
+export async function fetchCompare(playerA: number, playerB: number, scope: string): Promise<CompareResponse> {
+  const key = `compare:${playerA}:${playerB}:${scope}`
   const cached = getCached<CompareResponse>(key)
   if (cached) return cached
   const q = new URLSearchParams()
   q.set('player_a', String(playerA))
   q.set('player_b', String(playerB))
-  if (season) q.set('season', season)
+  q.set('scope', scope)
   const data = await get<CompareResponse>(`/compare?${q.toString()}`)
   setCache(key, data)
   return data
