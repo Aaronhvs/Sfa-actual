@@ -67,3 +67,11 @@ entidades persistentes ni multiplicadores al dominio de scoring.
 - Build de produccion Vite aprobado.
 - Playwright aprobado en 390x844, 768x1024 y 1440x1000, sin overflow horizontal.
 - Grafica auditada con hover y foco de teclado por tramo.
+
+## Follow-up visual
+
+- [x] Centrar titulo, periodo, selectores y cabecera de la grafica.
+- [x] Rehacer los resultados de busqueda como filas del ranking movil.
+- [x] Mantener nombre, equipo, puntos, goles y asistencias legibles.
+- [x] Agregar navegacion por teclado al listado de jugadores.
+- [x] Separar filtros y resultados del ranking en viewport movil.

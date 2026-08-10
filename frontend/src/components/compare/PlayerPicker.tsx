@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import type { RankedPlayer } from '../../types'
 import { fetchRanking } from '../../api/client'
 
@@ -28,7 +28,10 @@ export default function PlayerPicker({
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<RankedPlayer[]>([])
   const [searching, setSearching] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const inputId = useId()
   const listId = `${inputId}-results`
 
@@ -36,6 +39,7 @@ export default function PlayerPicker({
     if (query.trim().length < 2) {
       setResults([])
       setSearching(false)
+      setActiveIndex(-1)
       return
     }
 
@@ -44,9 +48,17 @@ export default function PlayerPicker({
     const timer = window.setTimeout(() => {
       fetchRanking({ scope, name: query.trim(), limit: 8 })
         .then((data) => {
-          if (active) setResults(data.ranking.filter((player) => player.id !== excludeId))
+          if (active) {
+            setResults(data.ranking.filter((player) => player.id !== excludeId))
+            setActiveIndex(-1)
+          }
         })
-        .catch(() => { if (active) setResults([]) })
+        .catch(() => {
+          if (active) {
+            setResults([])
+            setActiveIndex(-1)
+          }
+        })
         .finally(() => { if (active) setSearching(false) })
     }, SEARCH_DEBOUNCE_MS)
 
@@ -60,11 +72,54 @@ export default function PlayerPicker({
     function closeOnOutside(event: MouseEvent) {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
         setResults([])
+        setActiveIndex(-1)
       }
     }
     document.addEventListener('mousedown', closeOnOutside)
     return () => document.removeEventListener('mousedown', closeOnOutside)
   }, [])
+
+  const selectPlayer = (player: RankedPlayer) => {
+    onSelect(player)
+    setQuery('')
+    setResults([])
+    setActiveIndex(-1)
+  }
+
+  const focusOption = (index: number) => {
+    if (results.length === 0) return
+    const nextIndex = (index + results.length) % results.length
+    setActiveIndex(nextIndex)
+    window.requestAnimationFrame(() => optionRefs.current[nextIndex]?.focus())
+  }
+
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' && results.length > 0) {
+      event.preventDefault()
+      focusOption(0)
+    } else if (event.key === 'ArrowUp' && results.length > 0) {
+      event.preventDefault()
+      focusOption(results.length - 1)
+    } else if (event.key === 'Escape') {
+      setResults([])
+      setActiveIndex(-1)
+    }
+  }
+
+  const handleOptionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      focusOption(index + 1)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      focusOption(index - 1)
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      setResults([])
+      setActiveIndex(-1)
+      inputRef.current?.focus()
+    }
+  }
 
   if (selected) {
     return (
@@ -102,9 +157,11 @@ export default function PlayerPicker({
           <path d="M14 14l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
         <input
+          ref={inputRef}
           id={inputId}
           className="cmp-picker__input"
-          type="search"
+          type="text"
+          inputMode="search"
           placeholder="Buscar jugador"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -114,8 +171,24 @@ export default function PlayerPicker({
           aria-controls={listId}
           aria-expanded={results.length > 0}
           aria-autocomplete="list"
+          aria-activedescendant={activeIndex >= 0 ? `${listId}-${results[activeIndex]?.id}` : undefined}
+          onKeyDown={handleInputKeyDown}
         />
         {searching && <span className="cmp-picker__spinner" aria-label="Buscando" />}
+        {!searching && query && (
+          <button
+            type="button"
+            className="cmp-picker__query-clear"
+            onClick={() => {
+              setQuery('')
+              setResults([])
+              inputRef.current?.focus()
+            }}
+            aria-label="Limpiar busqueda"
+          >
+            &times;
+          </button>
+        )}
       </div>
 
       {showResults && results.length === 0 && (
@@ -124,28 +197,40 @@ export default function PlayerPicker({
 
       {results.length > 0 && (
         <div className="cmp-picker__dropdown" id={listId} role="listbox" aria-label={label}>
-          {results.map((player) => (
+          {results.map((player, index) => (
             <button
+              id={`${listId}-${player.id}`}
               type="button"
               role="option"
-              aria-selected="false"
+              aria-selected={activeIndex >= 0 && results[activeIndex]?.id === player.id}
+              tabIndex={activeIndex === index ? 0 : -1}
               key={player.id}
+              ref={(element) => { optionRefs.current[index] = element }}
               className="cmp-picker__result"
-              onClick={() => {
-                onSelect(player)
-                setQuery('')
-                setResults([])
-              }}
+              onClick={() => selectPlayer(player)}
+              onFocus={() => setActiveIndex(index)}
+              onMouseEnter={() => setActiveIndex(index)}
+              onKeyDown={(event) => handleOptionKeyDown(event, index)}
             >
-              {player.photo_url
-                ? <img src={player.photo_url} alt="" className="cmp-picker__result-photo" />
-                : <div className="cmp-picker__result-avatar" aria-hidden="true">{initials(player.name)}</div>
-              }
+              <span className="cmp-picker__result-rank">{String(player.rank).padStart(2, '0')}</span>
+              <span className="cmp-picker__result-photo">
+                {player.photo_url
+                  ? <img src={player.photo_url} alt="" loading="lazy" decoding="async" />
+                  : <span aria-hidden="true">{initials(player.name)}</span>
+                }
+              </span>
               <span className="cmp-picker__result-info">
                 <span className="cmp-picker__result-name">{player.name}</span>
-                <span className="cmp-picker__result-meta">{player.team} · #{player.rank}</span>
+                <span className="cmp-picker__result-meta">{player.team}</span>
               </span>
-              <span className="cmp-picker__result-pts">{Math.round(player.sfa_pts).toLocaleString('es-ES')}</span>
+              <span className="cmp-picker__result-score">
+                <strong>{Math.round(player.sfa_pts).toLocaleString('es-ES')}</strong>
+                <small>PTS</small>
+                <span className="cmp-picker__result-ga" aria-label={`${player.goals} goles y ${player.assists} asistencias`}>
+                  <b>{player.goals}<i>G</i></b>
+                  <b>{player.assists}<i>A</i></b>
+                </span>
+              </span>
             </button>
           ))}
         </div>
