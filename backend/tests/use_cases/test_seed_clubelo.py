@@ -3,6 +3,7 @@ import pytest
 from sfa.application.use_cases.seed_clubelo import SeedClubEloUseCase
 from sfa.domain.scoring_ports import (
     FixtureEloRow,
+    ManualClubEloEntry,
     TeamCompetitionRow,
     TeamEloRow,
     TeamStandingRow,
@@ -18,6 +19,7 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         self.team_name_id_map = {"Manchester City": 10}
         self.active_competitions = {10: [3]}
         self.upserted_elos: list[dict] = []
+        self.upserted_seeds = []
 
     async def get_team_strength(self, team_id, season, competition_id):
         return None
@@ -57,7 +59,19 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
         return []
 
-    async def get_team_name_id_map(self, season):
+    async def upsert_team_elo_seed(self, seed) -> None:
+        self.upserted_seeds.append(seed)
+
+    async def get_team_elo_seeds(self, season, participant_kind):
+        return []
+
+    async def replace_fixture_team_strengths(
+        self, season, participant_kind, competition_ids, snapshots,
+    ) -> None:
+        pass
+
+    async def get_team_name_id_map(self, season, participant_kind=None):
+        self.requested_participant_kind = participant_kind
         return self.team_name_id_map
 
     async def get_active_competition_ids_for_team(self, team_id, season):
@@ -106,10 +120,13 @@ async def test_seed_known_team_writes_elo_entry():
     assert repo.upserted_elos[0]["source"] == "clubelo_seed"
     assert repo.upserted_elos[0]["competition_ids"] == [3]
     assert repo.upserted_elos[0]["elo_seed_raw"] == pytest.approx(1950.0)
+    assert repo.upserted_seeds[0].participant_kind == "club"
+    assert repo.upserted_seeds[0].elo_raw == pytest.approx(1950.0)
+    assert repo.requested_participant_kind == "club"
 
 
 @pytest.mark.anyio
-async def test_seed_unknown_team_reported_as_unmatched():
+async def test_seed_reports_participating_sfa_team_without_external_match():
     repo = FakeTeamStrengthRepository()
     provider = FakeClubEloProvider([
         ClubEloEntry(club_name="Unknown FC", country="ENG", level=1, elo=1700.0)
@@ -119,16 +136,16 @@ async def test_seed_unknown_team_reported_as_unmatched():
     result = await use_case.execute("2024-08-01", "2024")
 
     assert result.matched == 0
-    assert result.unmatched == ["Unknown FC"]
+    assert result.unmatched == ["Manchester City"]
     assert repo.upserted_elos == []
 
 
 @pytest.mark.anyio
-async def test_seed_only_processes_level_1_entries():
+async def test_seed_processes_participating_club_regardless_of_external_level():
     repo = FakeTeamStrengthRepository()
     provider = FakeClubEloProvider([
-        ClubEloEntry(club_name="Man City", country="ENG", level=1, elo=1950.0),
-        ClubEloEntry(club_name="Unknown B", country="ENG", level=2, elo=1600.0),
+        ClubEloEntry(club_name="Man City", country="ENG", level=2, elo=1950.0),
+        ClubEloEntry(club_name="Unknown B", country="ENG", level=3, elo=1600.0),
     ])
     use_case = SeedClubEloUseCase(repo, provider, EloCalculatorService())
 
@@ -137,6 +154,32 @@ async def test_seed_only_processes_level_1_entries():
     assert result.matched == 1
     assert result.unmatched == []
     assert len(repo.upserted_elos) == 1
+
+
+@pytest.mark.anyio
+async def test_seed_accepts_explicit_auditable_override_for_unmatched_club():
+    repo = FakeTeamStrengthRepository()
+    use_case = SeedClubEloUseCase(
+        repo,
+        FakeClubEloProvider([]),
+        EloCalculatorService(),
+    )
+
+    result = await use_case.execute(
+        "2025-08-01",
+        "2025",
+        manual_entries=[
+            ManualClubEloEntry(
+                team_name="Manchester City",
+                elo_raw=1940.0,
+                reason="Verified ClubElo history",
+            )
+        ],
+    )
+
+    assert result.status == "completed"
+    assert repo.upserted_seeds[0].source == "manual_override"
+    assert repo.upserted_seeds[0].source_reference == "Verified ClubElo history"
 
 
 @pytest.mark.anyio

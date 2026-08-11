@@ -7,16 +7,18 @@ from sqlalchemy import Date, cast, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sfa.domain.player_position_overrides import position_for_context
 from sfa.domain.scoring.entities import PlayerEventScore
 from sfa.domain.scoring_ports import PlayerEventRawContextDTO, PlayerEventScoreRepositoryPort
-from sfa.domain.player_position_overrides import position_for_context
 from sfa.infrastructure.models.competitions.models import CompetitionStage
 from sfa.infrastructure.models.events.models import PlayerEvent
+from sfa.infrastructure.models.fixture_team_strengths.models import (
+    FixtureTeamStrength,
+)
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore as PlayerEventScoreModel
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
-from sfa.infrastructure.models.team_strengths.models import TeamStrength
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +56,11 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
         if player_id is not None:
             filters.append(PlayerEvent.player_id == player_id)
 
-        # Aliases for team_strengths (home/away)
-        ts_home = TeamStrength.__table__.alias("ts_home")
-        ts_away = TeamStrength.__table__.alias("ts_away")
+        elo_home = FixtureTeamStrength.__table__.alias("elo_home")
+        elo_away = FixtureTeamStrength.__table__.alias("elo_away")
 
         # Main query: events JOIN fixtures LEFT JOIN competition_stages JOIN players
-        #             LEFT JOIN team_strengths (home + away) for v2 M1
+        #             LEFT JOIN historical ELO snapshots used as the only M1 source
         # competition_stages is LEFT JOIN so competitions without configured stages
         # (e.g. World Cup group stage) still produce events; stage_factor defaults to 1.0.
         stmt = (
@@ -83,8 +84,14 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 Player.name.label("player_name"),
                 Player.birth_date.label("player_birth_date"),
                 cast(Fixture.played_at, Date).label("fixture_date"),
-                ts_home.c.strength.label("home_team_strength"),
-                ts_away.c.strength.label("away_team_strength"),
+                elo_home.c.pre_match_strength.label("home_team_strength"),
+                elo_away.c.pre_match_strength.label("away_team_strength"),
+                elo_home.c.pre_match_elo_raw.label("home_team_elo_raw"),
+                elo_away.c.pre_match_elo_raw.label("away_team_elo_raw"),
+                elo_home.c.model_version.label("home_elo_model_version"),
+                elo_away.c.model_version.label("away_elo_model_version"),
+                elo_home.c.seed_source.label("home_seed_source"),
+                elo_away.c.seed_source.label("away_seed_source"),
             )
             .join(Fixture, PlayerEvent.fixture_id == Fixture.id)
             .outerjoin(
@@ -94,16 +101,14 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
             )
             .join(Player, PlayerEvent.player_id == Player.id)
             .outerjoin(
-                ts_home,
-                (ts_home.c.team_id == Fixture.home_team_id)
-                & (ts_home.c.season == Fixture.season)
-                & (ts_home.c.competition_id == Fixture.competition_id),
+                elo_home,
+                (elo_home.c.fixture_id == Fixture.id)
+                & (elo_home.c.team_id == Fixture.home_team_id),
             )
             .outerjoin(
-                ts_away,
-                (ts_away.c.team_id == Fixture.away_team_id)
-                & (ts_away.c.season == Fixture.season)
-                & (ts_away.c.competition_id == Fixture.competition_id),
+                elo_away,
+                (elo_away.c.fixture_id == Fixture.id)
+                & (elo_away.c.team_id == Fixture.away_team_id),
             )
             .where(*filters)
         )
@@ -111,6 +116,15 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
 
         if not event_rows:
             return []
+
+        missing_snapshot_fixture_ids = sorted({
+            row.fixture_id
+            for row in event_rows
+            if row.home_team_strength is None or row.away_team_strength is None
+        })
+        if missing_snapshot_fixture_ids:
+            missing = ", ".join(str(item) for item in missing_snapshot_fixture_ids)
+            raise ValueError(f"Missing temporal ELO snapshot for fixture_ids: {missing}")
 
         # Collect fixture_ids to fetch stats in bulk
         fixture_ids = list({r.fixture_id for r in event_rows})
@@ -145,6 +159,11 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 rival_team_strength = (
                     float(row.home_team_strength) if row.home_team_strength is not None else None
                 )
+                player_team_elo_raw = float(row.away_team_elo_raw)
+                rival_team_elo_raw = float(row.home_team_elo_raw)
+                player_seed_source = row.away_seed_source
+                rival_seed_source = row.home_seed_source
+                elo_model_version = row.away_elo_model_version
             else:
                 player_team_strength = (
                     float(row.home_team_strength) if row.home_team_strength is not None else None
@@ -152,6 +171,11 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 rival_team_strength = (
                     float(row.away_team_strength) if row.away_team_strength is not None else None
                 )
+                player_team_elo_raw = float(row.home_team_elo_raw)
+                rival_team_elo_raw = float(row.away_team_elo_raw)
+                player_seed_source = row.home_seed_source
+                rival_seed_source = row.away_seed_source
+                elo_model_version = row.home_elo_model_version
 
             dtos.append(PlayerEventRawContextDTO(
                 event_id=row.id,
@@ -196,6 +220,11 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 rival_team_strength=rival_team_strength,
                 player_birth_date=row.player_birth_date,
                 fixture_date=row.fixture_date,
+                player_team_elo_raw=player_team_elo_raw,
+                rival_team_elo_raw=rival_team_elo_raw,
+                elo_model_version=elo_model_version,
+                player_seed_source=player_seed_source,
+                rival_seed_source=rival_seed_source,
             ))
 
         return dtos

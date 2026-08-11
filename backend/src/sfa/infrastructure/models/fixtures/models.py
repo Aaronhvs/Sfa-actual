@@ -21,3 +21,6 @@ class Fixture(Base):
     played_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     matchday: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="FT")
+    home_goals: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    away_goals: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    score_source: Mapped[str | None] = mapped_column(String(30), nullable=True)

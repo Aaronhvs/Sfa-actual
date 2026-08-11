@@ -382,6 +382,32 @@ class TestCalculateScoresForRulesVersionUseCase:
             assert key in details, f"Missing key '{key}' in calculation_details"
 
     @pytest.mark.anyio
+    async def test_calculation_details_audit_temporal_elo_inputs(self):
+        event = replace(
+            _make_goal_event(),
+            player_team_strength=71.43,
+            rival_team_strength=35.71,
+            player_team_elo_raw=1900.0,
+            rival_team_elo_raw=1650.0,
+            elo_model_version="club_elo_v2",
+            player_seed_source="clubelo",
+            rival_seed_source="clubelo",
+        )
+        events_repo = FakePlayerEventScoreRepository(events=[event])
+        use_case = CalculateScoresForRulesVersionUseCase(
+            FakeScoringRulesVersionRepository(_make_rules_version()),
+            events_repo,
+        )
+
+        await use_case.execute(rules_version_id=1, season="2024")
+
+        details = events_repo.upserted[0].calculation_details
+        assert details["m1_source"] == "fixture_elo_snapshot"
+        assert details["player_team_elo_raw"] == 1900.0
+        assert details["rival_team_elo_raw"] == 1650.0
+        assert details["elo_model_version"] == "club_elo_v2"
+
+    @pytest.mark.anyio
     async def test_changed_base_points_affect_final_score(self):
         default_config = ScoringConfig.default()
         modified_bp = {g: dict(v) for g, v in default_config.base_points.items()}

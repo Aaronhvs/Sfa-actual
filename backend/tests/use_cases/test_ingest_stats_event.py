@@ -134,6 +134,7 @@ class FakeIngestionRepository:
         self._team_ids: dict[int, int] = {}
         self._player_ids: dict[int, int] = {}
         self._fixture_ids: dict[int, int] = {}
+        self.fixture_scores: dict[int, tuple[int | None, int | None, str | None]] = {}
         # player_events keyed by (player_id, fixture_id) → list of event dicts
         self.player_events: dict[tuple[int, int], list[dict]] = {}
         self.fixture_events: dict[int, list[FixtureEventRawDTO]] = {}
@@ -181,10 +182,14 @@ class FakeIngestionRepository:
         played_at: datetime,
         matchday: int | None,
         status: str = "FT",
+        home_goals: int | None = None,
+        away_goals: int | None = None,
+        score_source: str | None = None,
     ) -> int:
         if external_id not in self._fixture_ids:
             self._fixture_counter += 1
             self._fixture_ids[external_id] = self._fixture_counter
+        self.fixture_scores[external_id] = (home_goals, away_goals, score_source)
         return self._fixture_ids[external_id]
 
     async def upsert_standing_snapshot(
@@ -310,6 +315,16 @@ async def test_player_without_goal_gets_stats_event():
     ]
     assert len(stats_events) == 1, f"Expected 1 STATS event, got {len(stats_events)}"
     assert stats_events[0]["pts"] == 0.0
+
+
+@pytest.mark.anyio
+async def test_ingestion_persists_official_fixture_score_for_elo() -> None:
+    provider = FakeFootballProvider(fixtures=[_fixture()], player=_player_stats())
+    repo = FakeIngestionRepository()
+
+    await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE, 2024)
+
+    assert repo.fixture_scores[9001] == (0, 0, "api_football")
 
 
 @pytest.mark.anyio

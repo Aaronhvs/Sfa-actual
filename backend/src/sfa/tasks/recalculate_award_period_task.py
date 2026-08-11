@@ -37,6 +37,7 @@ async def _run(
 ) -> None:
     from sqlalchemy import text
 
+    from sfa.core.config import get_settings
     from sfa.domain.season_scope import ScopeKind
     from sfa.infrastructure.database import AsyncSessionLocal
     from sfa.infrastructure.repositories.scoring_rules_version_repository import (
@@ -67,24 +68,43 @@ async def _run(
                 scope_key,
                 rules_version_id,
             )
+            settings = get_settings()
             for source in scope.sources:
+                strength_repo = TeamStrengthRepository(lock_session)
                 club_pool = set(
-                    await TeamStrengthRepository(
-                        lock_session
-                    ).get_competition_ids_for_participant_kind(source.season, "club")
+                    await strength_repo.get_competition_ids_for_participant_kind(
+                        source.season, "club"
+                    )
                 )
                 source_club_ids = sorted(club_pool.intersection(source.competition_ids))
-                if not source_club_ids:
-                    continue
-                await _run_elo_update(
-                    season=source.season,
-                    competition_ids=source_club_ids,
-                    default_k=30.0,
-                    source="club_elo_v2",
-                    use_seed_baseline=True,
-                    require_seed_baseline=True,
-                    initialize_missing_seed_baseline=True,
+                if source_club_ids:
+                    await _run_elo_update(
+                        season=source.season,
+                        competition_ids=source_club_ids,
+                        default_k=30.0,
+                        source="club_elo_v2",
+                        use_seed_baseline=True,
+                        require_seed_baseline=True,
+                        initialize_missing_seed_baseline=False,
+                    )
+                national_pool = set(
+                    await strength_repo.get_competition_ids_for_participant_kind(
+                        source.season, "national_team"
+                    )
                 )
+                source_national_ids = sorted(
+                    national_pool.intersection(source.competition_ids)
+                )
+                if source_national_ids:
+                    await _run_elo_update(
+                        season=source.season,
+                        competition_ids=source_national_ids,
+                        default_k=settings.NATIONAL_TEAM_ELO_DEFAULT_K,
+                        source="national_elo_v1",
+                        use_seed_baseline=True,
+                        require_seed_baseline=True,
+                        initialize_missing_seed_baseline=False,
+                    )
 
             recalculated_seasons: set[str] = set()
             for source in scope.sources:

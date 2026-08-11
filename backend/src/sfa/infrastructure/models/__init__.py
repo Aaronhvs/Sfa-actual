@@ -7,6 +7,9 @@ from sfa.infrastructure.models.competitions.models import Competition, Competiti
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixture_events.models import FixtureEvent
+from sfa.infrastructure.models.fixture_team_strengths.models import (
+    FixtureTeamStrength,
+)
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.individual_honors.models import IndividualHonorModel
 from sfa.infrastructure.models.ingestion.models import IngestionLog
@@ -18,6 +21,7 @@ from sfa.infrastructure.models.ranking_explanations.models import RankingPlayerE
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 from sfa.infrastructure.models.scoring_rules.models import ScoringRulesVersion
 from sfa.infrastructure.models.standings.models import StandingSnapshot
+from sfa.infrastructure.models.team_elo_seeds.models import TeamEloSeed
 from sfa.infrastructure.models.team_strengths.models import TeamStrength
 from sfa.infrastructure.models.teams.models import Team
 
@@ -43,6 +47,8 @@ __all__ = [
     "CompetitionAchievementModel",
     "PlayerAchievementBonusModel",
     "FixtureEvent",
+    "FixtureTeamStrength",
+    "TeamEloSeed",
     "RankingPlayerExplanation",
     "IndividualHonorModel",
 ]

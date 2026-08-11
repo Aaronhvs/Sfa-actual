@@ -3,23 +3,27 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.scoring_ports import (
     FixtureEloRow,
+    FixtureTeamStrengthDTO,
     TeamCompetitionRow,
     TeamEloRow,
+    TeamEloSeedDTO,
     TeamStandingRow,
     TeamStrengthCoverageRow,
     TeamStrengthRepositoryPort,
 )
 from sfa.infrastructure.models.competitions.models import Competition
+from sfa.infrastructure.models.fixture_team_strengths.models import (
+    FixtureTeamStrength,
+)
 from sfa.infrastructure.models.fixtures.models import Fixture
-from sfa.infrastructure.models.player_stats.models import PlayerStats
-from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.standings.models import StandingSnapshot
+from sfa.infrastructure.models.team_elo_seeds.models import TeamEloSeed
 from sfa.infrastructure.models.team_strengths.models import TeamStrength
 from sfa.infrastructure.models.teams.models import Team
 
@@ -216,26 +220,6 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
         if not competition_ids:
             return []
 
-        resolved_team = func.coalesce(
-            PlayerStats.team_id,
-            case(
-                (Player.team_id == Fixture.home_team_id, Fixture.home_team_id),
-                (Player.team_id == Fixture.away_team_id, Fixture.away_team_id),
-                else_=None,
-            ),
-        )
-        home_goals_expr = func.coalesce(
-            func.sum(case((resolved_team == Fixture.home_team_id, PlayerStats.goals), else_=0)),
-            0,
-        ).label("home_goals")
-        away_goals_expr = func.coalesce(
-            func.sum(case((resolved_team == Fixture.away_team_id, PlayerStats.goals), else_=0)),
-            0,
-        ).label("away_goals")
-        unresolved_expr = func.sum(
-            case((resolved_team.is_(None), 1), else_=0)
-        ).label("unresolved_players")
-
         stmt = (
             select(
                 Fixture.id.label("fixture_id"),
@@ -244,37 +228,27 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 Fixture.played_at,
                 Fixture.competition_id,
                 Fixture.season,
-                home_goals_expr,
-                away_goals_expr,
-                unresolved_expr,
+                Fixture.home_goals,
+                Fixture.away_goals,
+                Fixture.score_source,
             )
-            .join(PlayerStats, PlayerStats.fixture_id == Fixture.id)
-            .join(Player, Player.id == PlayerStats.player_id)
             .where(
                 Fixture.competition_id.in_(competition_ids),
                 Fixture.season == season,
                 Fixture.status.in_(ELO_FINAL_FIXTURE_STATUSES),
             )
-            .group_by(
-                Fixture.id,
-                Fixture.home_team_id,
-                Fixture.away_team_id,
-                Fixture.played_at,
-                Fixture.competition_id,
-                Fixture.season,
-            )
-            .order_by(Fixture.played_at.asc().nulls_last())
+            .order_by(Fixture.played_at.asc().nulls_last(), Fixture.id.asc())
         )
         result = await self._session.execute(stmt)
         rows: list[FixtureEloRow] = []
+        missing_score_fixture_ids: list[int] = []
         for row in result.all():
-            if int(row.unresolved_players or 0) > 0:
-                logger.warning(
-                    "[TeamStrengthRepository] Excluding fixture_id=%d from ELO: "
-                    "%d player appearances have no valid team snapshot",
-                    row.fixture_id,
-                    int(row.unresolved_players),
-                )
+            if (
+                row.home_goals is None
+                or row.away_goals is None
+                or row.score_source is None
+            ):
+                missing_score_fixture_ids.append(row.fixture_id)
                 continue
             rows.append(FixtureEloRow(
                 fixture_id=row.fixture_id,
@@ -286,9 +260,130 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 away_goals=int(row.away_goals),
                 season=row.season,
             ))
+        if missing_score_fixture_ids:
+            missing = ", ".join(str(item) for item in missing_score_fixture_ids)
+            raise ValueError(
+                f"Missing official score or provenance for fixture_ids: {missing}"
+            )
         return rows
 
-    async def get_team_name_id_map(self, season: str) -> dict[str, int]:
+    async def upsert_team_elo_seed(self, seed: TeamEloSeedDTO) -> None:
+        stmt = (
+            pg_insert(TeamEloSeed)
+            .values(
+                team_id=seed.team_id,
+                season=seed.season,
+                participant_kind=seed.participant_kind,
+                elo_raw=seed.elo_raw,
+                effective_at=seed.effective_at,
+                source=seed.source,
+                source_reference=seed.source_reference,
+                created_at=datetime.now(timezone.utc),
+            )
+            .on_conflict_do_update(
+                constraint="uq_team_elo_seed",
+                set_={
+                    "elo_raw": seed.elo_raw,
+                    "effective_at": seed.effective_at,
+                    "source": seed.source,
+                    "source_reference": seed.source_reference,
+                    "created_at": datetime.now(timezone.utc),
+                },
+            )
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
+
+    async def get_team_elo_seeds(
+        self,
+        season: str,
+        participant_kind: str,
+    ) -> list[TeamEloSeedDTO]:
+        stmt = select(TeamEloSeed).where(
+            TeamEloSeed.season == season,
+            TeamEloSeed.participant_kind == participant_kind,
+        )
+        result = await self._session.execute(stmt)
+        return [
+            TeamEloSeedDTO(
+                team_id=row.team_id,
+                season=row.season,
+                participant_kind=row.participant_kind,
+                elo_raw=float(row.elo_raw),
+                effective_at=row.effective_at,
+                source=row.source,
+                source_reference=row.source_reference,
+            )
+            for row in result.scalars().all()
+        ]
+
+    async def replace_fixture_team_strengths(
+        self,
+        season: str,
+        participant_kind: str,
+        competition_ids: list[int],
+        snapshots: list[FixtureTeamStrengthDTO],
+    ) -> None:
+        if not competition_ids:
+            return
+
+        await self._session.execute(
+            delete(FixtureTeamStrength).where(
+                FixtureTeamStrength.season == season,
+                FixtureTeamStrength.participant_kind == participant_kind,
+                FixtureTeamStrength.competition_id.in_(competition_ids),
+            )
+        )
+        if snapshots:
+            now = datetime.now(timezone.utc)
+            values = [
+                {
+                    "fixture_id": snapshot.fixture_id,
+                    "team_id": snapshot.team_id,
+                    "season": snapshot.season,
+                    "competition_id": snapshot.competition_id,
+                    "participant_kind": snapshot.participant_kind,
+                    "pre_match_elo_raw": snapshot.pre_match_elo_raw,
+                    "post_match_elo_raw": snapshot.post_match_elo_raw,
+                    "pre_match_strength": snapshot.pre_match_strength,
+                    "post_match_strength": snapshot.post_match_strength,
+                    "model_version": snapshot.model_version,
+                    "seed_source": snapshot.seed_source,
+                    "created_at": now,
+                }
+                for snapshot in snapshots
+            ]
+            stmt = pg_insert(FixtureTeamStrength).values(values)
+            await self._session.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=[
+                        FixtureTeamStrength.fixture_id,
+                        FixtureTeamStrength.team_id,
+                    ],
+                    set_={
+                        "season": stmt.excluded.season,
+                        "competition_id": stmt.excluded.competition_id,
+                        "participant_kind": stmt.excluded.participant_kind,
+                        "pre_match_elo_raw": stmt.excluded.pre_match_elo_raw,
+                        "post_match_elo_raw": stmt.excluded.post_match_elo_raw,
+                        "pre_match_strength": stmt.excluded.pre_match_strength,
+                        "post_match_strength": stmt.excluded.post_match_strength,
+                        "model_version": stmt.excluded.model_version,
+                        "seed_source": stmt.excluded.seed_source,
+                        "created_at": stmt.excluded.created_at,
+                    },
+                )
+            )
+        await self._session.flush()
+
+    async def get_team_name_id_map(
+        self,
+        season: str,
+        participant_kind: str | None = None,
+    ) -> dict[str, int]:
+        filters = [Fixture.season == season]
+        if participant_kind is not None:
+            filters.append(Competition.participant_kind == participant_kind)
         stmt = (
             select(Team.name, Team.id)
             .join(
@@ -298,7 +393,8 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                     Fixture.away_team_id == Team.id,
                 ),
             )
-            .where(Fixture.season == season)
+            .join(Competition, Competition.id == Fixture.competition_id)
+            .where(*filters)
             .distinct()
         )
         result = await self._session.execute(stmt)

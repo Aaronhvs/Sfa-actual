@@ -30,6 +30,7 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         ]
         self.competition_id = competition_id
         self.upserted_elos: list[dict] = []
+        self.upserted_seeds = []
 
     async def get_team_strength(self, team_id, season, competition_id):
         return None
@@ -69,7 +70,18 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
         return []
 
-    async def get_team_name_id_map(self, season):
+    async def upsert_team_elo_seed(self, seed) -> None:
+        self.upserted_seeds.append(seed)
+
+    async def get_team_elo_seeds(self, season, participant_kind):
+        return []
+
+    async def replace_fixture_team_strengths(
+        self, season, participant_kind, competition_ids, snapshots,
+    ) -> None:
+        pass
+
+    async def get_team_name_id_map(self, season, participant_kind=None):
         return {}
 
     async def get_active_competition_ids_for_team(self, team_id, season):

@@ -175,6 +175,9 @@ class IngestionRepositoryPort(Protocol):
         stage: str, season: str, played_at: datetime,
         matchday: int | None,
         status: str = "FT",
+        home_goals: int | None = None,
+        away_goals: int | None = None,
+        score_source: str | None = None,
     ) -> int: ...
 
     async def upsert_standing_snapshot(

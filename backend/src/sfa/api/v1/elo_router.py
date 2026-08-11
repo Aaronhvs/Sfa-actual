@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.api.v1.schemas.elo_schemas import (
     ManualNationalTeamEloSchema,
@@ -26,7 +27,8 @@ from sfa.core.dependencies import (
     get_seed_national_team_elo_use_case,
     require_admin_key,
 )
-from sfa.domain.scoring_ports import NationalTeamEloEntry
+from sfa.domain.scoring_ports import ManualClubEloEntry, NationalTeamEloEntry
+from sfa.infrastructure.database import get_db
 
 router = APIRouter(prefix="/admin/elo", tags=["elo"])
 
@@ -39,11 +41,33 @@ router = APIRouter(prefix="/admin/elo", tags=["elo"])
 async def seed_clubelo(
     body: SeedClubEloRequest,
     use_case: Annotated[SeedClubEloUseCase, Depends(get_seed_clubelo_use_case)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SeedClubEloResponse:
     """Download ClubElo snapshot and populate team_strengths."""
-    result = await use_case.execute(date_str=body.date_str, season=body.season)
+    result = await use_case.execute(
+        date_str=body.date_str,
+        season=body.season,
+        manual_entries=[
+            ManualClubEloEntry(
+                team_name=entry.team_name,
+                elo_raw=entry.elo_raw,
+                reason=entry.reason,
+            )
+            for entry in body.manual_entries or []
+        ],
+    )
     if result.status == "failed":
-        raise HTTPException(status_code=503, detail=result.error)
+        await db.rollback()
+        status_code = 422 if result.unmatched else 503
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "error": result.error,
+                "matched": result.matched,
+                "unmatched": result.unmatched,
+            },
+        )
+    await db.commit()
     return SeedClubEloResponse(
         date_str=result.date_str,
         season=result.season,
@@ -62,6 +86,7 @@ async def seed_clubelo(
 async def recalculate_elo(
     body: RecalculateEloRequest,
     use_case: Annotated[CalculateEloRatingsUseCase, Depends(get_calculate_elo_use_case)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> RecalculateEloResponse:
     """Recalculate ELO ratings by processing fixtures in chronological order."""
     result = await use_case.execute(
@@ -72,10 +97,12 @@ async def recalculate_elo(
         source=("club_elo_v2" if body.participant_kind == "club" else "national_elo_v1"),
         use_seed_baseline=True,
         require_seed_baseline=True,
-        initialize_missing_seed_baseline=(body.participant_kind == "club"),
+        initialize_missing_seed_baseline=False,
     )
     if result.status == "failed":
+        await db.rollback()
         raise HTTPException(status_code=500, detail=result.error)
+    await db.commit()
     return RecalculateEloResponse(
         season=result.season,
         fixtures_processed=result.fixtures_processed,
@@ -96,6 +123,7 @@ async def seed_national_team_elo(
         SeedNationalTeamEloUseCase,
         Depends(get_seed_national_team_elo_use_case),
     ],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SeedNationalTeamEloResponse:
     """Seed World Cup team strengths from national-team ELO ratings."""
     result = await use_case.execute(
@@ -107,7 +135,10 @@ async def seed_national_team_elo(
         manual_entries=_manual_entries(body.manual_entries),
     )
     if result.status == "failed":
+        await db.rollback()
         raise HTTPException(status_code=422, detail=result.error)
+    if not body.dry_run:
+        await db.commit()
     return SeedNationalTeamEloResponse(
         season=result.season,
         competition_id=result.competition_id,

@@ -59,6 +59,11 @@ class PlayerEventRawContextDTO:
     player_birth_date: date | None = None
     fixture_date: date | None = None
     passes_completed: int | None = None
+    player_team_elo_raw: float | None = None
+    rival_team_elo_raw: float | None = None
+    elo_model_version: str | None = None
+    player_seed_source: str | None = None
+    rival_seed_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -91,6 +96,13 @@ class NationalTeamEloEntry:
 
 
 @dataclass(frozen=True)
+class ManualClubEloEntry:
+    team_name: str
+    elo_raw: float
+    reason: str
+
+
+@dataclass(frozen=True)
 class TeamCompetitionRow:
     team_id: int
     team_name: str
@@ -117,6 +129,32 @@ class FixtureEloRow:
     home_goals: int
     away_goals: int
     season: str
+
+
+@dataclass(frozen=True)
+class TeamEloSeedDTO:
+    team_id: int
+    season: str
+    participant_kind: str
+    elo_raw: float
+    effective_at: datetime
+    source: str
+    source_reference: str | None = None
+
+
+@dataclass(frozen=True)
+class FixtureTeamStrengthDTO:
+    fixture_id: int
+    team_id: int
+    season: str
+    competition_id: int
+    participant_kind: str
+    pre_match_elo_raw: float
+    post_match_elo_raw: float
+    pre_match_strength: float
+    post_match_strength: float
+    model_version: str
+    seed_source: str
 
 
 @dataclass(frozen=True)
@@ -265,7 +303,30 @@ class TeamStrengthRepositoryPort(Protocol):
         self, season: str, competition_ids: list[int]
     ) -> list[FixtureEloRow]: ...
 
-    async def get_team_name_id_map(self, season: str) -> dict[str, int]: ...
+    async def upsert_team_elo_seed(
+        self,
+        seed: TeamEloSeedDTO,
+    ) -> None: ...
+
+    async def get_team_elo_seeds(
+        self,
+        season: str,
+        participant_kind: str,
+    ) -> list[TeamEloSeedDTO]: ...
+
+    async def replace_fixture_team_strengths(
+        self,
+        season: str,
+        participant_kind: str,
+        competition_ids: list[int],
+        snapshots: list[FixtureTeamStrengthDTO],
+    ) -> None: ...
+
+    async def get_team_name_id_map(
+        self,
+        season: str,
+        participant_kind: str | None = None,
+    ) -> dict[str, int]: ...
 
     async def get_active_competition_ids_for_team(
         self, team_id: int, season: str

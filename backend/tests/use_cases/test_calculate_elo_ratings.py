@@ -5,8 +5,10 @@ import pytest
 from sfa.application.use_cases.calculate_elo_ratings import CalculateEloRatingsUseCase
 from sfa.domain.scoring_ports import (
     FixtureEloRow,
+    FixtureTeamStrengthDTO,
     TeamCompetitionRow,
     TeamEloRow,
+    TeamEloSeedDTO,
     TeamStandingRow,
     TeamStrengthCoverageRow,
     TeamStrengthRepositoryPort,
@@ -20,6 +22,8 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         self.fixtures = fixtures or []
         self.active_competitions: dict[int, list[int]] = {}
         self.upserted_elos: list[dict] = []
+        self.replaced_snapshots: list[FixtureTeamStrengthDTO] = []
+        self.snapshot_replacements = 0
 
     async def get_team_strength(self, team_id, season, competition_id):
         return None
@@ -58,9 +62,37 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         return self.seeded
 
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
-        return sorted(self.fixtures, key=lambda fixture: fixture.played_at)
+        return sorted(self.fixtures, key=lambda fixture: (fixture.played_at, fixture.fixture_id))
 
-    async def get_team_name_id_map(self, season):
+    async def upsert_team_elo_seed(self, seed) -> None:
+        pass
+
+    async def get_team_elo_seeds(self, season, participant_kind):
+        self.requested_participant_kind = participant_kind
+        return [
+            TeamEloSeedDTO(
+                team_id=row.team_id,
+                season=season,
+                participant_kind=participant_kind,
+                elo_raw=row.elo_seed_raw,
+                effective_at=datetime(2025, 8, 1, tzinfo=timezone.utc),
+                source="test_seed",
+            )
+            for row in self.seeded
+            if row.elo_seed_raw is not None
+        ]
+
+    async def replace_fixture_team_strengths(
+        self,
+        season,
+        participant_kind,
+        competition_ids,
+        snapshots,
+    ) -> None:
+        self.snapshot_replacements += 1
+        self.replaced_snapshots = list(snapshots)
+
+    async def get_team_name_id_map(self, season, participant_kind=None):
         return {}
 
     async def get_active_competition_ids_for_team(self, team_id, season):
@@ -126,6 +158,76 @@ async def test_fixtures_processed_in_chronological_order():
         inverted_away_after_first, inverted_home_after_first, 2, 0, False, 30.0
     )
     assert by_team[10] != pytest.approx(inverted_final_team_10)
+
+
+@pytest.mark.anyio
+async def test_fixture_snapshots_store_pre_match_elo_in_chronological_order():
+    first = _fixture(1, 10, 20, 2, 0, datetime(2025, 8, 1, tzinfo=timezone.utc))
+    second = _fixture(2, 10, 20, 0, 1, datetime(2025, 8, 8, tzinfo=timezone.utc))
+    repo = FakeTeamStrengthRepository(
+        seeded=[
+            TeamEloRow(10, "2025", 1900.0, 71.43, 1900.0),
+            TeamEloRow(20, "2025", 1650.0, 35.71, 1650.0),
+        ],
+        fixtures=[second, first],
+    )
+    use_case = CalculateEloRatingsUseCase(repo, EloCalculatorService())
+
+    result = await use_case.execute(
+        "2025",
+        [1],
+        {},
+        30.0,
+        source="club_elo_v2",
+        use_seed_baseline=True,
+        require_seed_baseline=True,
+    )
+
+    assert result.status == "completed"
+    by_fixture_team = {
+        (snapshot.fixture_id, snapshot.team_id): snapshot
+        for snapshot in repo.replaced_snapshots
+    }
+    assert by_fixture_team[(1, 10)].pre_match_elo_raw == pytest.approx(1900.0)
+    assert by_fixture_team[(1, 20)].pre_match_elo_raw == pytest.approx(1650.0)
+    expected_liverpool_after_first = EloCalculatorService.update_elo(
+        1900.0, 1650.0, 2, 0, True, 30.0
+    )
+    assert by_fixture_team[(2, 10)].pre_match_elo_raw == pytest.approx(
+        expected_liverpool_after_first
+    )
+    assert (
+        by_fixture_team[(1, 10)].pre_match_strength
+        > by_fixture_team[(1, 20)].pre_match_strength
+    )
+
+
+@pytest.mark.anyio
+async def test_seed_replay_produces_idempotent_fixture_snapshots():
+    repo = FakeTeamStrengthRepository(
+        seeded=[
+            TeamEloRow(10, "2025", 1920.0, 74.29, 1900.0),
+            TeamEloRow(20, "2025", 1630.0, 32.86, 1650.0),
+        ],
+        fixtures=[
+            _fixture(1, 10, 20, 2, 0, datetime(2025, 8, 1, tzinfo=timezone.utc)),
+            _fixture(2, 20, 10, 1, 1, datetime(2025, 8, 8, tzinfo=timezone.utc)),
+        ],
+    )
+    use_case = CalculateEloRatingsUseCase(repo, EloCalculatorService())
+
+    await use_case.execute(
+        "2025", [1], {}, source="club_elo_v2", use_seed_baseline=True,
+        require_seed_baseline=True,
+    )
+    first_run = list(repo.replaced_snapshots)
+    await use_case.execute(
+        "2025", [1], {}, source="club_elo_v2", use_seed_baseline=True,
+        require_seed_baseline=True,
+    )
+
+    assert repo.snapshot_replacements == 2
+    assert repo.replaced_snapshots == first_run
 
 
 @pytest.mark.anyio
@@ -208,7 +310,7 @@ async def test_seed_baseline_recalculates_from_original_seed():
     assert by_team[10]["elo_raw"] == pytest.approx(expected_home)
     assert by_team[20]["elo_raw"] == pytest.approx(expected_away)
     assert {row["source"] for row in repo.upserted_elos} == {"national_elo_v1"}
-    assert repo.requested_competition_ids == [350]
+    assert repo.requested_participant_kind == "national_team"
 
 
 @pytest.mark.anyio
@@ -241,10 +343,11 @@ async def test_strict_seed_baseline_fails_when_fixture_team_has_no_seed():
     assert result.status == "failed"
     assert result.error == "Missing ELO seed baseline for team_ids: 20"
     assert repo.upserted_elos == []
+    assert repo.snapshot_replacements == 0
 
 
 @pytest.mark.anyio
-async def test_club_replay_initializes_and_persists_missing_seed_baseline():
+async def test_non_strict_replay_can_initialize_and_persist_missing_seed_baseline():
     repo = FakeTeamStrengthRepository(
         fixtures=[
             _fixture(1, 10, 20, 1, 0, datetime(2025, 8, 15, tzinfo=timezone.utc))
@@ -259,7 +362,7 @@ async def test_club_replay_initializes_and_persists_missing_seed_baseline():
         30.0,
         source="club_elo_v2",
         use_seed_baseline=True,
-        require_seed_baseline=True,
+        require_seed_baseline=False,
         initialize_missing_seed_baseline=True,
     )
 

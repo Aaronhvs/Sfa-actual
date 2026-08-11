@@ -3,9 +3,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class ManualClubEloSchema(BaseModel):
+    team_name: str
+    elo_raw: float = Field(gt=0)
+    reason: str = Field(min_length=3, max_length=255)
+
+
 class SeedClubEloRequest(BaseModel):
     date_str: str
     season: str
+    manual_entries: list[ManualClubEloSchema] | None = None
 
 
 class SeedClubEloResponse(BaseModel):

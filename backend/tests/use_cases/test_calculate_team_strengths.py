@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import pytest
 
 from sfa.application.use_cases.calculate_team_strengths import CalculateTeamStrengthsUseCase
@@ -55,7 +53,18 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
     async def get_fixtures_for_elo_recalc(self, season, competition_ids) -> list[FixtureEloRow]:
         return []
 
-    async def get_team_name_id_map(self, season):
+    async def upsert_team_elo_seed(self, seed) -> None:
+        pass
+
+    async def get_team_elo_seeds(self, season, participant_kind):
+        return []
+
+    async def replace_fixture_team_strengths(
+        self, season, participant_kind, competition_ids, snapshots,
+    ) -> None:
+        pass
+
+    async def get_team_name_id_map(self, season, participant_kind=None):
         return {}
 
     async def get_active_competition_ids_for_team(self, team_id, season):

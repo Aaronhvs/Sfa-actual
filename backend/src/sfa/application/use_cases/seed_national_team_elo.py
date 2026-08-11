@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
-from sfa.domain.scoring_ports import NationalTeamEloEntry, TeamStrengthRepositoryPort
+from sfa.domain.scoring_ports import (
+    NationalTeamEloEntry,
+    TeamEloSeedDTO,
+    TeamStrengthRepositoryPort,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +102,25 @@ class SeedNationalTeamEloUseCase:
                 )
 
             if not dry_run:
+                try:
+                    effective_at = datetime.fromisoformat(source_date).replace(
+                        tzinfo=timezone.utc
+                    ) if source_date else datetime(int(season), 1, 1, tzinfo=timezone.utc)
+                except ValueError:
+                    effective_at = datetime(int(season), 1, 1, tzinfo=timezone.utc)
                 for team in teams:
                     entry = entries_by_team[team.team_name]
+                    await self._repo.upsert_team_elo_seed(
+                        TeamEloSeedDTO(
+                            team_id=team.team_id,
+                            season=season,
+                            participant_kind="national_team",
+                            elo_raw=entry.elo_raw,
+                            effective_at=effective_at,
+                            source=NATIONAL_ELO_SOURCE,
+                            source_reference=source_url or source_date,
+                        )
+                    )
                     await self._repo.upsert_team_elo(
                         team_id=team.team_id,
                         season=season,

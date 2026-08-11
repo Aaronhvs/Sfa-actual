@@ -232,7 +232,7 @@ async def _run_complete_club_elo_update(season: str) -> None:
         source="club_elo_v2",
         use_seed_baseline=True,
         require_seed_baseline=True,
-        initialize_missing_seed_baseline=True,
+        initialize_missing_seed_baseline=False,
     )
 
 
@@ -333,7 +333,7 @@ async def _run_elo_pools_then_recalculate(
                     source="club_elo_v2",
                     use_seed_baseline=True,
                     require_seed_baseline=True,
-                    initialize_missing_seed_baseline=True,
+                    initialize_missing_seed_baseline=False,
                 )
             if national_competition_ids:
                 await _run_elo_update(

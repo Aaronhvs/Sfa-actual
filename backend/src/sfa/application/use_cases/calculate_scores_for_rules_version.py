@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 
 from sfa.domain.scoring.entities import PlayerEventScore
 from sfa.domain.scoring.pass_stats import normalize_pass_stats
@@ -382,6 +382,18 @@ class CalculateScoresForRulesVersionUseCase:
             "b1_bonus": b1_audit,
             "final_points": final,
             "strength_used": strength_used,
+            "m1_source": (
+                "fixture_elo_snapshot"
+                if getattr(event, "elo_model_version", None)
+                else ("team_strength" if strength_used else "legacy_position")
+            ),
+            "elo_model_version": getattr(event, "elo_model_version", None),
+            "player_team_elo_raw": getattr(event, "player_team_elo_raw", None),
+            "rival_team_elo_raw": getattr(event, "rival_team_elo_raw", None),
+            "player_team_strength": getattr(event, "player_team_strength", None),
+            "rival_team_strength": getattr(event, "rival_team_strength", None),
+            "player_seed_source": getattr(event, "player_seed_source", None),
+            "rival_seed_source": getattr(event, "rival_seed_source", None),
         }
 
         return PlayerEventScore(
@@ -400,7 +412,7 @@ class CalculateScoresForRulesVersionUseCase:
         self, event, service, group, position, rules_version_id,
         competition_name_map: dict | None = None,
     ) -> PlayerEventScore | None:
-        from sfa.domain.scoring.value_objects import DiminishingReturnsConfig, PositionGroup
+        from sfa.domain.scoring.value_objects import DiminishingReturnsConfig
 
         config = service._config
         player_team_pos = event.player_team_pos or 10
@@ -578,7 +590,18 @@ class CalculateScoresForRulesVersionUseCase:
             "Mrating": round(mrating.value, 2),
             "combined_before_clamp": round(raw, 4),
             "combined_after_clamp": round(combined, 4),
-            "m1_source": "team_strength" if strength_used else "legacy_position",
+            "m1_source": (
+                "fixture_elo_snapshot"
+                if getattr(event, "elo_model_version", None)
+                else ("team_strength" if strength_used else "legacy_position")
+            ),
+            "elo_model_version": getattr(event, "elo_model_version", None),
+            "player_team_elo_raw": getattr(event, "player_team_elo_raw", None),
+            "rival_team_elo_raw": getattr(event, "rival_team_elo_raw", None),
+            "player_team_strength": getattr(event, "player_team_strength", None),
+            "rival_team_strength": getattr(event, "rival_team_strength", None),
+            "player_seed_source": getattr(event, "player_seed_source", None),
+            "rival_seed_source": getattr(event, "rival_seed_source", None),
             "m1_original": round(m1_original, 3),
             "m1_stats_weight": weight,
             "m1_stats_applied": round(m1_stats_applied, 3),

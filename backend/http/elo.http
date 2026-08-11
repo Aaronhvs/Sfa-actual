@@ -1,10 +1,30 @@
 ### Seed ClubElo snapshot
 POST http://localhost:8000/api/v1/admin/elo/seed
 Content-Type: application/json
+X-Admin-Key: {{admin_key}}
 
 {
-  "date_str": "2024-08-01",
-  "season": "2024"
+  "date_str": "2025-08-01",
+  "season": "2025"
+}
+
+###
+
+### Seed with an explicit override for a provider name gap
+POST http://localhost:8000/api/v1/admin/elo/seed
+Content-Type: application/json
+X-Admin-Key: {{admin_key}}
+
+{
+  "date_str": "2025-08-01",
+  "season": "2025",
+  "manual_entries": [
+    {
+      "team_name": "Leeds",
+      "elo_raw": 1660,
+      "reason": "Verified against ClubElo history on 2025-08-01"
+    }
+  ]
 }
 
 ###
@@ -12,9 +32,10 @@ Content-Type: application/json
 ### Recalculate ELO ratings (SFA internal IDs: La Liga=1, PL=3, Bundesliga=6, Serie A=7, Ligue 1=9)
 POST http://localhost:8000/api/v1/admin/elo/recalculate
 Content-Type: application/json
+X-Admin-Key: {{admin_key}}
 
 {
-  "season": "2024",
+  "season": "2025",
   "competition_ids": [1, 3, 6, 7, 9],
   "k_factors": {
     "1": 30,
@@ -23,7 +44,8 @@ Content-Type: application/json
     "7": 30,
     "9": 30
   },
-  "default_k": 30.0
+  "default_k": 30.0,
+  "participant_kind": "club"
 }
 
 ###
@@ -31,6 +53,7 @@ Content-Type: application/json
 ### Recalculate ELO with higher K for Champions League (SFA internal ID: Champions League=10)
 POST http://localhost:8000/api/v1/admin/elo/recalculate
 Content-Type: application/json
+X-Admin-Key: {{admin_key}}
 
 {
   "season": "2024",
@@ -48,6 +71,7 @@ Content-Type: application/json
 ### Error case: invalid date
 POST http://localhost:8000/api/v1/admin/elo/seed
 Content-Type: application/json
+X-Admin-Key: {{admin_key}}
 
 {
   "date_str": "not-a-date",

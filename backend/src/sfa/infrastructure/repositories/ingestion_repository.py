@@ -14,9 +14,9 @@ from sfa.domain.ingestion_ports import (
     PlayerFixtureInfoRow,
 )
 from sfa.infrastructure.models.competitions.models import Competition, CompetitionStage
-from sfa.infrastructure.models.fixture_events.models import FixtureEvent
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 from sfa.infrastructure.models.events.models import PlayerEvent
+from sfa.infrastructure.models.fixture_events.models import FixtureEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.ingestion.models import IngestionLog
 from sfa.infrastructure.models.player_stats.models import PlayerStats
@@ -155,6 +155,9 @@ class IngestionRepository(IngestionRepositoryPort):
         played_at: object,
         matchday: int | None,
         status: str = "FT",
+        home_goals: int | None = None,
+        away_goals: int | None = None,
+        score_source: str | None = None,
     ) -> int:
         stmt = (
             pg_insert(Fixture)
@@ -168,10 +171,20 @@ class IngestionRepository(IngestionRepositoryPort):
                 played_at=played_at,
                 matchday=matchday,
                 status=status,
+                home_goals=home_goals,
+                away_goals=away_goals,
+                score_source=score_source,
             )
             .on_conflict_do_update(
                 index_elements=["external_id"],
-                set_={"stage": stage, "matchday": matchday, "status": status},
+                set_={
+                    "stage": stage,
+                    "matchday": matchday,
+                    "status": status,
+                    "home_goals": home_goals,
+                    "away_goals": away_goals,
+                    "score_source": score_source,
+                },
             )
             .returning(Fixture.id)
         )

@@ -50,7 +50,13 @@ class IngestionResult:
 
 LEAGUES: list[LeagueConfig] = [
     # ── Torneos internacionales ─────────────────────────────────────────────
-    LeagueConfig(id=1,   name="World Cup",            country="INT", comp_factor=1.75, participant_kind="national_team"),
+    LeagueConfig(
+        id=1,
+        name="World Cup",
+        country="INT",
+        comp_factor=1.75,
+        participant_kind="national_team",
+    ),
     # ── Ligas principales ───────────────────────────────────────────────────
     LeagueConfig(id=140, name="La Liga",              country="ESP", comp_factor=1.0),
     LeagueConfig(id=39,  name="Premier League",       country="ENG", comp_factor=1.0),
@@ -205,6 +211,9 @@ class IngestCompetitionUseCase:
                         home_db_id, away_db_id,
                         stage, season_str, fixture.played_at, matchday_num,
                         status=fixture.status,
+                        home_goals=fixture.home_goals,
+                        away_goals=fixture.away_goals,
+                        score_source="api_football",
                     )
 
                     # Skip events/players for fixtures already completed in DB

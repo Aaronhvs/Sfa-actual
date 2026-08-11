@@ -3,7 +3,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from sfa.domain.scoring_ports import TeamStrengthRepositoryPort
+from sfa.domain.scoring_ports import (
+    FixtureTeamStrengthDTO,
+    TeamStrengthRepositoryPort,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,22 +42,31 @@ class CalculateEloRatingsUseCase:
         use_seed_baseline: bool = False,
         require_seed_baseline: bool = False,
         initialize_missing_seed_baseline: bool = False,
+        participant_kind: str | None = None,
     ) -> CalculateEloRatingsResult:
         try:
-            seeded = await self._repo.get_all_teams_with_elo(season, competition_ids)
-            seed_by_team = {row.team_id: row.elo_seed_raw for row in seeded}
-            current_elo_by_team = {row.team_id: row.elo_raw for row in seeded}
+            resolved_kind = participant_kind or (
+                "national_team" if source.startswith("national_") else "club"
+            )
+            current_rows = (
+                []
+                if use_seed_baseline
+                else await self._repo.get_all_teams_with_elo(season, competition_ids)
+            )
+            current_elo_by_team = {row.team_id: row.elo_raw for row in current_rows}
+            seed_rows = (
+                await self._repo.get_team_elo_seeds(season, resolved_kind)
+                if use_seed_baseline
+                else []
+            )
+            seed_by_team = {row.team_id: row.elo_raw for row in seed_rows}
+            seed_source_by_team = {row.team_id: row.source for row in seed_rows}
             fixtures = await self._repo.get_fixtures_for_elo_recalc(season, competition_ids)
             fixture_team_ids = {
                 team_id
                 for fixture in fixtures
                 for team_id in (fixture.home_team_id, fixture.away_team_id)
             }
-            if use_seed_baseline and initialize_missing_seed_baseline:
-                for team_id in fixture_team_ids:
-                    if seed_by_team.get(team_id) is None:
-                        seed_by_team[team_id] = ELO_DEFAULT
-                    current_elo_by_team.setdefault(team_id, seed_by_team[team_id])
             if use_seed_baseline and require_seed_baseline:
                 missing_seed_team_ids = sorted(
                     team_id
@@ -70,21 +82,25 @@ class CalculateEloRatingsUseCase:
                         status="failed",
                         error=f"Missing ELO seed baseline for team_ids: {missing}",
                     )
+            if use_seed_baseline and initialize_missing_seed_baseline:
+                for team_id in fixture_team_ids:
+                    if seed_by_team.get(team_id) is None:
+                        seed_by_team[team_id] = ELO_DEFAULT
+                        seed_source_by_team[team_id] = "synthetic_default"
+                    current_elo_by_team.setdefault(team_id, seed_by_team[team_id])
 
-            elo_by_team = {}
-            for team_id, elo_raw in current_elo_by_team.items():
-                seed_raw = seed_by_team.get(team_id)
-                elo_by_team[team_id] = (
-                    seed_raw
-                    if use_seed_baseline and seed_raw is not None
-                    else elo_raw
-                )
+            elo_by_team = (
+                dict(seed_by_team)
+                if use_seed_baseline
+                else dict(current_elo_by_team)
+            )
 
+            snapshots: list[FixtureTeamStrengthDTO] = []
             for fixture in fixtures:
                 home_elo = elo_by_team.get(fixture.home_team_id, ELO_DEFAULT)
                 away_elo = elo_by_team.get(fixture.away_team_id, ELO_DEFAULT)
                 k_factor = k_factors.get(fixture.competition_id, default_k)
-                elo_by_team[fixture.home_team_id] = self._calculator.update_elo(
+                home_post_elo = self._calculator.update_elo(
                     current_elo=home_elo,
                     rival_elo=away_elo,
                     home_goals=fixture.home_goals,
@@ -92,7 +108,7 @@ class CalculateEloRatingsUseCase:
                     is_home=True,
                     k_factor=k_factor,
                 )
-                elo_by_team[fixture.away_team_id] = self._calculator.update_elo(
+                away_post_elo = self._calculator.update_elo(
                     current_elo=away_elo,
                     rival_elo=home_elo,
                     home_goals=fixture.home_goals,
@@ -100,6 +116,47 @@ class CalculateEloRatingsUseCase:
                     is_home=False,
                     k_factor=k_factor,
                 )
+                snapshots.extend((
+                    FixtureTeamStrengthDTO(
+                        fixture_id=fixture.fixture_id,
+                        team_id=fixture.home_team_id,
+                        season=fixture.season,
+                        competition_id=fixture.competition_id,
+                        participant_kind=resolved_kind,
+                        pre_match_elo_raw=home_elo,
+                        post_match_elo_raw=home_post_elo,
+                        pre_match_strength=self._calculator.normalize(home_elo),
+                        post_match_strength=self._calculator.normalize(home_post_elo),
+                        model_version=source,
+                        seed_source=seed_source_by_team.get(
+                            fixture.home_team_id, "legacy_projection"
+                        ),
+                    ),
+                    FixtureTeamStrengthDTO(
+                        fixture_id=fixture.fixture_id,
+                        team_id=fixture.away_team_id,
+                        season=fixture.season,
+                        competition_id=fixture.competition_id,
+                        participant_kind=resolved_kind,
+                        pre_match_elo_raw=away_elo,
+                        post_match_elo_raw=away_post_elo,
+                        pre_match_strength=self._calculator.normalize(away_elo),
+                        post_match_strength=self._calculator.normalize(away_post_elo),
+                        model_version=source,
+                        seed_source=seed_source_by_team.get(
+                            fixture.away_team_id, "legacy_projection"
+                        ),
+                    ),
+                ))
+                elo_by_team[fixture.home_team_id] = home_post_elo
+                elo_by_team[fixture.away_team_id] = away_post_elo
+
+            await self._repo.replace_fixture_team_strengths(
+                season=season,
+                participant_kind=resolved_kind,
+                competition_ids=competition_ids,
+                snapshots=snapshots,
+            )
 
             teams_updated = 0
             for team_id, elo_raw in elo_by_team.items():
