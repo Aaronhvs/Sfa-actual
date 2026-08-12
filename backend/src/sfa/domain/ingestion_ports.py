@@ -32,6 +32,32 @@ class FixtureRawDTO:
 
 
 @dataclass(frozen=True)
+class FixtureScoreBackfillTargetDTO:
+    fixture_id: int
+    external_id: int
+    season: str
+    status: str
+    home_team_external_id: int | None
+    away_team_external_id: int | None
+
+
+@dataclass(frozen=True)
+class FixtureScoreRawDTO:
+    external_id: int
+    status: str
+    home_team_external_id: int
+    away_team_external_id: int
+    home_goals: int | None
+    away_goals: int | None
+    fulltime_home_goals: int | None = None
+    fulltime_away_goals: int | None = None
+    extratime_home_goals: int | None = None
+    extratime_away_goals: int | None = None
+    shootout_home_goals: int | None = None
+    shootout_away_goals: int | None = None
+
+
+@dataclass(frozen=True)
 class FixtureEventRawDTO:
     type: str
     detail: str
@@ -149,6 +175,31 @@ class FootballDataProviderPort(Protocol):
     async def fetch_league_fixtures(
         self, league_id: int, season: int,
     ) -> list[FixtureRawDTO]: ...
+
+
+@runtime_checkable
+class FixtureScoreProviderPort(Protocol):
+    async def fetch_fixture_scores(
+        self,
+        external_ids: list[int],
+    ) -> list[FixtureScoreRawDTO]: ...
+
+
+@runtime_checkable
+class FixtureScoreBackfillRepositoryPort(Protocol):
+    async def get_missing_fixture_score_targets(
+        self,
+        seasons: list[str],
+    ) -> list[FixtureScoreBackfillTargetDTO]: ...
+
+    async def update_fixture_score(
+        self,
+        fixture_id: int,
+        status: str,
+        home_goals: int,
+        away_goals: int,
+        score_source: str,
+    ) -> None: ...
 
 
 @runtime_checkable

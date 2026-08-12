@@ -11,6 +11,12 @@
 - [ ] `tests/use_cases/test_rebuild_elo_timeline.py` - reglas de temporalidad, coverage, orden e idempotencia con Fake completo.
 - [ ] `tests/repositories/test_elo_timeline_repository.py` - joins, reemplazo atomico, constraints y lectura temporal.
 - [ ] `tests/tasks/test_elo_timeline_tasks.py` - orden ELO -> commit -> scoring y exclusividad del lock.
+- [x] `src/sfa/application/use_cases/backfill_fixture_scores.py` - valida cobertura y marcador oficial antes de cualquier escritura.
+- [x] `src/sfa/infrastructure/repositories/fixture_score_backfill_repository.py` - limita el backfill a fixtures finalizados sin score autoritativo.
+- [x] `scripts/backfill_fixture_scores.py` - operacion idempotente con dry-run por defecto y apply transaccional.
+- [x] `tests/use_cases/test_backfill_fixture_scores.py` - cobertura, blockers, batches e idempotencia.
+- [x] `tests/providers/test_api_football_fixture_scores.py` - contrato del batch oficial y separacion de tanda.
+- [x] `tests/repositories/test_fixture_score_backfill_repository.py` - seleccion y escritura aislada de marcadores.
 - [x] `specs/refactor/0048-temporal-elo-m1/decisions.md` - auditoria y decisiones arquitectonicas.
 - [x] `specs/refactor/0048-temporal-elo-m1/plan.md` - contrato exhaustivo de implementacion.
 

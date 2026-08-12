@@ -10,6 +10,7 @@ from sfa.domain.enrichment.birth_date_ports import PlayerBirthDateRawDTO
 from sfa.domain.ingestion_ports import (
     FixtureEventRawDTO,
     FixtureRawDTO,
+    FixtureScoreRawDTO,
     PlayerStatsRawDTO,
     StandingRawDTO,
 )
@@ -59,6 +60,11 @@ class APIFootballProvider:
                 timeout=20.0,
             )
         return self._client
+
+    async def close(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     async def _get(self, endpoint: str, params: dict | None = None) -> dict:
         """HTTP GET with rate limiting, retry, and backoff."""
@@ -453,6 +459,47 @@ class APIFootballProvider:
                 )
             except (KeyError, TypeError, ValueError) as exc:
                 logger.warning("[fetch_league_fixtures] Skipping malformed fixture: %s", exc)
+        return result
+
+    async def fetch_fixture_scores(
+        self,
+        external_ids: list[int],
+    ) -> list[FixtureScoreRawDTO]:
+        if not external_ids:
+            return []
+        if len(external_ids) > 20:
+            raise ValueError("API-Football accepts at most 20 fixture IDs per request")
+
+        data = await self._get(
+            "fixtures",
+            {"ids": "-".join(str(item) for item in external_ids)},
+        )
+        result: list[FixtureScoreRawDTO] = []
+        for item in data.get("response", []):
+            try:
+                fixture = item["fixture"]
+                teams = item["teams"]
+                goals = item.get("goals") or {}
+                score = item.get("score") or {}
+                fulltime = score.get("fulltime") or {}
+                extratime = score.get("extratime") or {}
+                penalty = score.get("penalty") or {}
+                result.append(FixtureScoreRawDTO(
+                    external_id=fixture["id"],
+                    status=(fixture.get("status") or {}).get("short") or "",
+                    home_team_external_id=teams["home"]["id"],
+                    away_team_external_id=teams["away"]["id"],
+                    home_goals=goals.get("home"),
+                    away_goals=goals.get("away"),
+                    fulltime_home_goals=fulltime.get("home"),
+                    fulltime_away_goals=fulltime.get("away"),
+                    extratime_home_goals=extratime.get("home"),
+                    extratime_away_goals=extratime.get("away"),
+                    shootout_home_goals=penalty.get("home"),
+                    shootout_away_goals=penalty.get("away"),
+                ))
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("Malformed fixture score response") from exc
         return result
 
     async def fetch_fixture_events(self, fixture_id: int) -> list[FixtureEventRawDTO]:
