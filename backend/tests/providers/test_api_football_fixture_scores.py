@@ -25,7 +25,7 @@ async def test_fetch_fixture_scores_batches_ids_and_keeps_shootout_separate() ->
             "goals": {"home": 1, "away": 1},
             "score": {
                 "fulltime": {"home": 1, "away": 1},
-                "extratime": {"home": 1, "away": 1},
+                "extratime": {"home": 0, "away": 0},
                 "penalty": {"home": 5, "away": 4},
             },
         }]
@@ -37,8 +37,8 @@ async def test_fetch_fixture_scores_batches_ids_and_keeps_shootout_separate() ->
     assert len(rows) == 1
     assert rows[0].home_goals == 1
     assert rows[0].away_goals == 1
-    assert rows[0].extratime_home_goals == 1
-    assert rows[0].extratime_away_goals == 1
+    assert rows[0].extratime_home_goals == 0
+    assert rows[0].extratime_away_goals == 0
     assert rows[0].shootout_home_goals == 5
     assert rows[0].shootout_away_goals == 4
 

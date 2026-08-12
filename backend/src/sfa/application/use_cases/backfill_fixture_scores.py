@@ -198,10 +198,6 @@ class BackfillFixtureScoresUseCase:
                     f"{prefix}: goals do not match the API score breakdown"
                 )
             if row.status == "PEN":
-                if row.home_goals != row.away_goals:
-                    blockers.append(
-                        f"{prefix}: PEN fixture goals include a non-drawn score"
-                    )
                 if (
                     row.shootout_home_goals is None
                     or row.shootout_away_goals is None
@@ -214,17 +210,14 @@ class BackfillFixtureScoresUseCase:
 
     @staticmethod
     def _reference_score(row: FixtureScoreRawDTO) -> tuple[int, int] | None:
-        if row.status in {"AET", "PEN"} and (
-            row.extratime_home_goals is not None
-            and row.extratime_away_goals is not None
-        ):
-            return row.extratime_home_goals, row.extratime_away_goals
-        if (
-            row.fulltime_home_goals is not None
-            and row.fulltime_away_goals is not None
-        ):
-            return row.fulltime_home_goals, row.fulltime_away_goals
-        return None
+        if row.fulltime_home_goals is None or row.fulltime_away_goals is None:
+            return None
+        extra_home = row.extratime_home_goals or 0
+        extra_away = row.extratime_away_goals or 0
+        return (
+            row.fulltime_home_goals + extra_home,
+            row.fulltime_away_goals + extra_away,
+        )
 
     @staticmethod
     def _failed(

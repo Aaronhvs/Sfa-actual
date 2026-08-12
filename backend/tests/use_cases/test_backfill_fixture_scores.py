@@ -119,8 +119,10 @@ async def test_apply_writes_only_after_full_validation() -> None:
             status="PEN",
             home_goals=1,
             away_goals=1,
-            extratime_home_goals=1,
-            extratime_away_goals=1,
+            fulltime_home_goals=1,
+            fulltime_away_goals=1,
+            extratime_home_goals=0,
+            extratime_away_goals=0,
             shootout_home_goals=5,
             shootout_away_goals=4,
         )
@@ -175,9 +177,9 @@ async def test_missing_api_fixture_blocks_all_writes() -> None:
             _score(
                 status="PEN",
                 shootout_home_goals=5,
-                shootout_away_goals=4,
+                shootout_away_goals=5,
             ),
-            "non-drawn",
+            "invalid shootout",
         ),
     ],
 )
@@ -196,6 +198,56 @@ async def test_invalid_api_context_blocks_all_writes(
     assert result.status == "failed"
     assert any(blocker in item for item in result.blockers)
     assert repository.updates == []
+
+
+@pytest.mark.anyio
+async def test_aet_score_is_fulltime_plus_extra_time_goals() -> None:
+    repository = FakeFixtureScoreRepository([_target()])
+    provider = FakeFixtureScoreProvider({
+        1001: _score(
+            status="AET",
+            home_goals=3,
+            away_goals=2,
+            fulltime_home_goals=1,
+            fulltime_away_goals=1,
+            extratime_home_goals=2,
+            extratime_away_goals=1,
+        )
+    })
+
+    result = await BackfillFixtureScoresUseCase(repository, provider).execute(
+        ["2025"],
+        dry_run=False,
+    )
+
+    assert result.status == "completed"
+    assert repository.updates[0]["home_goals"] == 3
+    assert repository.updates[0]["away_goals"] == 2
+
+
+@pytest.mark.anyio
+async def test_two_legged_penalty_fixture_can_have_non_drawn_match_score() -> None:
+    repository = FakeFixtureScoreRepository([_target()])
+    provider = FakeFixtureScoreProvider({
+        1001: _score(
+            status="PEN",
+            home_goals=1,
+            away_goals=0,
+            fulltime_home_goals=1,
+            fulltime_away_goals=0,
+            shootout_home_goals=3,
+            shootout_away_goals=4,
+        )
+    })
+
+    result = await BackfillFixtureScoresUseCase(repository, provider).execute(
+        ["2025"],
+        dry_run=False,
+    )
+
+    assert result.status == "completed"
+    assert repository.updates[0]["home_goals"] == 1
+    assert repository.updates[0]["away_goals"] == 0
 
 
 @pytest.mark.anyio
