@@ -1,6 +1,8 @@
 import csv
 import difflib
 import io
+import re
+import unicodedata
 from dataclasses import dataclass
 
 import httpx
@@ -8,6 +10,46 @@ import httpx
 CLUBELO_BASE_URL = "http://api.clubelo.com"
 
 CLUBELO_NAME_MAP: dict[str, str] = {
+    "AEK": "AEK Athens FC",
+    "Bielefeld": "Arminia Bielefeld",
+    "Bayern": "Bayern München",
+    "Basel": "FC Basel 1893",
+    "Bradford City": "Bradford",
+    "Braunschweig": "Eintracht Braunschweig",
+    "Brugge": "Club Brugge KV",
+    "Cambridge": "Cambridge United",
+    "Cardiff City": "Cardiff",
+    "Cottbus": "Energie Cottbus",
+    "Dresden": "Dynamo Dresden",
+    "Entella": "Virtus Entella",
+    "Exeter": "Exeter City",
+    "FC Kobenhavn": "FC Copenhagen",
+    "Halle": "Hallescher FC",
+    "Hamburg": "Hamburger SV",
+    "Hertha": "Hertha BSC",
+    "Hull": "Hull City",
+    "Kairat": "Kairat Almaty",
+    "Kobenhavn": "FC Copenhagen",
+    "Koeln": "1. FC Köln",
+    "Legia": "Legia Warszawa",
+    "Malmo": "Malmo FF",
+    "Mansfield": "Mansfield Town",
+    "Olympiakos": "Olympiakos Piraeus",
+    "Oxford": "Oxford United",
+    "PSV": "PSV Eindhoven",
+    "Regensburg": "SSV Jahn Regensburg",
+    "Roma": "AS Roma",
+    "Rostock": "Hansa Rostock",
+    "Salzburg": "Red Bull Salzburg",
+    "Shakhtar": "Shakhtar Donetsk",
+    "Shrewsbury": "Shrewsbury Town",
+    "Stoke": "Stoke City",
+    "Troyes": "Estac Troyes",
+    "Union SG": "Union St. Gilloise",
+    "Viktoria Plzen": "Plzen",
+    "Vicenza": "Vicenza Virtus",
+    "Wigan Athletic": "Wigan",
+    "Wycombe Wanderers": "Wycombe",
     "Paris SG": "Paris Saint-Germain",
     "Man City": "Manchester City",
     "Man United": "Manchester United",
@@ -24,7 +66,6 @@ CLUBELO_NAME_MAP: dict[str, str] = {
     "Frankfurt": "Eintracht Frankfurt",
     "Schalke": "Schalke 04",
     "Stuttgart": "VfB Stuttgart",
-    "Hertha": "Hertha Berlin",
     "Newcastle": "Newcastle United",
     "Brighton": "Brighton & Hove Albion",
     "Spurs": "Tottenham Hotspur",
@@ -111,11 +152,78 @@ class ClubEloProvider:
         return _parse_csv(response.text)
 
     def resolve_team_name(self, clubelo_name: str, sfa_team_names: list[str]) -> str | None:
-        normalized = CLUBELO_NAME_MAP.get(clubelo_name, clubelo_name)
-        if normalized in sfa_team_names:
-            return normalized
-        matches = difflib.get_close_matches(normalized, sfa_team_names, n=1, cutoff=0.75)
-        return matches[0] if matches else None
+        candidates = list(dict.fromkeys((
+            CLUBELO_NAME_MAP.get(clubelo_name, clubelo_name),
+            clubelo_name,
+        )))
+        for candidate in candidates:
+            if candidate in sfa_team_names:
+                return candidate
+
+        normalized_lookup = _unique_lookup(sfa_team_names, _normalize_name)
+        for candidate in candidates:
+            match = normalized_lookup.get(_normalize_name(candidate))
+            if match is not None:
+                return match
+
+        core_lookup = _unique_lookup(sfa_team_names, _core_name)
+        for candidate in candidates:
+            core = _core_name(candidate)
+            if core and (match := core_lookup.get(core)) is not None:
+                return match
+
+        normalized_sfa = {
+            _normalize_name(team_name): team_name
+            for team_name in sfa_team_names
+        }
+        for candidate in candidates:
+            matches = difflib.get_close_matches(
+                _normalize_name(candidate),
+                list(normalized_sfa),
+                n=2,
+                cutoff=0.88,
+            )
+            if len(matches) == 1:
+                return normalized_sfa[matches[0]]
+        return None
+
+
+_CORE_TOKENS = {
+    "ac", "afc", "as", "cd", "cf", "fc", "fk", "kv", "sc", "ssc", "sv",
+    "01", "03", "07", "1893", "1899", "1924",
+}
+
+
+def _normalize_name(value: str) -> str:
+    translations = str.maketrans({"ø": "o", "Ø": "O", "ł": "l", "Ł": "L", "ß": "ss"})
+    value = unicodedata.normalize("NFKD", value.translate(translations))
+    value = "".join(char for char in value if not unicodedata.combining(char))
+    value = value.lower().replace("&", " and ")
+    value = value.replace("oe", "o").replace("ue", "u").replace("ae", "a")
+    return re.sub(r"[^a-z0-9]+", "", value)
+
+
+def _core_name(value: str) -> str:
+    translations = str.maketrans({"ø": "o", "Ø": "O", "ł": "l", "Ł": "L", "ß": "ss"})
+    value = unicodedata.normalize("NFKD", value.translate(translations))
+    value = "".join(char for char in value if not unicodedata.combining(char))
+    tokens = re.findall(r"[a-z0-9]+", value.lower())
+    significant = [token for token in tokens if token not in _CORE_TOKENS]
+    return "".join(significant)
+
+
+def _unique_lookup(values: list[str], normalizer) -> dict[str, str]:
+    lookup: dict[str, str] = {}
+    duplicates: set[str] = set()
+    for value in values:
+        key = normalizer(value)
+        if key in lookup:
+            duplicates.add(key)
+        else:
+            lookup[key] = value
+    for key in duplicates:
+        lookup.pop(key, None)
+    return lookup
 
 
 def _parse_csv(text: str) -> list[ClubEloEntry]:
