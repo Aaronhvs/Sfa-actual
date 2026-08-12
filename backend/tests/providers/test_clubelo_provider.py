@@ -13,6 +13,13 @@ from sfa.infrastructure.providers.clubelo_provider import ClubEloProvider
         ("Roma", "AS Roma"),
         ("PSV", "PSV Eindhoven"),
         ("Union SG", "Union St. Gilloise"),
+        ("Alkmaar", "AZ Alkmaar"),
+        ("Karabakh Agdam", "Qarabag"),
+        ("RFS", "R\u012bgas FS"),
+        ("Sheffield Weds", "Sheffield Wednesday"),
+        ("St Gillis", "Union St. Gilloise"),
+        ("Wolfsburg", "VfL Wolfsburg"),
+        ("Zrinjski Mostar", "Zrinjski"),
     ],
 )
 def test_resolve_team_name_uses_current_sfa_aliases(
@@ -42,3 +49,19 @@ def test_resolve_team_name_does_not_guess_ambiguous_core_name() -> None:
     provider = ClubEloProvider()
 
     assert provider.resolve_team_name("United", ["FC United", "SC United"]) is None
+
+
+@pytest.mark.parametrize(
+    "source_name, unrelated_sfa_name",
+    [
+        ("Torino", "Antoniano"),
+        ("Bayern", "Bayeux"),
+        ("Atletico", "Atl\u00e8tic Lleida"),
+        ("Nottingham", "Dinamo Brest"),
+    ],
+)
+def test_resolve_team_name_rejects_superficial_similarity(
+    source_name: str,
+    unrelated_sfa_name: str,
+) -> None:
+    assert ClubEloProvider().resolve_team_name(source_name, [unrelated_sfa_name]) is None
