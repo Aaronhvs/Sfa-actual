@@ -58,20 +58,14 @@ interface DerivedStats {
   minutes: number
   goals: number
   assists: number
-  goalContributions: number
-  goalsPer90: number | null
-  assistsPer90: number | null
   contributionsPer90: number | null
   shotsTotal: number
   shotsOn: number
-  shotAccuracy: number | null
   conversion: number | null
   penaltyWon: number
   passesTotal: number
-  passesPer90: number | null
   passAccuracy: number | null
   keyPasses: number
-  keyPassesPer90: number | null
   dribblesWon: number
   dribblesAttempted: number
   dribbleSuccess: number | null
@@ -90,16 +84,16 @@ interface DerivedStats {
   yellowCards: number
   redCards: number
   disciplinePtsLost: number
-  rating: number | null
-  sfaPerMatch: number | null
-  sfaPer90: number | null
   eliteFixtures: number
-  criticalActions: number
-  avgM1: number | null
-  avgM3: number | null
-  homePts: number | null
-  awayPts: number | null
+  difficultOpponentAppearances: number
+  keyMomentAppearances: number
   contributionStreak: number
+  hatTricks: number
+  goalBraces: number
+  assistBraces: number
+  goalAndAssistMatches: number
+  mostValuableGoal: number | null
+  bestMatch: number | null
   saves: number
   goalsConceded: number
 }
@@ -121,16 +115,32 @@ function deriveStats(detail: PlayerDetail, analytics: ComparePlayerAnalytics): D
   const blocks = stats?.blocks ?? fixtures.reduce((sum, fixture) => sum + fixture.blocks, 0)
   const goalContributions = goals + assists
   const decisiveEvents = events.filter((event) => event.event_type !== 'stats' && event.minute > 0 && event.pts > 0)
-  const criticalEvents = decisiveEvents.filter((event) => event.m3 >= 1.6)
-  const avgM1 = decisiveEvents.length > 0
-    ? decisiveEvents.reduce((sum, event) => sum + event.m1, 0) / decisiveEvents.length
-    : null
-  const avgM3 = decisiveEvents.length > 0
-    ? decisiveEvents.reduce((sum, event) => sum + event.m3, 0) / decisiveEvents.length
-    : null
+  const difficultOpponentFixtures = new Set(
+    decisiveEvents.filter((event) => event.m1 >= 1.15).map((event) => event.fixture_id),
+  )
+  const keyMomentFixtures = new Set(
+    decisiveEvents.filter((event) => event.m3 >= 1.6).map((event) => event.fixture_id),
+  )
   const eliteFixtures = fixtures.filter((fixture) => fixture.sfa_pts >= 2500).length
-  const homeFixtures = fixtures.filter((fixture) => (fixture.player_team ?? detail.team) === fixture.home_team)
-  const awayFixtures = fixtures.filter((fixture) => (fixture.player_team ?? detail.team) === fixture.away_team)
+  const fixtureGoalCount = (fixture: ComparePlayerAnalytics['fixtures'][number]) => (
+    (fixture.breakdown?.goal?.count ?? 0) + (fixture.breakdown?.goal_penalty?.count ?? 0)
+  )
+  const fixtureAssistCount = (fixture: ComparePlayerAnalytics['fixtures'][number]) => (
+    (fixture.breakdown?.assist?.count ?? 0) + (fixture.breakdown?.corner_assist?.count ?? 0)
+  )
+  const hatTricks = fixtures.filter((fixture) => fixtureGoalCount(fixture) >= 3).length
+  const goalBraces = fixtures.filter((fixture) => fixtureGoalCount(fixture) === 2).length
+  const assistBraces = fixtures.filter((fixture) => fixtureAssistCount(fixture) >= 2).length
+  const goalAndAssistMatches = fixtures.filter((fixture) => (
+    fixtureGoalCount(fixture) > 0 && fixtureAssistCount(fixture) > 0
+  )).length
+  const goalEvents = events.filter((event) => ['goal', 'goal_penalty'].includes(event.event_type))
+  const mostValuableGoal = goalEvents.length > 0
+    ? Math.max(...goalEvents.map((event) => event.pts))
+    : null
+  const bestMatch = fixtures.length > 0
+    ? Math.max(...fixtures.map((fixture) => fixture.sfa_pts))
+    : null
 
   const scoringFixtures = new Set(
     events
@@ -162,20 +172,14 @@ function deriveStats(detail: PlayerDetail, analytics: ComparePlayerAnalytics): D
     minutes,
     goals,
     assists,
-    goalContributions,
-    goalsPer90: per90(goals, minutes),
-    assistsPer90: per90(assists, minutes),
     contributionsPer90: per90(goalContributions, minutes),
     shotsTotal,
     shotsOn,
-    shotAccuracy: ratio(shotsOn, shotsTotal),
     conversion: ratio(goals, shotsTotal),
     penaltyWon: stats?.penalty_won ?? 0,
     passesTotal,
-    passesPer90: per90(passesTotal, minutes),
     passAccuracy: stats ? stats.passes_accuracy_avg : null,
     keyPasses,
-    keyPassesPer90: per90(keyPasses, minutes),
     dribblesWon,
     dribblesAttempted: stats?.dribbles_attempts ?? 0,
     dribbleSuccess: stats?.dribble_success_rate != null ? stats.dribble_success_rate * 100 : null,
@@ -194,20 +198,16 @@ function deriveStats(detail: PlayerDetail, analytics: ComparePlayerAnalytics): D
     yellowCards: stats?.cards_yellow ?? 0,
     redCards: stats?.cards_red ?? 0,
     disciplinePtsLost,
-    rating: stats?.rating_avg ?? null,
-    sfaPerMatch: matches > 0 ? detail.sfa_pts / matches : null,
-    sfaPer90: minutes > 0 ? detail.sfa_pts / minutes * 90 : null,
     eliteFixtures,
-    criticalActions: criticalEvents.length,
-    avgM1,
-    avgM3,
-    homePts: homeFixtures.length > 0
-      ? homeFixtures.reduce((sum, fixture) => sum + fixture.sfa_pts, 0) / homeFixtures.length
-      : null,
-    awayPts: awayFixtures.length > 0
-      ? awayFixtures.reduce((sum, fixture) => sum + fixture.sfa_pts, 0) / awayFixtures.length
-      : null,
+    difficultOpponentAppearances: difficultOpponentFixtures.size,
+    keyMomentAppearances: keyMomentFixtures.size,
     contributionStreak,
+    hatTricks,
+    goalBraces,
+    assistBraces,
+    goalAndAssistMatches,
+    mostValuableGoal,
+    bestMatch,
     saves: stats?.saves ?? 0,
     goalsConceded: stats?.goals_conceded ?? 0,
   }
@@ -270,30 +270,26 @@ function CompareResults({ data }: { data: CompareResponse }) {
 
   const general = [
     metric('Puntos SFA', data.player_a.sfa_pts, data.player_b.sfa_pts, fmtPoints),
-    metric('Puntos por partido', a.sfaPerMatch, b.sfaPerMatch, fmtInteger),
-    metric('Puntos por 90\'', a.sfaPer90, b.sfaPer90, fmtInteger),
     metric('Partidos', a.matches, b.matches, fmtInteger),
     metric('Minutos', a.minutes, b.minutes, fmtInteger),
-    metric('Rating promedio', a.rating, b.rating, fmtDecimal),
   ]
   const attack = [
     metric('Goles', a.goals, b.goals, fmtInteger),
-    metric('Goles por 90\'', a.goalsPer90, b.goalsPer90, fmtDecimal),
     metric('Asistencias', a.assists, b.assists, fmtInteger),
-    metric('Asistencias por 90\'', a.assistsPer90, b.assistsPer90, fmtDecimal),
-    metric('G+A por 90\'', a.contributionsPer90, b.contributionsPer90, fmtDecimal),
+    metric('Promedio de gol o asistencia por 90\'', a.contributionsPer90, b.contributionsPer90, fmtDecimal),
+    metric('Hat-tricks', a.hatTricks, b.hatTricks, fmtInteger),
+    metric('Dobletes de gol', a.goalBraces, b.goalBraces, fmtInteger),
+    metric('Dobletes de asistencias', a.assistBraces, b.assistBraces, fmtInteger),
+    metric('Gol y asistencia en un partido', a.goalAndAssistMatches, b.goalAndAssistMatches, fmtInteger),
     metric('Remates', a.shotsTotal, b.shotsTotal, fmtInteger),
     metric('Remates a puerta', a.shotsOn, b.shotsOn, fmtInteger),
-    metric('Precisión de tiro', a.shotAccuracy, b.shotAccuracy, fmtPercent),
     metric('Conversión de gol', a.conversion, b.conversion, fmtPercent),
     metric('Penaltis provocados', a.penaltyWon, b.penaltyWon, fmtInteger),
   ]
   const passing = [
     metric('Pases intentados', a.passesTotal, b.passesTotal, fmtInteger),
     metric('Precisión de pase', a.passAccuracy, b.passAccuracy, fmtPercent),
-    metric('Pases por 90\'', a.passesPer90, b.passesPer90, fmtDecimal),
-    metric('Pases clave', a.keyPasses, b.keyPasses, fmtInteger),
-    metric('Pases clave por 90\'', a.keyPassesPer90, b.keyPassesPer90, fmtDecimal),
+    metric('Pases clave (ocasiones de gol creadas)', a.keyPasses, b.keyPasses, fmtInteger),
   ]
   const duels = [
     metric('Regates ganados', a.dribblesWon, b.dribblesWon, fmtInteger),
@@ -314,12 +310,11 @@ function CompareResults({ data }: { data: CompareResponse }) {
     metric('Regateado por rival', a.dribblesPast, b.dribblesPast, fmtInteger, true),
   ]
   const context = [
-    metric('Acciones críticas', a.criticalActions, b.criticalActions, fmtInteger),
-    metric('M1 promedio', a.avgM1, b.avgM1, fmtDecimal),
-    metric('M3 promedio', a.avgM3, b.avgM3, fmtDecimal),
+    metric('Apariciones contra rivales difíciles', a.difficultOpponentAppearances, b.difficultOpponentAppearances, fmtInteger),
+    metric('Apariciones en momentos clave o adversos', a.keyMomentAppearances, b.keyMomentAppearances, fmtInteger),
     metric('Actuaciones élite', a.eliteFixtures, b.eliteFixtures, fmtInteger),
-    metric('Puntos como local', a.homePts, b.homePts, fmtInteger),
-    metric('Puntos como visitante', a.awayPts, b.awayPts, fmtInteger),
+    metric('Gol más valioso', a.mostValuableGoal, b.mostValuableGoal, fmtPoints),
+    metric('Mejor partido (puntos SFA)', a.bestMatch, b.bestMatch, fmtPoints),
     metric('Racha con G+A', a.contributionStreak, b.contributionStreak, (value) => `${fmtInteger(value)} PJ`),
   ]
   const discipline = [
@@ -348,7 +343,7 @@ function CompareResults({ data }: { data: CompareResponse }) {
         <StatSection title="Pase y creación" metrics={passing} />
         <StatSection title="Regate y duelos" metrics={duels} />
         <StatSection title="Trabajo defensivo" metrics={defense} />
-        <StatSection title="Contexto SFA" eyebrow="M1 + M3" metrics={context} className="cmp-stat-section--context" />
+        <StatSection title="Contexto SFA" metrics={context} className="cmp-stat-section--context" />
         <StatSection title="Disciplina" metrics={discipline} />
         {(a.saves > 0 || b.saves > 0 || a.goalsConceded > 0 || b.goalsConceded > 0) && (
           <StatSection title="Portería" metrics={goalkeeping} />

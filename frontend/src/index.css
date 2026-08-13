@@ -1119,15 +1119,13 @@
 }
 
 .cmp-metric-row__label {
-  overflow: hidden;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.07em;
+  line-height: 1.35;
   text-align: center;
-  text-overflow: ellipsis;
   text-transform: uppercase;
-  white-space: nowrap;
   color: var(--text);
 }
 
