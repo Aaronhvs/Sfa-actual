@@ -166,3 +166,223 @@ No se agrega un proveedor nuevo.
 - National Team ELO sigue proporcionando el baseline de selecciones definido en 0032/0040.
 - Si una fuente historica no esta disponible, el proceso produce un reporte bloqueante para
   carga manual autoritativa; nunca sustituye el dato por 1500 o 0-0.
+
+## Extension 0048-A - Resolucion historica individual de ClubElo
+
+Esta extension pertenece a 0048 y no requiere un spec nuevo. No cambia la formula ELO, M1, el
+modelo de replay ni el significado de `team_elo_seeds`; completa la obtencion del baseline
+autoritativo que 0048 ya exige. Separarla en otro spec permitiria implementar el replay temporal
+sin cerrar el gate de seeds que forma parte del mismo contrato.
+
+### Hallazgo posterior al rollout
+
+El dry-run del seed de clubes 2025 resolvio 258 de 356 equipos desde el snapshot diario y dejo 98
+equipos sin seed. La lectura del flujo implementado confirma estas limitaciones:
+
+- `ClubEloProvider` solo expone `fetch_snapshot(date_str)`; no consulta el historial individual.
+- `ClubEloEntry` y `_parse_csv` descartan las columnas `From` y `To` que ClubElo ya entrega.
+- `SeedClubEloUseCase` pasa directamente de snapshot diario a `manual_override`.
+- El provider se inyecta sin un Protocol de dominio y el use case no puede expresar un contrato
+  tipado de historial, evidencia o errores por club.
+- El fuzzy matching puede producir sugerencias utiles, pero no constituye evidencia suficiente
+  para asociar automaticamente dos identidades de club.
+- `team_elo_seeds.source_reference` no permite consultar de forma estructurada identidad,
+  intervalo, antiguedad y checksum del payload usado.
+- El endpoint no ofrece dry-run ni un reporte por equipo antes del apply.
+
+ClubElo expone dos recursos CSV del mismo proveedor:
+
+- `GET http://api.clubelo.com/{YYYY-MM-DD}`: snapshot diario.
+- `GET http://api.clubelo.com/{club_identifier}`: historial individual con
+  `Rank,Club,Country,Level,Elo,From,To`.
+
+El segundo recurso se verifico contra identificadores reales y contiene intervalos historicos
+individuales. Se acepta como la misma fuente autoritativa de 0048, pero solo bajo las reglas de
+identidad, temporalidad y antiguedad siguientes.
+
+### Definiciones temporales
+
+- `cutoff`: fecha UTC inmediatamente anterior al primer fixture del pool club/season. El servidor
+  la deriva desde fixtures y exige que `date_str` coincida con ella; no confia solo en el caller.
+- `source_valid_from`: valor `From` de la fila individual de ClubElo.
+- `source_valid_to`: valor `To` de la fila individual de ClubElo.
+- `history_age_days`: `max(0, cutoff - source_valid_to)` en dias calendario.
+- `exact_at_cutoff`: `source_valid_from <= cutoff <= source_valid_to`.
+- `prior_carry_forward`: `source_valid_to < cutoff` y `history_age_days <= 365`.
+
+El limite maximo es **365 dias calendario** y forma parte del modelo de seed, no de un parametro
+HTTP ni de una setting mutable. Exactamente 365 dias se acepta; 366 se rechaza. El limite permite
+usar la ultima temporada competitiva conocida y rechaza un rating sin actividad ClubElo durante
+mas de un ciclo anual completo. Cambiarlo requiere una nueva decision y un nuevo model version.
+
+Decision operativa cerrada para el cutoff `2025-07-07`:
+
+| Equipos auditados | Gap desde `To` | Decision automatica |
+|---|---:|---|
+| Cardiff, Eldense, Regensburg | 2 dias | Aceptar como `clubelo_history_prior`. |
+| Concarneau, Rostock, Huddersfield, Wehen | 367 dias | Rechazar por stale; requieren `manual_override`. |
+| Sochaux, Wigan, Sandhausen | 737 dias | Rechazar por stale; requieren `manual_override`. |
+| Cualquier otro historial mas antiguo | Mayor a 737 dias | Rechazar por stale; requieren `manual_override`. |
+
+`max_staleness_days = 365` es inclusivo. No se redondea por temporada ni se concede tolerancia
+adicional: un gap de 367 dias no se reduce a "una temporada". El valor tampoco se amplía para
+obtener coverage; coverage se completa con evidencia manual cuando el historial queda fuera del
+limite.
+
+Para un historial individual se consideran solo filas con ELO positivo, fechas parseables,
+`From <= To` y `From <= cutoff`. Se elige la fila con mayor `From`. Si varias filas tienen ese
+mismo `From`, solo se deduplican cuando identidad, pais, ELO y `To` son identicos; cualquier
+conflicto es ambiguo y bloquea. Una fila futura nunca puede influir en la seleccion.
+
+### Autoridad de identidad
+
+Una fila historica es autoritativa para un equipo SFA solo cuando se cumplen todas estas reglas:
+
+1. El identificador individual proviene de un registro de identidad versionado y explicito que
+   relaciona `sfa_team_name`, `clubelo_identifier` y `expected_country`.
+2. La respuesta conserva el club y el pais esperados por ese registro.
+3. La identidad no depende de similitud difusa, substring, orden de candidatos ni de que exista
+   una sola sugerencia en ese momento.
+4. El historial pasa las validaciones temporales y de antiguedad.
+5. La referencia, intervalo y checksum del payload quedan persistidos con el seed.
+
+El catalogo existente de aliases se normaliza a registros bidireccionales y univocos. Los aliases
+exactos o normalizados unicos pueden resolver el snapshot diario; para abrir un endpoint
+individual se exige ademas un `clubelo_identifier` explicito. Casos ambiguos como `Lincoln` no se
+resuelven sin pais. El fuzzy matching se conserva exclusivamente como sugerencia en el reporte de
+auditoria y nunca incrementa `matched` ni habilita escrituras.
+
+### Precedencia de resolucion
+
+Para cada equipo requerido se aplica este orden, sin mezclar valores:
+
+1. `clubelo_snapshot`: fila valida del snapshot del cutoff resuelta por identidad exacta,
+   normalizada unica o alias verificado.
+2. `clubelo_history`: historial individual cuya fila cubre el cutoff.
+3. `clubelo_history_prior`: ultima fila individual anterior, con antiguedad entre 1 y 365 dias.
+4. `manual_override`: fallback explicito para un equipo que sigue sin historial fiable.
+
+El historial individual solo se consulta para equipos ausentes del snapshot, no para sustituir
+un valor diario valido. Una entrada manual solo completa un equipo aun irresuelto; no sobreescribe
+un snapshot o historial autoritativo dentro de este flujo. Un override deliberado sobre una
+fuente automatica requiere una operacion distinta y queda fuera de 0048-A.
+
+### Fallback manual
+
+`ManualClubEloEntry` deja de ser solo nombre, valor y texto libre. Para ser aceptada como fallback
+debe incluir:
+
+- `team_name` exacto y unico dentro del pool.
+- `elo_raw` positivo.
+- `reason` no vacio que explique el criterio de asignacion.
+- `source_reference` no vacio, trazable a documento, consulta o ticket de aprobacion.
+- `source_date` parseable y no posterior al cutoff.
+- `approved_by` no vacio para trazabilidad operativa.
+
+Entradas duplicadas, equipos ajenos al pool, valores sin evidencia o intentos de reemplazar una
+resolucion automatica son blockers. El valor manual no hereda la tolerancia de 365 dias: su
+autoridad procede de una decision explicita y debe declarar su fecha y razon. La API lo etiqueta
+siempre como `manual_override`; nunca como ClubElo.
+
+### Ports y DTOs
+
+Se agrega `ClubEloProviderPort` en dominio para que application no dependa de una clase concreta.
+El port ofrece el snapshot y los historiales individuales; HTTP, CSV, retries, URL encoding y
+checksums quedan dentro del adapter.
+
+DTOs frozen requeridos:
+
+- `ClubEloRatingDTO`: club, country, level, elo, valid_from y valid_to.
+- `ClubEloSourceDTO`: referencia, fecha de fetch, SHA-256 del payload y ratings parseados.
+- `ClubEloIdentityDTO`: nombre SFA, identificador ClubElo y pais esperado.
+- `EloSeedProvenanceDTO`: resolution method, source entity, country, valid interval, age,
+  source reference y payload checksum.
+- `ClubEloSeedResolutionDTO`: resultado por equipo (`snapshot`, `history`, `manual`,
+  `unresolved`, `stale`, `ambiguous`, `provider_error`) y evidencia disponible.
+
+No se crea una entidad de negocio ni un value object del dominio futbolistico. Estos DTOs
+formalizan una integracion y la evidencia de un dato tecnico existente.
+
+### Persistencia de procedencia
+
+Como `0048_temporal_elo_m1.sql` ya fue desplegada, no se reescribe. Una migracion aditiva 0049
+agrega `provenance_json JSONB NOT NULL DEFAULT '{}'` a `team_elo_seeds`, con check de que sea un
+objeto. `source_reference` se mantiene como locator corto e indexable; el JSONB guarda la
+evidencia estructurada sin sobrecargar ese varchar.
+
+Para sources ClubElo, `provenance_json` exige como minimo:
+
+- `resolution_method`, `source_entity`, `source_country`;
+- `source_valid_from`, `source_valid_to`, `history_age_days`;
+- `cutoff`, `source_reference`, `payload_sha256`.
+
+Para `manual_override` exige `reason`, `source_reference`, `source_date` y `approved_by`. El
+repositorio persiste y reconstruye el DTO de procedencia; no expone JSON o modelos ORM al use
+case. `effective_at` sigue siendo el cutoff aplicado al seed, mientras el intervalo original vive
+en provenance. Seeds club legacy con provenance vacia no satisfacen el nuevo gate y deben
+resembrarse; seeds de selecciones no quedan sujetos a las claves especificas de ClubElo.
+
+### Flujo objetivo extendido
+
+1. El use case obtiene el conjunto requerido y el primer fixture mediante el repository port.
+2. Valida season, cutoff derivado, manual entries y duplicados antes de llamar al provider.
+3. Descarga y valida el snapshot diario completo.
+4. Resuelve identidades autoritativas; guarda fuzzy candidates solo para diagnostico.
+5. Para cada ausente con identidad individual verificada, obtiene su historial una sola vez.
+6. Selecciona la ultima fila elegible anterior al cutoff y aplica el gate de 365 dias.
+7. Aplica manual fallbacks solo a los equipos que continuan irresueltos.
+8. Construye un reporte completo con conteos por source y blockers por equipo.
+9. En dry-run retorna el reporte y no escribe aunque exista 100% de cobertura.
+10. En apply exige cero blockers y 100% de cobertura antes del primer upsert.
+11. Router o task hace un unico commit; cualquier excepcion revierte seeds y proyecciones.
+
+No se publica seed parcial. Un timeout, 429, 5xx, CSV malformado o historial ambiguo impide el
+apply completo. Un 404 o historial vacio se clasifica `no_history` y puede resolverse manualmente.
+
+### Contrato HTTP administrativo
+
+Se conserva `POST /api/v1/admin/elo/seed`; no se crea un endpoint paralelo.
+
+- `dry_run` pasa a ser `true` por defecto. Persistir requiere `dry_run=false` explicito.
+- La respuesta agrega `cutoff`, `total_teams`, conteos por source, `coverage_pct`,
+  `history_requests`, `blockers` y `resolutions` por equipo.
+- Coverage incompleta, historia obsoleta, identidad ambigua o manual entry invalida retornan 422.
+- Indisponibilidad o respuesta invalida del provider retorna 503.
+- Un dry-run con blockers retorna el reporte completo sin esconderlo dentro de un string.
+- El router solo traduce resultado/excepciones y controla commit/rollback; no selecciona filas ni
+  calcula antiguedad.
+
+### Limites del adapter externo
+
+- El host ClubElo es constante y no se acepta una URL arbitraria desde el request.
+- Los identificadores se percent-encodean y no se siguen redirects fuera del host permitido.
+- Los historiales se deduplican por identificador y se consultan con concurrencia maxima de 5.
+- Timeout, 429 y 5xx permiten un unico retry acotado; 404 y CSV vacio no se reintentan.
+- Cada payload se hashea antes del parseo y el hash se conserva en el DTO de source.
+- Los datos se cargan y validan por completo antes de cualquier escritura de DB.
+
+El API disponible es HTTP y no ofrece autenticacion. Esta limitacion de transporte se registra
+como riesgo aceptado del provider existente; el allowlist de host, el checksum persistido y el
+dry-run reducen sustituciones accidentales, pero no convierten HTTP en transporte autenticado.
+Si ClubElo habilita HTTPS, el adapter debe migrar sin cambiar el port.
+
+### Invariantes adicionales
+
+8. Ningun seed historico usa una fila con `From` posterior al cutoff.
+9. Ningun seed automatico usa un historial con `history_age_days > 365`.
+10. Todo seed de club aplicado tiene provenance estructurada y una resolution method reconocida.
+11. Un fuzzy candidate nunca se convierte en seed sin promoverse antes al catalogo verificado.
+12. El mismo snapshot, catalogo, historiales, manual manifest y cutoff producen los mismos seeds.
+13. Agregar una fila futura al historial no cambia el seed de un cutoff anterior.
+14. Un apply con un solo blocker deja intactos todos los seeds y snapshots existentes.
+
+### Rollout de la extension
+
+- Desplegar primero la migracion aditiva y el flujo dry-run; no ejecutar replay ELO aun.
+- Ejecutar dry-run club/2025 y revisar separadamente snapshot, history, stale, no-history,
+  ambiguous y provider-error.
+- Incorporar al catalogo solo identidades comprobadas contra ClubElo y repetir dry-run.
+- Preparar un manifest manual con evidencia para los clubes restantes.
+- Ejecutar apply solo con 356/356, cero blockers y provenance completa.
+- Verificar seeds por source y auditar valores extremos antes de construir la linea temporal.
+- Recién entonces continuar el replay y recalculo definidos por 0048.

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.scoring_ports import (
+    EloSeedProvenanceDTO,
     FixtureEloRow,
     FixtureTeamStrengthDTO,
     TeamCompetitionRow,
@@ -39,9 +40,84 @@ ELO_SOURCES = (
 ELO_FINAL_FIXTURE_STATUSES = ("FT", "AET", "PEN")
 
 
+def _serialize_seed_provenance(
+    provenance: EloSeedProvenanceDTO | None,
+) -> dict:
+    if provenance is None:
+        return {}
+    values = {
+        "resolution_method": provenance.resolution_method,
+        "cutoff": provenance.cutoff.isoformat(),
+        "source_reference": provenance.source_reference,
+        "source_entity": provenance.source_entity,
+        "source_country": provenance.source_country,
+        "source_valid_from": (
+            provenance.source_valid_from.isoformat()
+            if provenance.source_valid_from
+            else None
+        ),
+        "source_valid_to": (
+            provenance.source_valid_to.isoformat()
+            if provenance.source_valid_to
+            else None
+        ),
+        "history_age_days": provenance.history_age_days,
+        "payload_sha256": provenance.payload_sha256,
+        "reason": provenance.reason,
+        "source_date": provenance.source_date.isoformat() if provenance.source_date else None,
+        "approved_by": provenance.approved_by,
+    }
+    return {key: value for key, value in values.items() if value is not None}
+
+
+def _deserialize_seed_provenance(value: dict | None) -> EloSeedProvenanceDTO | None:
+    if not value:
+        return None
+    return EloSeedProvenanceDTO(
+        resolution_method=value["resolution_method"],
+        cutoff=date.fromisoformat(value["cutoff"]),
+        source_reference=value["source_reference"],
+        source_entity=value.get("source_entity"),
+        source_country=value.get("source_country"),
+        source_valid_from=(
+            date.fromisoformat(value["source_valid_from"])
+            if value.get("source_valid_from")
+            else None
+        ),
+        source_valid_to=(
+            date.fromisoformat(value["source_valid_to"])
+            if value.get("source_valid_to")
+            else None
+        ),
+        history_age_days=value.get("history_age_days"),
+        payload_sha256=value.get("payload_sha256"),
+        reason=value.get("reason"),
+        source_date=(
+            date.fromisoformat(value["source_date"])
+            if value.get("source_date")
+            else None
+        ),
+        approved_by=value.get("approved_by"),
+    )
+
+
 class TeamStrengthRepository(TeamStrengthRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get_first_fixture_at(
+        self,
+        season: str,
+        participant_kind: str,
+    ) -> datetime | None:
+        return await self._session.scalar(
+            select(func.min(Fixture.played_at))
+            .join(Competition, Competition.id == Fixture.competition_id)
+            .where(
+                Fixture.season == season,
+                Competition.participant_kind == participant_kind,
+            )
+        )
 
     async def get_team_strength(
         self, team_id: int, season: str, competition_id: int
@@ -278,6 +354,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 effective_at=seed.effective_at,
                 source=seed.source,
                 source_reference=seed.source_reference,
+                provenance_json=_serialize_seed_provenance(seed.provenance),
                 created_at=datetime.now(timezone.utc),
             )
             .on_conflict_do_update(
@@ -287,6 +364,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                     "effective_at": seed.effective_at,
                     "source": seed.source,
                     "source_reference": seed.source_reference,
+                    "provenance_json": _serialize_seed_provenance(seed.provenance),
                     "created_at": datetime.now(timezone.utc),
                 },
             )
@@ -313,6 +391,7 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 effective_at=row.effective_at,
                 source=row.source,
                 source_reference=row.source_reference,
+                provenance=_deserialize_seed_provenance(row.provenance_json),
             )
             for row in result.scalars().all()
         ]

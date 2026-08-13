@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
-from sfa.infrastructure.providers.clubelo_provider import ClubEloProvider
+from sfa.infrastructure.providers.clubelo_provider import ClubEloProvider, _parse_csv
 
 
 @pytest.mark.parametrize(
@@ -14,10 +16,18 @@ from sfa.infrastructure.providers.clubelo_provider import ClubEloProvider
         ("PSV", "PSV Eindhoven"),
         ("Union SG", "Union St. Gilloise"),
         ("Alkmaar", "AZ Alkmaar"),
+        ("Arda", "Arda Kardzhali"),
+        ("Forest", "Nottingham Forest"),
+        ("Gijon", "Sporting Gijon"),
         ("Karabakh Agdam", "Qarabag"),
+        ("Leonesa", "Cultural Leonesa"),
+        ("Polissya Zhytomyr", "Polessya"),
+        ("Rakow", "Rak\u00f3w Cz\u0119stochowa"),
+        ("Razgrad", "Ludogorets"),
         ("RFS", "R\u012bgas FS"),
         ("Sheffield Weds", "Sheffield Wednesday"),
         ("St Gillis", "Union St. Gilloise"),
+        ("Steaua", "FCSB"),
         ("Wolfsburg", "VfL Wolfsburg"),
         ("Zrinjski Mostar", "Zrinjski"),
     ],
@@ -65,3 +75,23 @@ def test_resolve_team_name_rejects_superficial_similarity(
     unrelated_sfa_name: str,
 ) -> None:
     assert ClubEloProvider().resolve_team_name(source_name, [unrelated_sfa_name]) is None
+
+
+def test_parse_csv_preserves_authoritative_validity_interval() -> None:
+    rows = _parse_csv(
+        "Rank,Club,Country,Level,Elo,From,To\n"
+        "1,Cardiff,ENG,2,1434.11,2025-05-29,2025-07-05\n"
+    )
+
+    assert len(rows) == 1
+    assert rows[0].valid_from == date(2025, 5, 29)
+    assert rows[0].valid_to == date(2025, 7, 5)
+
+
+def test_history_identity_requires_verified_clubelo_identifier_and_country() -> None:
+    identity = ClubEloProvider().get_history_identity("SSV Jahn Regensburg")
+
+    assert identity is not None
+    assert identity.clubelo_identifier == "Regensburg"
+    assert identity.expected_country == "GER"
+    assert ClubEloProvider().get_history_identity("Lincoln") is None

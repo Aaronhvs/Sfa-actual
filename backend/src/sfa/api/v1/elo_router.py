@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.api.v1.schemas.elo_schemas import (
+    ClubEloSeedResolutionSchema,
     ManualNationalTeamEloSchema,
     NationalTeamEloCoverageResponse,
     NationalTeamEloCoverageRowSchema,
@@ -52,27 +53,54 @@ async def seed_clubelo(
                 team_name=entry.team_name,
                 elo_raw=entry.elo_raw,
                 reason=entry.reason,
+                source_reference=entry.source_reference,
+                source_date=entry.source_date,
+                approved_by=entry.approved_by,
             )
             for entry in body.manual_entries or []
         ],
+        dry_run=body.dry_run,
     )
     if result.status == "failed":
         await db.rollback()
-        status_code = 422 if result.unmatched else 503
+        status_code = 503 if result.provider_error else 422
         raise HTTPException(
             status_code=status_code,
             detail={
                 "error": result.error,
                 "matched": result.matched,
                 "unmatched": result.unmatched,
+                "coverage_pct": result.coverage_pct,
+                "source_counts": result.source_counts,
+                "history_requests": result.history_requests,
+                "blockers": result.blockers,
+                "resolutions": [resolution.__dict__ for resolution in result.resolutions],
             },
         )
-    await db.commit()
+    if not body.dry_run:
+        await db.commit()
     return SeedClubEloResponse(
         date_str=result.date_str,
         season=result.season,
         matched=result.matched,
+        cutoff=result.cutoff,
+        total_teams=result.total_teams,
         unmatched=result.unmatched,
+        coverage_pct=result.coverage_pct,
+        source_counts=result.source_counts,
+        history_requests=result.history_requests,
+        blockers=result.blockers,
+        resolutions=[
+            ClubEloSeedResolutionSchema(
+                team_name=row.team_name,
+                status=row.status,
+                elo_raw=row.elo_raw,
+                source=row.source,
+                blocker=row.blocker,
+            )
+            for row in result.resolutions
+        ],
+        dry_run=result.dry_run,
         status=result.status,
         error=result.error,
     )

@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -7,19 +8,39 @@ class ManualClubEloSchema(BaseModel):
     team_name: str
     elo_raw: float = Field(gt=0)
     reason: str = Field(min_length=3, max_length=255)
+    source_reference: str = Field(min_length=3, max_length=255)
+    source_date: date
+    approved_by: str = Field(min_length=2, max_length=100)
 
 
 class SeedClubEloRequest(BaseModel):
     date_str: str
     season: str
     manual_entries: list[ManualClubEloSchema] | None = None
+    dry_run: bool = True
+
+
+class ClubEloSeedResolutionSchema(BaseModel):
+    team_name: str
+    status: str
+    elo_raw: float | None
+    source: str | None
+    blocker: str | None
 
 
 class SeedClubEloResponse(BaseModel):
     date_str: str
     season: str
     matched: int
+    cutoff: date | None
+    total_teams: int
     unmatched: list[str]
+    coverage_pct: float
+    source_counts: dict[str, int]
+    history_requests: int
+    blockers: list[str]
+    resolutions: list[ClubEloSeedResolutionSchema]
+    dry_run: bool
     status: str
     error: str | None
 

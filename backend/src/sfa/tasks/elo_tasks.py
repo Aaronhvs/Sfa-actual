@@ -137,7 +137,7 @@ async def _run_seed(date_str: str, season: str) -> None:
             provider=ClubEloProvider(),
             calculator=EloCalculatorService(),
         )
-        result = await use_case.execute(date_str=date_str, season=season)
+        result = await use_case.execute(date_str=date_str, season=season, dry_run=False)
         if result.status == "completed":
             await session.commit()
         else:

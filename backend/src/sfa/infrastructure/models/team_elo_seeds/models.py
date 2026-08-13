@@ -1,4 +1,5 @@
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from sfa.infrastructure.database import Base
@@ -15,6 +16,7 @@ class TeamEloSeed(Base):
     effective_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
     source: Mapped[str] = mapped_column(String(30), nullable=False)
     source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provenance_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (

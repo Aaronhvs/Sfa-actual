@@ -19,6 +19,9 @@
 - [x] `tests/repositories/test_fixture_score_backfill_repository.py` - seleccion y escritura aislada de marcadores.
 - [x] `specs/refactor/0048-temporal-elo-m1/decisions.md` - auditoria y decisiones arquitectonicas.
 - [x] `specs/refactor/0048-temporal-elo-m1/plan.md` - contrato exhaustivo de implementacion.
+- [ ] `migrations/0049_clubelo_historical_seed_provenance.sql` - agrega provenance JSONB sin reescribir la migracion 0048 ya desplegada.
+- [ ] `tests/repositories/test_team_elo_seed_provenance_repository.py` - round-trip y validacion de evidencia estructurada.
+- [ ] `tests/api/test_elo_router.py` - contrato dry-run/apply, reportes y traduccion 422/503 del seed de clubes.
 
 ## Archivos a modificar
 
@@ -46,6 +49,129 @@
 - [ ] `tests/use_cases/test_team_snapshot_repositories.py` - comprobar que scoring usa fixture snapshots, no terminal season strength.
 - [ ] `tests/use_cases/test_calculate_scores_for_rules_version.py` - comprobar M1 temporal y calculation details auditables.
 - [ ] `http/elo.http` - documentar seed, coverage, dry-run/replay y errores bloqueantes del endpoint existente.
+
+## Extension 0048-A - Historial individual de ClubElo
+
+### Fase A0 - Contrato y baseline verificable
+
+- [ ] Registrar como baseline operativo el dry-run 2025 con 356 equipos requeridos, 258 resueltos por snapshot y 98 unmatched; completado cuando el artefacto conserva fecha, cutoff y lista completa.
+- [ ] Confirmar desde fixtures que el cutoff club/2025 es exactamente el dia UTC anterior al primer fixture del pool; completado cuando la consulta y el valor esperado quedan en el reporte de rollout.
+- [ ] Capturar ejemplos reales de CSV diario e individual con columnas `Rank,Club,Country,Level,Elo,From,To`; completado cuando los fixtures de test no inventan un contrato distinto al provider.
+- [ ] Clasificar los 98 equipos como alias verificado, historial ausente, historial stale, identidad ambigua o manual requerido; completado cuando ninguno queda solo bajo la etiqueta generica `unmatched`.
+- [ ] Registrar el riesgo de transporte HTTP de ClubElo y confirmar que no existe HTTPS funcional en el entorno de rollout; completado cuando la decision operativa referencia allowlist y checksum.
+
+### Fase A1 - Port y DTOs de integracion
+
+- [ ] Agregar `ClubEloRatingDTO` frozen con club, country, level, elo, valid_from y valid_to; completado cuando application no importa `ClubEloEntry` desde infrastructure.
+- [ ] Agregar `ClubEloSourceDTO` frozen con source reference, fetched_at, payload SHA-256 y ratings; completado cuando snapshot e historial usan el mismo envelope.
+- [ ] Agregar `ClubEloIdentityDTO` frozen con nombre SFA, identificador ClubElo y pais esperado; completado cuando una identidad individual no se representa con un dict unidireccional.
+- [ ] Agregar `EloSeedProvenanceDTO` frozen con resolution method, identidad, intervalo, age, locator y checksum; completado cuando `TeamEloSeedDTO` transporta evidencia sin JSON infra-specific.
+- [ ] Agregar `ClubEloSeedResolutionDTO` frozen con status y blocker por equipo; completado cuando el use case puede reportar snapshot/history/manual/unresolved/stale/ambiguous/provider_error.
+- [ ] Definir `ClubEloProviderPort` con operaciones de snapshot e historiales individuales; completado cuando `SeedClubEloUseCase` recibe el Protocol tipado y no una dependencia sin tipo.
+- [ ] Mantener HTTP, CSV y retry semantics fuera de application; completado cuando el port no expone `httpx.Response`, texto CSV ni excepciones de la libreria HTTP.
+- [ ] Actualizar todos los Fakes que implementan los ports completos; completado cuando `isinstance(fake, ClubEloProviderPort)` es valido donde se use runtime checking.
+
+### Fase A2 - Identidad autoritativa
+
+- [ ] Reemplazar el mapa unidireccional por registros bidireccionales univocos con `sfa_team_name`, `clubelo_identifier` y `expected_country`; completado cuando cada identificador registrado apunta a un solo equipo SFA.
+- [ ] Migrar aliases actuales comprobados al catalogo sin agregar similitudes especulativas; completado cuando cada alta tiene fixture de test con pais esperado.
+- [ ] Resolver snapshot por exact match, normalizacion unica o alias verificado; completado cuando dos candidatos normalizados iguales producen `ambiguous` y no el primero de la lista.
+- [ ] Exigir identificador explicito y pais para abrir un historial individual; completado cuando nombres ambiguos como `Lincoln` no generan request automatico sin registro.
+- [ ] Convertir fuzzy matching en sugerencia de auditoria solamente; completado cuando ningun resultado fuzzy incrementa matched ni crea un seed.
+- [ ] Validar que club y country de la respuesta individual coinciden con la identidad registrada; completado cuando un country mismatch genera blocker.
+- [ ] Rechazar redirects fuera de `api.clubelo.com` y percent-encodear el path; completado con tests de URL y redirect hostil.
+
+### Fase A3 - Seleccion historica y antiguedad
+
+- [ ] Parsear `From` y `To` del snapshot y del historial como fechas obligatorias; completado cuando una fecha invalida clasifica el payload como provider-invalid.
+- [ ] Filtrar filas a ELO positivo, `From <= To` y `From <= cutoff`; completado cuando una fila futura nunca es candidata.
+- [ ] Elegir deterministicamente la fila con mayor `From`; completado cuando el orden del CSV no altera el resultado.
+- [ ] Deduplicar filas con el mismo `From` solo si identidad, country, ELO y `To` son identicos; completado cuando valores conflictivos retornan `ambiguous`.
+- [ ] Calcular `history_age_days = max(0, cutoff - To)`; completado con casos de intervalo vigente, fila anterior y fecha limite.
+- [ ] Aceptar `exact_at_cutoff` cuando `From <= cutoff <= To`; completado cuando queda source `clubelo_history` y age 0.
+- [ ] Aceptar `prior_carry_forward` entre 1 y 365 dias; completado cuando queda source `clubelo_history_prior` y el age exacto persiste.
+- [ ] Aceptar exactamente 365 dias y bloquear 366; completado con dos tests de frontera independientes.
+- [ ] Fijar `max_staleness_days=365` como constante inclusiva de application; completado cuando no existe override por request, settings o environment.
+- [ ] Cubrir el corte operativo 2025-07-07: Cardiff, Eldense y Regensburg con gap 2 aceptados; completado cuando quedan `clubelo_history_prior`.
+- [ ] Cubrir el corte operativo 2025-07-07: Concarneau, Rostock, Huddersfield y Wehen con gap 367 rechazados; completado cuando quedan `stale` y cero writes.
+- [ ] Cubrir el corte operativo 2025-07-07: Sochaux, Wigan y Sandhausen con gap 737 rechazados; completado cuando quedan `stale` y cero writes.
+- [ ] Rechazar un historial vacio o sin fila elegible como `no_history`; completado cuando puede pasar al fallback manual sin inventar ELO.
+- [ ] Mantener el limite 365 dentro de la policy de application y fuera del request/settings; completado cuando el caller no puede ampliarlo.
+- [ ] Probar no-future-leakage agregando filas posteriores al mismo historial; completado cuando el seed para el cutoff permanece identico.
+
+### Fase A4 - Fallback manual auditable
+
+- [ ] Extender `ManualClubEloEntry` y schema con `source_reference`, `source_date` y `approved_by`; completado cuando los cinco campos de evidencia son validados antes de provider writes.
+- [ ] Rechazar source_date posterior al cutoff, team_name ajeno al pool, valor no positivo y evidencia vacia; completado con un test por blocker.
+- [ ] Rechazar manual entries duplicadas para el mismo equipo; completado cuando el resultado es determinista e independiente del orden.
+- [ ] Aplicar manual entries solo a equipos aun irresueltos; completado cuando un manual no reemplaza snapshot ni historial.
+- [ ] Etiquetar siempre la procedencia manual como `manual_override`; completado cuando no existe ruta que la persista como `clubelo_snapshot` o `clubelo_history`.
+- [ ] Incluir reason, source_reference, source_date y approved_by en provenance; completado con round-trip repository.
+
+### Fase A5 - Persistencia de provenance
+
+- [ ] Crear migracion 0049 aditiva con `team_elo_seeds.provenance_json JSONB NOT NULL DEFAULT '{}'`; completado cuando aplica sobre una DB que ya tiene 0048 y preserva filas existentes.
+- [ ] Agregar check DB `jsonb_typeof(provenance_json) = 'object'`; completado cuando un valor no objeto es rechazado.
+- [ ] Actualizar modelo SQLAlchemy y DTO de seed sin exponer JSONB a application; completado cuando repository serializa y reconstruye `EloSeedProvenanceDTO`.
+- [ ] Persistir para ClubElo resolution method, entity, country, valid interval, age, cutoff, locator y SHA-256; completado cuando ninguna clave requerida falta en un seed nuevo.
+- [ ] Mantener `effective_at` como cutoff y no sustituirlo por `From` o `To`; completado con test de persistencia.
+- [ ] Mantener `source_reference` como locator corto y provenance como evidencia estructurada; completado cuando ambos valores coinciden con el mismo recurso.
+- [ ] Considerar invalido para el nuevo gate todo seed de club legacy con provenance vacia; completado cuando coverage lo reporta y obliga a re-seed.
+- [ ] No aplicar requisitos ClubElo a seeds `national_team`; completado cuando las pruebas nacionales existentes siguen pasando sin metadata de club.
+- [ ] Documentar rollback de 0049 como drop exclusivo de la nueva columna/check; completado sin alterar seeds, snapshots ni columnas de fixture de 0048.
+
+### Fase A6 - Orquestacion fail-closed
+
+- [ ] Agregar al repository port la lectura de la fecha del primer fixture por season/participant_kind; completado cuando el use case deriva el cutoff sin ORM.
+- [ ] Exigir que `date_str` coincida con `first_fixture_date - 1 day`; completado cuando un cutoff distinto retorna blocker con expected/received.
+- [ ] Validar request, cutoff y manual manifest antes de la primera llamada externa; completado cuando input invalido realiza cero requests.
+- [ ] Resolver primero el snapshot y consultar historial solo para ausentes con identidad verificada; completado cuando un match diario realiza cero history requests.
+- [ ] Deduplicar history requests por identificador y limitar concurrencia a 5; completado cuando el fake registra max concurrency <=5 y una llamada por identifier.
+- [ ] Permitir un retry acotado para timeout, 429 y 5xx, respetando `Retry-After` acotado; completado cuando el segundo fallo retorna provider_error sin loop adicional.
+- [ ] No reintentar 404 ni CSV vacio; completado cuando ambos se clasifican no_history en una sola llamada.
+- [ ] Completar todas las lecturas y validaciones antes del primer upsert; completado cuando un blocker tardio deja `upserted_seeds` y `upserted_elos` vacios.
+- [ ] Exigir cero blockers y 100% coverage para apply; completado cuando 355/356 no escribe ninguna fila.
+- [ ] Mantener commit/rollback exclusivamente en router/task; completado cuando el use case no importa session ni llama commit.
+- [ ] Verificar que una excepcion durante persistencia revierte seeds y proyecciones en integration test; completado cuando el estado anterior permanece intacto.
+
+### Fase A7 - Contrato admin y observabilidad
+
+- [ ] Agregar `dry_run: bool = True` a `SeedClubEloRequest`; completado cuando omitir el campo realiza cero escrituras.
+- [ ] Exigir `dry_run=false` explicito para apply; completado cuando el caso HTTP apply persiste solo con cobertura completa.
+- [ ] Extender response con cutoff, total, coverage_pct, counts por source, history_requests, blockers y resolutions; completado cuando los 98 ausentes pueden diagnosticarse sin logs internos.
+- [ ] Traducir coverage/manual/stale/ambiguous a HTTP 422; completado con tests parametrizados del router.
+- [ ] Traducir timeout/429/5xx/payload invalido a HTTP 503; completado sin perder el blocker report.
+- [ ] Mantener log resumen sin payloads completos: season, cutoff, dry_run, totals por source y blockers; completado cuando no se imprimen manual evidence ni CSV completos.
+- [ ] Actualizar `http/elo.http` con dry-run, apply, history, stale, no-history y manual evidence; completado cuando cada caso declara el resultado esperado.
+- [ ] Conservar el endpoint existente `/api/v1/admin/elo/seed`; completado cuando no aparece un router paralelo para history.
+
+### Fase A8 - Tests y gates de calidad
+
+- [ ] Extender `tests/providers/test_clubelo_provider.py` con parsing de intervalos, checksum, URL encoding, pais, redirects y errores HTTP; completado cuando no requiere red real.
+- [ ] Extender `tests/use_cases/test_seed_clubelo.py` con precedencia snapshot/history/manual y todos los estados de resolution; completado usando Fakes completos, no MagicMock.
+- [ ] Agregar test de snapshot valido que gana sobre history y manual; completado cuando el ELO diario es el unico persistido.
+- [ ] Agregar test de history exact-at-cutoff y prior de 365 dias; completado cuando source y provenance difieren correctamente.
+- [ ] Agregar tests de 366 dias, future-only, country mismatch, duplicate conflict y no-history; completado cuando todos bloquean apply sin writes.
+- [ ] Agregar test de provider failure despues de varios history successes; completado cuando no queda seed parcial.
+- [ ] Agregar test de dry-run con 100% coverage; completado cuando reporta completed/dry-run y realiza cero writes.
+- [ ] Agregar test repository de round-trip para provenance ClubElo y manual; completado cuando todos los campos sobreviven escritura/lectura.
+- [ ] Ejecutar pruebas enfocadas de provider, seed use case, repository y router; completado con todos los casos nuevos en verde.
+- [ ] Ejecutar `pytest tests/`; completado sin regresiones, incluidas las pruebas de national-team ELO.
+- [ ] Ejecutar `flake8 src/ tests/`, `isort --check-only src/ tests/` y `git diff --check`; completado con exit code 0 en los tres gates.
+
+### Fase A9 - Rollout 2025
+
+- [ ] Desplegar 0049 y el nuevo flujo sin ejecutar replay; completado cuando schema y API health estan verificados.
+- [ ] Ejecutar dry-run club/2025 sin manual manifest; completado cuando el reporte suma exactamente 356 resolutions.
+- [ ] Revisar cada history match con identifier, country, From, To, age y ELO; completado cuando todos tienen aprobacion o vuelven a blocker.
+- [ ] Promover al catalogo solo aliases comprobados y repetir dry-run; completado cuando no quedan fuzzy matches tratados como autoridad.
+- [ ] Preparar manifest manual para no-history/stale restantes con evidencia y aprobador; completado cuando cada entry satisface el schema nuevo.
+- [ ] Ejecutar dry-run con manifest y exigir 356/356, 100% coverage y cero blockers; completado antes de cualquier apply.
+- [ ] Ejecutar apply una sola vez con el mismo cutoff y manifest aprobados; completado cuando la respuesta conserva los mismos hashes y conteos del dry-run.
+- [ ] Consultar `team_elo_seeds` y verificar 356 seeds club con provenance no vacia; completado cuando el total por source coincide con la respuesta apply.
+- [ ] Auditar ELO min/max, histories de mayor age y todos los manual overrides; completado cuando no hay outlier sin evidencia.
+- [ ] Ejecutar dos dry-runs posteriores y comparar seeds propuestos; completado cuando valores, source y provenance son deterministas.
+- [ ] Continuar con replay temporal y recalc de 0048 solo despues de cerrar los gates anteriores; completado cuando no existe ejecucion ELO anticipada.
 
 ## Checklist de implementacion
 
@@ -171,7 +297,7 @@
 - [ ] Ejecutar `isort --check-only src/ tests/`.
 - [ ] Ejecutar `git diff --check`.
 
-## Agent Routing Brief
+## Domain routing assessment
 
 **DDD Designer needed:** no
 
@@ -208,3 +334,26 @@ fuera de 0048 y requiere una nueva decision de dominio.
 - Cada M1 puede rastrearse a dos snapshots pre-match, un seed y un marcador oficial.
 - El replay completo es atomico, determinista e idempotente.
 - El detalle de jugador muestra valores coherentes con la linea temporal persistida.
+
+## Agent Routing Brief
+
+**DDD Designer needed:** no
+
+La extension no agrega una entidad futbolistica, aggregate, multiplicador ni formula. Formaliza
+el port de ClubElo, DTOs frozen de integracion, una policy temporal de seed y provenance tecnica.
+El implementador principal debe trabajar en este orden: domain ports/DTOs, provider, use case,
+repository/migration, router/schemas y tests. Ningun paso puede introducir acceso HTTP en
+application ni SQLAlchemy fuera de infrastructure.
+
+**Routing recomendado:**
+
+- Backend/hexagonal: fases A1, A3, A4 y A6.
+- Infrastructure/provider: fase A2 y limites HTTP de A6.
+- Database/repository: fase A5.
+- API/admin: fase A7.
+- QA/operations: fases A0, A8 y A9.
+
+Si durante implementacion se propone estimar ELO por liga, pais, rival, division o promedio de
+otros clubes, detener el trabajo: eso introduce una nueva politica futbolistica de baseline,
+queda fuera de 0048-A y requiere Architecture Engineer mas DDD Designer. El unico fallback
+permitido aqui es el manifest manual explicito con evidencia.

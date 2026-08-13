@@ -100,6 +100,65 @@ class ManualClubEloEntry:
     team_name: str
     elo_raw: float
     reason: str
+    source_reference: str
+    source_date: date
+    approved_by: str
+
+
+@dataclass(frozen=True)
+class ClubEloRatingDTO:
+    club_name: str
+    country: str
+    level: int
+    elo: float
+    valid_from: date | None = None
+    valid_to: date | None = None
+
+
+@dataclass(frozen=True)
+class ClubEloSourceDTO:
+    source_reference: str
+    fetched_at: datetime
+    payload_sha256: str
+    ratings: tuple[ClubEloRatingDTO, ...]
+
+
+@dataclass(frozen=True)
+class ClubEloIdentityDTO:
+    sfa_team_name: str
+    clubelo_identifier: str
+    expected_country: str
+
+
+@dataclass(frozen=True)
+class EloSeedProvenanceDTO:
+    resolution_method: str
+    cutoff: date
+    source_reference: str
+    source_entity: str | None = None
+    source_country: str | None = None
+    source_valid_from: date | None = None
+    source_valid_to: date | None = None
+    history_age_days: int | None = None
+    payload_sha256: str | None = None
+    reason: str | None = None
+    source_date: date | None = None
+    approved_by: str | None = None
+
+
+@runtime_checkable
+class ClubEloProviderPort(Protocol):
+    async def fetch_snapshot(self, date_str: str) -> ClubEloSourceDTO: ...
+
+    async def fetch_history(self, clubelo_identifier: str) -> ClubEloSourceDTO: ...
+
+    def get_history_identity(self, sfa_team_name: str) -> ClubEloIdentityDTO | None: ...
+
+    def resolve_team_name(
+        self,
+        clubelo_name: str,
+        sfa_team_names: list[str],
+    ) -> str | None: ...
 
 
 @dataclass(frozen=True)
@@ -140,6 +199,7 @@ class TeamEloSeedDTO:
     effective_at: datetime
     source: str
     source_reference: str | None = None
+    provenance: EloSeedProvenanceDTO | None = None
 
 
 @dataclass(frozen=True)
@@ -261,6 +321,12 @@ class PlayerEventScoreRepositoryPort(Protocol):
 
 @runtime_checkable
 class TeamStrengthRepositoryPort(Protocol):
+    async def get_first_fixture_at(
+        self,
+        season: str,
+        participant_kind: str,
+    ) -> datetime | None: ...
+
     async def get_team_strength(
         self, team_id: int, season: str, competition_id: int
     ) -> float | None: ...

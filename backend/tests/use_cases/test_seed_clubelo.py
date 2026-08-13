@@ -1,7 +1,11 @@
+from datetime import date, datetime, timezone
+
 import pytest
 
 from sfa.application.use_cases.seed_clubelo import SeedClubEloUseCase
 from sfa.domain.scoring_ports import (
+    ClubEloIdentityDTO,
+    ClubEloSourceDTO,
     FixtureEloRow,
     ManualClubEloEntry,
     TeamCompetitionRow,
@@ -20,6 +24,9 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
         self.active_competitions = {10: [3]}
         self.upserted_elos: list[dict] = []
         self.upserted_seeds = []
+
+    async def get_first_fixture_at(self, season, participant_kind):
+        return datetime(int(season), 8, 2, tzinfo=timezone.utc)
 
     async def get_team_strength(self, team_id, season, competition_id):
         return None
@@ -88,19 +95,45 @@ class FakeTeamStrengthRepository(TeamStrengthRepositoryPort):
 
 
 class FakeClubEloProvider:
-    def __init__(self, entries=None, error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        entries=None,
+        error: Exception | None = None,
+        histories=None,
+        identities=None,
+    ) -> None:
         self.entries = entries or []
         self.error = error
+        self.histories = histories or {}
+        self.identities = identities or {}
 
     async def fetch_snapshot(self, date_str):
         if self.error is not None:
             raise self.error
-        return self.entries
+        return _source(self.entries, f"snapshot:{date_str}")
+
+    async def fetch_history(self, clubelo_identifier):
+        return _source(
+            self.histories.get(clubelo_identifier, []),
+            f"history:{clubelo_identifier}",
+        )
+
+    def get_history_identity(self, sfa_team_name):
+        return self.identities.get(sfa_team_name)
 
     def resolve_team_name(self, clubelo_name, sfa_team_names):
         if clubelo_name == "Man City" and "Manchester City" in sfa_team_names:
             return "Manchester City"
         return clubelo_name if clubelo_name in sfa_team_names else None
+
+
+def _source(entries, reference):
+    return ClubEloSourceDTO(
+        source_reference=reference,
+        fetched_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        payload_sha256="a" * 64,
+        ratings=tuple(entries),
+    )
 
 
 @pytest.mark.anyio
@@ -111,7 +144,7 @@ async def test_seed_known_team_writes_elo_entry():
     ])
     use_case = SeedClubEloUseCase(repo, provider, EloCalculatorService())
 
-    result = await use_case.execute("2024-08-01", "2024")
+    result = await use_case.execute("2024-08-01", "2024", dry_run=False)
 
     assert result.status == "completed"
     assert result.matched == 1
@@ -133,7 +166,7 @@ async def test_seed_reports_participating_sfa_team_without_external_match():
     ])
     use_case = SeedClubEloUseCase(repo, provider, EloCalculatorService())
 
-    result = await use_case.execute("2024-08-01", "2024")
+    result = await use_case.execute("2024-08-01", "2024", dry_run=False)
 
     assert result.matched == 0
     assert result.unmatched == ["Manchester City"]
@@ -149,7 +182,7 @@ async def test_seed_processes_participating_club_regardless_of_external_level():
     ])
     use_case = SeedClubEloUseCase(repo, provider, EloCalculatorService())
 
-    result = await use_case.execute("2024-08-01", "2024")
+    result = await use_case.execute("2024-08-01", "2024", dry_run=False)
 
     assert result.matched == 1
     assert result.unmatched == []
@@ -173,13 +206,17 @@ async def test_seed_accepts_explicit_auditable_override_for_unmatched_club():
                 team_name="Manchester City",
                 elo_raw=1940.0,
                 reason="Verified ClubElo history",
+                source_reference="ops://approved/1",
+                source_date=date(2025, 7, 31),
+                approved_by="admin",
             )
         ],
+        dry_run=False,
     )
 
     assert result.status == "completed"
     assert repo.upserted_seeds[0].source == "manual_override"
-    assert repo.upserted_seeds[0].source_reference == "Verified ClubElo history"
+    assert repo.upserted_seeds[0].source_reference == "ops://approved/1"
 
 
 @pytest.mark.anyio
@@ -192,3 +229,64 @@ async def test_seed_provider_error_returns_failed_result():
 
     assert result.status == "failed"
     assert result.error == "clubelo down"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "history_age_days, expected_status",
+    [(365, "completed"), (366, "failed")],
+)
+async def test_seed_history_staleness_boundary(
+    history_age_days: int,
+    expected_status: str,
+) -> None:
+    repo = FakeTeamStrengthRepository()
+    cutoff = date(2024, 8, 1)
+    valid_to = cutoff.fromordinal(cutoff.toordinal() - history_age_days)
+    identity = ClubEloIdentityDTO("Manchester City", "Man City", "ENG")
+    provider = FakeClubEloProvider(
+        histories={
+            "Man City": [
+                ClubEloEntry(
+                    club_name="Man City",
+                    country="ENG",
+                    level=1,
+                    elo=1900.0,
+                    valid_from=date(2020, 1, 1),
+                    valid_to=valid_to,
+                )
+            ]
+        },
+        identities={"Manchester City": identity},
+    )
+
+    result = await SeedClubEloUseCase(
+        repo,
+        provider,
+        EloCalculatorService(),
+    ).execute("2024-08-01", "2024")
+
+    assert result.status == expected_status
+    if expected_status == "completed":
+        assert result.source_counts == {"clubelo_history_prior": 1}
+    else:
+        assert "366 days old" in result.blockers[0]
+
+
+@pytest.mark.anyio
+async def test_seed_dry_run_never_writes_with_full_coverage() -> None:
+    repo = FakeTeamStrengthRepository()
+    provider = FakeClubEloProvider([
+        ClubEloEntry(club_name="Man City", country="ENG", level=1, elo=1950.0)
+    ])
+
+    result = await SeedClubEloUseCase(
+        repo,
+        provider,
+        EloCalculatorService(),
+    ).execute("2024-08-01", "2024")
+
+    assert result.status == "completed"
+    assert result.dry_run is True
+    assert repo.upserted_seeds == []
+    assert repo.upserted_elos == []

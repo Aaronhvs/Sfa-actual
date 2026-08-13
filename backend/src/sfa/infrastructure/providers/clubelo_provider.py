@@ -1,17 +1,27 @@
+import asyncio
 import csv
 import difflib
+import hashlib
 import io
 import re
 import unicodedata
-from dataclasses import dataclass
+from datetime import date, datetime, timezone
+from urllib.parse import quote
 
 import httpx
+
+from sfa.domain.scoring_ports import (
+    ClubEloIdentityDTO,
+    ClubEloRatingDTO,
+    ClubEloSourceDTO,
+)
 
 CLUBELO_BASE_URL = "http://api.clubelo.com"
 
 CLUBELO_NAME_MAP: dict[str, str] = {
     "AEK": "AEK Athens FC",
     "Alkmaar": "AZ Alkmaar",
+    "Arda": "Arda Kardzhali",
     "Ararat": "Ararat-Armenia",
     "Beer-Sheva": "Hapoel Beer Sheva",
     "Bueyueksehir": "Ba\u015fak\u015fehir",
@@ -29,6 +39,7 @@ CLUBELO_NAME_MAP: dict[str, str] = {
     "Kuopio": "KuPS",
     "Larnaca": "AEK Larnaca",
     "Lech": "Lech Poznan",
+    "Leonesa": "Cultural Leonesa",
     "Levski": "Levski Sofia",
     "Lincoln": "Lincoln Red Imps FC",
     "M Tel Aviv": "Maccabi Tel Aviv",
@@ -37,19 +48,25 @@ CLUBELO_NAME_MAP: dict[str, str] = {
     "Neman Grodno": "Neman",
     "Omonia": "Omonia Nicosia",
     "Paphos": "Pafos",
+    "Polissya Zhytomyr": "Polessya",
     "RFS": "R\u012bgas FS",
     "Rapid Wien": "Rapid Vienna",
     "Rijeka": "HNK Rijeka",
+    "Rakow": "Rak\u00f3w Cz\u0119stochowa",
+    "Razgrad": "Ludogorets",
     "Santander": "Racing Santander",
     "Shamrock": "Shamrock Rovers",
     "Sheffield Weds": "Sheffield Wednesday",
     "SS Virtus": "Virtus",
     "St Gillis": "Union St. Gilloise",
+    "Steaua": "FCSB",
     "Trnava": "Spartak Trnava",
     "Vardar": "Vardar Skopje",
     "Wolfsberg": "Wolfsberger AC",
     "Young Boys": "BSC Young Boys",
     "Zrinjski Mostar": "Zrinjski",
+    "Forest": "Nottingham Forest",
+    "Gijon": "Sporting Gijon",
     "Bielefeld": "Arminia Bielefeld",
     "Bayern": "Bayern München",
     "Basel": "FC Basel 1893",
@@ -171,24 +188,66 @@ CLUBELO_NAME_MAP: dict[str, str] = {
 }
 
 
-@dataclass(frozen=True)
-class ClubEloEntry:
-    club_name: str
-    country: str
-    level: int
-    elo: float
+ClubEloEntry = ClubEloRatingDTO
+
+CLUBELO_HISTORY_IDENTITIES: dict[str, ClubEloIdentityDTO] = {
+    "Cardiff": ClubEloIdentityDTO("Cardiff", "Cardiff", "ENG"),
+    "Eldense": ClubEloIdentityDTO("Eldense", "Eldense", "ESP"),
+    "SSV Jahn Regensburg": ClubEloIdentityDTO(
+        "SSV Jahn Regensburg",
+        "Regensburg",
+        "GER",
+    ),
+}
 
 
 class ClubEloProvider:
     def __init__(self, timeout: float = 30.0) -> None:
         self._timeout = timeout
 
-    async def fetch_snapshot(self, date_str: str) -> list[ClubEloEntry]:
-        url = f"{CLUBELO_BASE_URL}/{date_str}"
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-        return _parse_csv(response.text)
+    async def fetch_snapshot(self, date_str: str) -> ClubEloSourceDTO:
+        return await self._fetch_source(date_str)
+
+    async def fetch_history(self, clubelo_identifier: str) -> ClubEloSourceDTO:
+        return await self._fetch_source(quote(clubelo_identifier, safe=""))
+
+    def get_history_identity(self, sfa_team_name: str) -> ClubEloIdentityDTO | None:
+        return CLUBELO_HISTORY_IDENTITIES.get(sfa_team_name)
+
+    async def _fetch_source(self, path: str) -> ClubEloSourceDTO:
+        url = f"{CLUBELO_BASE_URL}/{path}"
+        last_exc: Exception | None = None
+        async with httpx.AsyncClient(
+            timeout=self._timeout,
+            follow_redirects=False,
+        ) as client:
+            for attempt in range(2):
+                try:
+                    response = await client.get(url)
+                    if response.is_redirect:
+                        raise RuntimeError("ClubElo redirects are not allowed")
+                    if response.status_code == 404:
+                        payload = response.content
+                    else:
+                        response.raise_for_status()
+                        payload = response.content
+                    return ClubEloSourceDTO(
+                        source_reference=url,
+                        fetched_at=datetime.now(timezone.utc),
+                        payload_sha256=hashlib.sha256(payload).hexdigest(),
+                        ratings=tuple(_parse_csv(response.text)),
+                    )
+                except (httpx.TimeoutException, httpx.HTTPStatusError) as exc:
+                    last_exc = exc
+                    retryable = (
+                        isinstance(exc, httpx.TimeoutException)
+                        or exc.response.status_code == 429
+                        or exc.response.status_code >= 500
+                    )
+                    if not retryable or attempt == 1:
+                        raise
+                    await asyncio.sleep(2)
+        raise RuntimeError("ClubElo request failed") from last_exc
 
     def resolve_team_name(self, clubelo_name: str, sfa_team_names: list[str]) -> str | None:
         candidates = list(dict.fromkeys((
@@ -265,19 +324,27 @@ def _unique_lookup(values: list[str], normalizer) -> dict[str, str]:
     return lookup
 
 
-def _parse_csv(text: str) -> list[ClubEloEntry]:
+def _parse_csv(text: str) -> list[ClubEloRatingDTO]:
     reader = csv.DictReader(io.StringIO(text))
-    entries: list[ClubEloEntry] = []
+    entries: list[ClubEloRatingDTO] = []
     for row in reader:
         try:
             entries.append(
-                ClubEloEntry(
+                ClubEloRatingDTO(
                     club_name=row["Club"],
                     country=row["Country"],
                     level=int(row["Level"]),
                     elo=float(row["Elo"]),
+                    valid_from=_parse_date(row.get("From")),
+                    valid_to=_parse_date(row.get("To")),
                 )
             )
         except (KeyError, ValueError):
             continue
     return entries
+
+
+def _parse_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    return date.fromisoformat(value)
