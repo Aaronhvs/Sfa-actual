@@ -581,7 +581,8 @@
 .cmp-player__rank {
   grid-column: 2;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 1rem;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gold);
@@ -711,12 +712,13 @@
 }
 
 .cmp-momentum {
+  display: grid;
+  gap: 10px;
   margin-bottom: 48px;
-  overflow: hidden;
+  overflow: visible;
   padding: 0;
-  border: 1px solid var(--border-sub);
-  border-radius: 8px;
-  background: #080808;
+  border: 0;
+  background: transparent;
 }
 
 .cmp-momentum__header {
@@ -725,7 +727,9 @@
   justify-content: space-between;
   gap: 20px;
   padding: 18px 22px;
-  border-bottom: 1px solid var(--border-sub);
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  background: #080808;
   text-align: left;
 }
 
@@ -733,7 +737,8 @@
   display: block;
   margin-bottom: 4px;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.66rem;
+  font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -751,7 +756,7 @@
 }
 
 .cmp-momentum h2 {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
 }
 
 .cmp-momentum__legend {
@@ -760,7 +765,7 @@
   justify-content: flex-end;
   gap: 7px;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   color: var(--text);
 }
 
@@ -768,7 +773,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 8px;
+  padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: rgba(255,255,255,0.025);
@@ -786,8 +791,11 @@
 
 .cmp-momentum__chart-wrap {
   position: relative;
+  overflow: hidden;
   min-height: 280px;
   padding: 20px 16px 28px;
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
   background: #050505;
 }
 
@@ -840,7 +848,7 @@
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   color: var(--text-dim);
 }
 
@@ -863,14 +871,17 @@
   align-items: center;
   gap: 18px;
   min-height: 42px;
-  padding: 11px 20px;
-  border-bottom: 1px solid var(--border-sub);
+  padding: 13px 20px;
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  background: #080808;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   color: var(--text-dim);
 }
 
 .cmp-momentum__readout strong {
+  font-size: 0.76rem;
   color: var(--text);
 }
 
@@ -881,15 +892,22 @@
 
 .cmp-momentum__halves--season {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .cmp-momentum__halves > div {
   display: grid;
-  grid-template-columns: 60px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label label"
+    "value points";
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 6px 12px;
   min-width: 0;
   padding: 16px 20px;
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  background: #080808;
 }
 
 .cmp-momentum__halves > div + div {
@@ -897,29 +915,37 @@
 }
 
 .cmp-momentum__halves--season > div {
-  grid-template-columns: minmax(72px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .cmp-momentum__halves--season > div + div {
-  border-top: 0;
+  border-top: 1px solid var(--border-sub);
   border-left: 1px solid var(--border-sub);
 }
 
 .cmp-momentum__halves span,
 .cmp-momentum__halves small {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--text-faint);
+  font-size: 0.66rem;
+  color: var(--text-dim);
+}
+
+.cmp-momentum__halves span {
+  grid-area: label;
+}
+
+.cmp-momentum__halves small {
+  grid-area: points;
 }
 
 .cmp-momentum__halves strong {
-  overflow: hidden;
+  grid-area: value;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.12rem;
   font-weight: 700;
-  text-overflow: ellipsis;
   text-transform: uppercase;
-  white-space: nowrap;
   color: var(--text);
 }
 
@@ -1280,18 +1306,18 @@
   }
 
   .cmp-momentum__halves > div {
-    grid-template-columns: 54px minmax(0, 1fr) auto;
-    padding: 14px 4px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px 10px;
   }
 
   .cmp-momentum__halves > div + div {
     border-top: 1px solid var(--border-sub);
-    border-left: 0;
+    border-left: 1px solid var(--border-sub);
   }
 
   .cmp-momentum__halves--season > div + div {
     border-top: 1px solid var(--border-sub);
-    border-left: 0;
+    border-left: 1px solid var(--border-sub);
   }
 
   .cmp-stat-grid,
