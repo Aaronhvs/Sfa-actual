@@ -867,22 +867,73 @@
 }
 
 .cmp-momentum__readout {
-  display: flex;
-  align-items: center;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) repeat(2, minmax(0, 1fr));
+  gap: 0;
   min-height: 42px;
-  padding: 13px 20px;
+  padding: 0;
   border: 1px solid var(--border-sub);
   border-radius: 8px;
   background: #080808;
+}
+
+.cmp-momentum__readout > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px 18px;
+}
+
+.cmp-momentum__readout > div + div {
+  border-left: 1px solid var(--border-sub);
+}
+
+.cmp-momentum__readout span {
+  overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--text-dim);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text);
 }
 
 .cmp-momentum__readout strong {
-  font-size: 0.76rem;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
   color: var(--text);
+}
+
+.cmp-momentum__readout-month span {
+  color: var(--text-dim);
+}
+
+.cmp-momentum__readout-player--a {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.cmp-momentum__readout-player--a span,
+.cmp-momentum__peak--a span,
+.cmp-momentum__peak--a small {
+  color: var(--gold);
+}
+
+.cmp-momentum__readout-player--b {
+  box-shadow: inset 3px 0 0 var(--cmp-blue);
+}
+
+.cmp-momentum__readout-player--b span,
+.cmp-momentum__peak--b span,
+.cmp-momentum__peak--b small {
+  color: var(--cmp-blue);
 }
 
 .cmp-momentum__halves {
@@ -926,8 +977,9 @@
 .cmp-momentum__halves span,
 .cmp-momentum__halves small {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  color: var(--text-dim);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .cmp-momentum__halves span {
@@ -936,6 +988,7 @@
 
 .cmp-momentum__halves small {
   grid-area: points;
+  font-size: 0.74rem;
 }
 
 .cmp-momentum__halves strong {
@@ -947,6 +1000,18 @@
   font-weight: 700;
   text-transform: uppercase;
   color: var(--text);
+}
+
+.cmp-momentum__peak--a {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.cmp-momentum__peak--b {
+  box-shadow: inset 3px 0 0 var(--cmp-blue);
+}
+
+.cmp-momentum__peak--total {
+  box-shadow: inset 3px 0 0 var(--text-dim);
 }
 
 .cmp-momentum__empty {
@@ -1287,10 +1352,18 @@
   }
 
   .cmp-momentum__readout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cmp-momentum__readout-month {
+    grid-column: 1 / -1;
     align-items: center;
-    flex-direction: column;
-    gap: 5px;
+    border-bottom: 1px solid var(--border-sub);
     text-align: center;
+  }
+
+  .cmp-momentum__readout > .cmp-momentum__readout-player--a {
+    border-left: 0;
   }
 
   .cmp-momentum__axis--months span:nth-child(even) {

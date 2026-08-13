@@ -107,7 +107,7 @@ function leaderText(a: number, b: number, nameA: string, nameB: string) {
 }
 
 function fmtPts(value: number) {
-  return Math.round(value).toLocaleString('es-ES')
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
 function peakMonth(months: MonthStats[], side: 'a' | 'b') {
@@ -266,27 +266,36 @@ export default function MomentumChart({
 
       {active && (
         <div className="cmp-momentum__readout" aria-live="polite">
-          <strong>{active.fullLabel}</strong>
-          <span>{nameA}: {fmtPts(active.a)} pts · {active.matchesA} PJ · {active.goalsA} G · {active.assistsA} A</span>
-          <span>{nameB}: {fmtPts(active.b)} pts · {active.matchesB} PJ · {active.goalsB} G · {active.assistsB} A</span>
+          <div className="cmp-momentum__readout-month">
+            <span>Mes seleccionado</span>
+            <strong>{active.fullLabel}</strong>
+          </div>
+          <div className="cmp-momentum__readout-player cmp-momentum__readout-player--a">
+            <span>{nameA}</span>
+            <strong>{fmtPts(active.a)} pts</strong>
+          </div>
+          <div className="cmp-momentum__readout-player cmp-momentum__readout-player--b">
+            <span>{nameB}</span>
+            <strong>{fmtPts(active.b)} pts</strong>
+          </div>
         </div>
       )}
 
       <div className="cmp-momentum__halves cmp-momentum__halves--season">
-        <div>
-          <span>Pico {nameA}</span>
+        <div className="cmp-momentum__peak cmp-momentum__peak--a">
+          <span>Mejor mes de {nameA}</span>
           <strong>{peakA.fullLabel}</strong>
           <small>{fmtPts(peakA.a)} pts</small>
         </div>
-        <div>
-          <span>Pico {nameB}</span>
+        <div className="cmp-momentum__peak cmp-momentum__peak--b">
+          <span>Mejor mes de {nameB}</span>
           <strong>{peakB.fullLabel}</strong>
           <small>{fmtPts(peakB.b)} pts</small>
         </div>
-        <div>
-          <span>Impacto en cancha</span>
+        <div className="cmp-momentum__peak cmp-momentum__peak--total">
+          <span>Mayor impacto en cancha</span>
           <strong>{leaderText(totalA, totalB, nameA, nameB)}</strong>
-          <small>{fmtPts(totalA)} · {fmtPts(totalB)} pts</small>
+          <small>{fmtPts(Math.max(totalA, totalB))} pts</small>
         </div>
       </div>
     </section>
