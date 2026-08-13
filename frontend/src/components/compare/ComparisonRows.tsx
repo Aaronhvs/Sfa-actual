@@ -16,9 +16,17 @@ export function ComparisonRow({ metric }: { metric: CompareMetric }) {
   const { label, a, b, format = defaultFormat, lowerIsBetter = false } = metric
   const aValue = a ?? 0
   const bValue = b ?? 0
-  const total = Math.abs(aValue) + Math.abs(bValue)
-  const aShare = total > 0 ? Math.round(Math.abs(aValue) / total * 100) : 50
   const comparable = a !== null && b !== null
+  const maxMagnitude = Math.max(Math.abs(aValue), Math.abs(bValue))
+  let aScale = maxMagnitude > 0 ? Math.abs(aValue) / maxMagnitude : 0
+  let bScale = maxMagnitude > 0 ? Math.abs(bValue) / maxMagnitude : 0
+  if (comparable && lowerIsBetter && aValue !== bValue) {
+    const lowerToHigherRatio = maxMagnitude > 0
+      ? Math.min(Math.abs(aValue), Math.abs(bValue)) / maxMagnitude
+      : 0
+    aScale = aValue < bValue ? 1 : lowerToHigherRatio
+    bScale = bValue < aValue ? 1 : lowerToHigherRatio
+  }
   const aWins = comparable && (lowerIsBetter ? aValue < bValue : aValue > bValue)
   const bWins = comparable && (lowerIsBetter ? bValue < aValue : bValue > aValue)
 
@@ -30,8 +38,8 @@ export function ComparisonRow({ metric }: { metric: CompareMetric }) {
       <div className="cmp-metric-row__center">
         <span className="cmp-metric-row__label">{label}</span>
         <span className="cmp-metric-row__track" aria-hidden="true">
-          <span className="cmp-metric-row__fill-a" style={{ transform: `scaleX(${aShare / 100})` }} />
-          <span className="cmp-metric-row__fill-b" style={{ transform: `scaleX(${(100 - aShare) / 100})` }} />
+          <span className="cmp-metric-row__fill-a" style={{ transform: `scaleX(${aScale})` }} />
+          <span className="cmp-metric-row__fill-b" style={{ transform: `scaleX(${bScale})` }} />
         </span>
       </div>
       <span className={`cmp-metric-row__value cmp-metric-row__value--b${bWins ? ' cmp-metric-row__value--winner' : ''}`}>

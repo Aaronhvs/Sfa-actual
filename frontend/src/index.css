@@ -1023,14 +1023,19 @@
 }
 
 .cmp-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 44px 52px;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  background: #080808;
 }
 
 .cmp-stat-section {
   min-width: 0;
-  border-top: 1px solid var(--border-sub);
+}
+
+.cmp-stat-section + .cmp-stat-section {
+  border-top: 1px solid var(--border);
 }
 
 .cmp-stat-section__header {
@@ -1038,16 +1043,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 50px;
-  padding: 12px 0;
+  min-height: 54px;
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.018);
 }
 
 .cmp-stat-section__header h2 {
-  padding-left: 8px;
-  border-left: 2px solid var(--gold);
-  font-size: 0.76rem;
+  padding-left: 10px;
+  border-left: 3px solid var(--gold);
+  font-size: 0.86rem;
   letter-spacing: 0.15em;
-  color: var(--text-dim);
+  color: var(--text);
 }
 
 .cmp-stat-section__header span {
@@ -1068,27 +1074,42 @@
 
 .cmp-metric-row {
   display: grid;
-  grid-template-columns: minmax(74px, 0.8fr) minmax(150px, 1.4fr) minmax(74px, 0.8fr);
+  grid-template-columns: minmax(110px, 0.7fr) minmax(260px, 2fr) minmax(110px, 0.7fr);
   align-items: center;
-  gap: 14px;
-  min-height: 48px;
+  gap: 20px;
+  min-height: 64px;
+  padding: 8px 20px;
   border-bottom: 1px solid var(--border-sub);
+}
+
+.cmp-stat-section:last-child .cmp-metric-row:last-child {
+  border-bottom: 0;
 }
 
 .cmp-metric-row__value {
   overflow: hidden;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.18rem;
   font-weight: 700;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-dim);
+  color: var(--text);
 }
 
-.cmp-metric-row__value--a { text-align: right; }
-.cmp-metric-row__value--b { text-align: left; }
-.cmp-metric-row__value--winner { color: var(--text); }
+.cmp-metric-row__value--a {
+  text-align: right;
+  color: var(--gold);
+}
+
+.cmp-metric-row__value--b {
+  text-align: left;
+  color: var(--cmp-blue);
+}
+
+.cmp-metric-row__value--winner {
+  font-size: 1.28rem;
+}
 
 .cmp-metric-row__center {
   display: flex;
@@ -1100,32 +1121,48 @@
 .cmp-metric-row__label {
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 0.54rem;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0.07em;
   text-align: center;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
-  color: var(--text-faint);
+  color: var(--text);
 }
 
 .cmp-metric-row__track {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: 3px;
+  gap: 3px;
+  height: 10px;
+  padding: 1px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   background: var(--surface2);
+}
+
+.cmp-metric-row__track::after {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  width: 1px;
+  content: "";
+  background: rgba(255,255,255,0.5);
 }
 
 .cmp-metric-row__fill-a,
 .cmp-metric-row__fill-b {
   display: block;
   height: 100%;
-  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 999px;
 }
 
 .cmp-metric-row__fill-a {
   transform-origin: right;
-  background: rgba(255,255,255,0.55);
+  background: var(--gold);
 }
 
 .cmp-metric-row__fill-b {
@@ -1215,12 +1252,12 @@
   }
 
   .cmp-stat-grid {
-    column-gap: 28px;
+    border-radius: 6px;
   }
 
   .cmp-metric-row {
-    grid-template-columns: minmax(64px, 0.8fr) minmax(122px, 1.4fr) minmax(64px, 0.8fr);
-    gap: 10px;
+    grid-template-columns: minmax(88px, 0.65fr) minmax(200px, 1.8fr) minmax(88px, 0.65fr);
+    gap: 14px;
   }
 }
 
@@ -1399,11 +1436,14 @@
   }
 
   .cmp-stat-grid {
-    gap: 36px;
+    border-radius: 6px;
   }
 
   .cmp-metric-row {
-    grid-template-columns: minmax(64px, 0.8fr) minmax(128px, 1.4fr) minmax(64px, 0.8fr);
+    grid-template-columns: 76px minmax(0, 1fr) 76px;
+    gap: 10px;
+    min-height: 60px;
+    padding: 8px 12px;
   }
 }
 
@@ -1448,16 +1488,16 @@
   }
 
   .cmp-metric-row {
-    grid-template-columns: minmax(58px, 0.72fr) minmax(118px, 1.5fr) minmax(58px, 0.72fr);
-    gap: 7px;
+    grid-template-columns: 68px minmax(0, 1fr) 68px;
+    gap: 8px;
   }
 
   .cmp-metric-row__value {
-    font-size: 0.96rem;
+    font-size: 1rem;
   }
 
   .cmp-metric-row__label {
-    font-size: 0.5rem;
+    font-size: 0.6rem;
   }
 }
 
