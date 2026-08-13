@@ -5,7 +5,7 @@ import hashlib
 import io
 import re
 import unicodedata
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote
 
 import httpx
@@ -17,6 +17,7 @@ from sfa.domain.scoring_ports import (
 )
 
 CLUBELO_BASE_URL = "http://api.clubelo.com"
+MAX_SNAPSHOT_LOOKBACK_DAYS = 3
 
 CLUBELO_NAME_MAP: dict[str, str] = {
     "AEK": "AEK Athens FC",
@@ -206,7 +207,20 @@ class ClubEloProvider:
         self._timeout = timeout
 
     async def fetch_snapshot(self, date_str: str) -> ClubEloSourceDTO:
-        return await self._fetch_source(date_str)
+        requested_date = date.fromisoformat(date_str)
+        last_exc: Exception | None = None
+        for offset in range(MAX_SNAPSHOT_LOOKBACK_DAYS + 1):
+            candidate = requested_date - timedelta(days=offset)
+            try:
+                source = await self._fetch_source(candidate.isoformat())
+                if source.ratings:
+                    return source
+            except (httpx.TimeoutException, httpx.HTTPStatusError) as exc:
+                last_exc = exc
+        raise RuntimeError(
+            f"No ClubElo snapshot available for {date_str} or the previous "
+            f"{MAX_SNAPSHOT_LOOKBACK_DAYS} days"
+        ) from last_exc
 
     async def fetch_history(self, clubelo_identifier: str) -> ClubEloSourceDTO:
         return await self._fetch_source(quote(clubelo_identifier, safe=""))

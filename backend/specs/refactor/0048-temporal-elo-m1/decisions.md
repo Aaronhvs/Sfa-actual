@@ -355,6 +355,9 @@ Se conserva `POST /api/v1/admin/elo/seed`; no se crea un endpoint paralelo.
 ### Limites del adapter externo
 
 - El host ClubElo es constante y no se acepta una URL arbitraria desde el request.
+- Si el snapshot exacto retorna timeout, 429 o 5xx, el adapter puede consultar como maximo los
+  tres dias anteriores. El use case acepta exclusivamente filas cuyo intervalo `From/To` cubre
+  el cutoff solicitado y persiste la URL realmente utilizada; nunca consulta una fecha futura.
 - Los identificadores se percent-encodean y no se siguen redirects fuera del host permitido.
 - Los historiales se deduplican por identificador y se consultan con concurrencia maxima de 5.
 - Timeout, 429 y 5xx permiten un unico retry acotado; 404 y CSV vacio no se reintentan.

@@ -258,6 +258,12 @@ class SeedClubEloUseCase:
     ) -> dict[str, _ResolvedSeed]:
         resolved: dict[str, _ResolvedSeed] = {}
         for entry in snapshot.ratings:
+            if (
+                entry.valid_from is None
+                or entry.valid_to is None
+                or not entry.valid_from <= cutoff <= entry.valid_to
+            ):
+                continue
             sfa_name = self._provider.resolve_team_name(entry.club_name, sfa_team_names)
             if sfa_name is None or sfa_name in resolved or entry.elo <= 0:
                 continue

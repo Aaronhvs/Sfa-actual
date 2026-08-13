@@ -136,11 +136,22 @@ def _source(entries, reference):
     )
 
 
+def _snapshot_entry(club_name, country, level, elo):
+    return ClubEloEntry(
+        club_name=club_name,
+        country=country,
+        level=level,
+        elo=elo,
+        valid_from=date(2024, 1, 1),
+        valid_to=date(2025, 12, 31),
+    )
+
+
 @pytest.mark.anyio
 async def test_seed_known_team_writes_elo_entry():
     repo = FakeTeamStrengthRepository()
     provider = FakeClubEloProvider([
-        ClubEloEntry(club_name="Man City", country="ENG", level=1, elo=1950.0)
+        _snapshot_entry("Man City", "ENG", 1, 1950.0)
     ])
     use_case = SeedClubEloUseCase(repo, provider, EloCalculatorService())
 
@@ -162,7 +173,7 @@ async def test_seed_known_team_writes_elo_entry():
 async def test_seed_reports_participating_sfa_team_without_external_match():
     repo = FakeTeamStrengthRepository()
     provider = FakeClubEloProvider([
-        ClubEloEntry(club_name="Unknown FC", country="ENG", level=1, elo=1700.0)
+        _snapshot_entry("Unknown FC", "ENG", 1, 1700.0)
     ])
     use_case = SeedClubEloUseCase(repo, provider, EloCalculatorService())
 
@@ -177,8 +188,8 @@ async def test_seed_reports_participating_sfa_team_without_external_match():
 async def test_seed_processes_participating_club_regardless_of_external_level():
     repo = FakeTeamStrengthRepository()
     provider = FakeClubEloProvider([
-        ClubEloEntry(club_name="Man City", country="ENG", level=2, elo=1950.0),
-        ClubEloEntry(club_name="Unknown B", country="ENG", level=3, elo=1600.0),
+        _snapshot_entry("Man City", "ENG", 2, 1950.0),
+        _snapshot_entry("Unknown B", "ENG", 3, 1600.0),
     ])
     use_case = SeedClubEloUseCase(repo, provider, EloCalculatorService())
 
@@ -277,7 +288,7 @@ async def test_seed_history_staleness_boundary(
 async def test_seed_dry_run_never_writes_with_full_coverage() -> None:
     repo = FakeTeamStrengthRepository()
     provider = FakeClubEloProvider([
-        ClubEloEntry(club_name="Man City", country="ENG", level=1, elo=1950.0)
+        _snapshot_entry("Man City", "ENG", 1, 1950.0)
     ])
 
     result = await SeedClubEloUseCase(
@@ -290,3 +301,27 @@ async def test_seed_dry_run_never_writes_with_full_coverage() -> None:
     assert result.dry_run is True
     assert repo.upserted_seeds == []
     assert repo.upserted_elos == []
+
+
+@pytest.mark.anyio
+async def test_snapshot_row_must_cover_the_effective_cutoff() -> None:
+    repo = FakeTeamStrengthRepository()
+    provider = FakeClubEloProvider([
+        ClubEloEntry(
+            club_name="Man City",
+            country="ENG",
+            level=1,
+            elo=1950.0,
+            valid_from=date(2024, 1, 1),
+            valid_to=date(2024, 7, 31),
+        )
+    ])
+
+    result = await SeedClubEloUseCase(
+        repo,
+        provider,
+        EloCalculatorService(),
+    ).execute("2024-08-01", "2024")
+
+    assert result.status == "failed"
+    assert result.unmatched == ["Manchester City"]

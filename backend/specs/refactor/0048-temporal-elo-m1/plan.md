@@ -83,6 +83,7 @@
 
 ### Fase A3 - Seleccion historica y antiguedad
 
+- [x] Permitir lookback de snapshot de hasta tres dias ante timeout, 429 o 5xx; completado cuando solo se aceptan filas `From <= cutoff <= To` y provenance conserva la URL real.
 - [ ] Parsear `From` y `To` del snapshot y del historial como fechas obligatorias; completado cuando una fecha invalida clasifica el payload como provider-invalid.
 - [ ] Filtrar filas a ELO positivo, `From <= To` y `From <= cutoff`; completado cuando una fila futura nunca es candidata.
 - [ ] Elegir deterministicamente la fila con mayor `From`; completado cuando el orden del CSV no altera el resultado.
