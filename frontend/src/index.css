@@ -712,19 +712,21 @@
 
 .cmp-momentum {
   margin-bottom: 48px;
-  padding: 0 0 24px;
-  border-top: 1px solid var(--border-sub);
-  border-bottom: 1px solid var(--border-sub);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  background: #080808;
 }
 
 .cmp-momentum__header {
   display: flex;
   align-items: center;
-  flex-direction: column;
-  justify-content: center;
-  gap: 24px;
-  padding: 20px 0 16px;
-  text-align: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-sub);
+  text-align: left;
 }
 
 .cmp-momentum__eyebrow {
@@ -755,22 +757,28 @@
 .cmp-momentum__legend {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 18px;
-  font-size: 0.74rem;
-  color: var(--text-dim);
+  justify-content: flex-end;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text);
 }
 
 .cmp-momentum__legend span {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.025);
 }
 
 .cmp-momentum__key {
   display: inline-block;
-  width: 16px;
-  height: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
 }
 
 .cmp-momentum__key--a { background: var(--gold); }
@@ -778,9 +786,9 @@
 
 .cmp-momentum__chart-wrap {
   position: relative;
-  min-height: 260px;
-  padding: 10px 0 26px;
-  background: var(--surface2);
+  min-height: 280px;
+  padding: 20px 16px 28px;
+  background: #050505;
 }
 
 .cmp-momentum__chart {
@@ -791,37 +799,27 @@
 }
 
 .cmp-momentum__grid {
-  stroke: rgba(255,255,255,0.05);
+  stroke: rgba(255,255,255,0.045);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
+}
+
+.cmp-momentum__grid--horizontal {
+  stroke: rgba(255,255,255,0.035);
 }
 
 .cmp-momentum__baseline {
-  stroke: rgba(255,255,255,0.3);
+  stroke: rgba(255,255,255,0.24);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-.cmp-momentum__active-line {
-  stroke: rgba(255,255,255,0.22);
-  stroke-width: 1;
-  stroke-dasharray: 4 5;
-  vector-effect: non-scaling-stroke;
+.cmp-momentum__active-column {
+  fill: rgba(255,255,255,0.035);
 }
 
-.cmp-momentum__area--a { fill: rgba(201, 168, 76, 0.26); }
-.cmp-momentum__area--b { fill: var(--cmp-blue-soft); }
-
-.cmp-momentum__line {
-  fill: none;
-  stroke-width: 2.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.cmp-momentum__line--a { stroke: var(--gold); }
-.cmp-momentum__line--b { stroke: var(--cmp-blue); }
+.cmp-momentum__bar--a { fill: var(--gold); }
+.cmp-momentum__bar--b { fill: var(--cmp-blue); }
 
 .cmp-momentum__hit {
   fill: transparent;
@@ -847,8 +845,8 @@
 }
 
 .cmp-momentum__axis--months {
-  right: 0;
-  left: 0;
+  right: 16px;
+  left: 16px;
   display: grid;
   justify-content: initial;
   text-align: center;
@@ -865,7 +863,7 @@
   align-items: center;
   gap: 18px;
   min-height: 42px;
-  padding: 10px 0;
+  padding: 11px 20px;
   border-bottom: 1px solid var(--border-sub);
   font-family: var(--font-mono);
   font-size: 0.62rem;
@@ -891,7 +889,7 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding: 16px 18px;
+  padding: 16px 20px;
 }
 
 .cmp-momentum__halves > div + div {
@@ -1245,6 +1243,7 @@
 
   .cmp-momentum__header {
     align-items: center;
+    flex-direction: column;
     gap: 12px;
     text-align: center;
   }

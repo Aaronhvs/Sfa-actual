@@ -154,10 +154,8 @@ export default function MomentumChart({
   }
 
   const pointX = (index: number) => (index + 0.5) / months.length * WIDTH
-  const pointsA = months.map((month, index) => `${pointX(index)},${BASELINE - month.a / maxValue * AMPLITUDE}`)
-  const pointsB = months.map((month, index) => `${pointX(index)},${BASELINE + month.b / maxValue * AMPLITUDE}`)
-  const areaA = `0,${BASELINE} ${pointsA.join(' ')} ${WIDTH},${BASELINE}`
-  const areaB = `0,${BASELINE} ${pointsB.join(' ')} ${WIDTH},${BASELINE}`
+  const barWidth = Math.min(46, WIDTH / months.length * 0.48)
+  const barHeight = (value: number) => value > 0 ? Math.max(3, value / maxValue * AMPLITUDE) : 0
   const peakA = peakMonth(months, 'a')
   const peakB = peakMonth(months, 'b')
   const totalA = months.reduce((sum, month) => sum + month.a, 0)
@@ -194,20 +192,51 @@ export default function MomentumChart({
               y2={HEIGHT}
             />
           ))}
-          {activeIndex !== null && (
+          {[BASELINE / 2, BASELINE + BASELINE / 2].map((y) => (
             <line
-              className="cmp-momentum__active-line"
-              x1={pointX(activeIndex)}
-              x2={pointX(activeIndex)}
-              y1="0"
-              y2={HEIGHT}
+              key={y}
+              className="cmp-momentum__grid cmp-momentum__grid--horizontal"
+              x1="0"
+              x2={WIDTH}
+              y1={y}
+              y2={y}
+            />
+          ))}
+          {activeIndex !== null && (
+            <rect
+              className="cmp-momentum__active-column"
+              x={activeIndex / months.length * WIDTH}
+              width={WIDTH / months.length}
+              y="0"
+              height={HEIGHT}
             />
           )}
           <line className="cmp-momentum__baseline" x1="0" x2={WIDTH} y1={BASELINE} y2={BASELINE} />
-          <polygon className="cmp-momentum__area cmp-momentum__area--a" points={areaA} />
-          <polyline className="cmp-momentum__line cmp-momentum__line--a" points={pointsA.join(' ')} />
-          <polygon className="cmp-momentum__area cmp-momentum__area--b" points={areaB} />
-          <polyline className="cmp-momentum__line cmp-momentum__line--b" points={pointsB.join(' ')} />
+          {months.map((month, index) => {
+            const heightA = barHeight(month.a)
+            const heightB = barHeight(month.b)
+            const x = pointX(index) - barWidth / 2
+            return (
+              <g key={month.key}>
+                <rect
+                  className="cmp-momentum__bar cmp-momentum__bar--a"
+                  x={x}
+                  y={BASELINE - heightA}
+                  width={barWidth}
+                  height={heightA}
+                  rx="3"
+                />
+                <rect
+                  className="cmp-momentum__bar cmp-momentum__bar--b"
+                  x={x}
+                  y={BASELINE}
+                  width={barWidth}
+                  height={heightB}
+                  rx="3"
+                />
+              </g>
+            )
+          })}
           {months.map((month, index) => (
             <rect
               key={month.key}
