@@ -1,33 +1,104 @@
 import { useMemo, useState } from 'react'
-import type { PlayerEvent } from '../../types'
+import type { PlayerFixture } from '../../types'
 
-const BUCKET_SIZE = 5
-const BUCKET_COUNT = 18
 const WIDTH = 1000
 const HEIGHT = 250
 const BASELINE = HEIGHT / 2
 const AMPLITUDE = 94
 
-interface Bucket {
-  start: number
-  end: number
+interface MonthStats {
+  key: string
+  shortLabel: string
+  fullLabel: string
   a: number
   b: number
+  matchesA: number
+  matchesB: number
+  goalsA: number
+  goalsB: number
+  assistsA: number
+  assistsB: number
 }
 
-function bucketEvents(events: PlayerEvent[]) {
-  const buckets = Array.from({ length: BUCKET_COUNT }, () => 0)
-  for (const event of events) {
-    if (event.event_type === 'stats' || event.minute <= 0 || event.pts <= 0) continue
-    const minute = Math.min(event.minute, 90)
-    const index = Math.min(BUCKET_COUNT - 1, Math.floor((minute - 1) / BUCKET_SIZE))
-    buckets[index] += event.pts
+interface FixtureMonthStats {
+  points: number
+  matches: number
+  goals: number
+  assists: number
+}
+
+function monthKey(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function dateFromMonthKey(key: string) {
+  const [year, month] = key.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, 1))
+}
+
+function fixtureDate(fixture: PlayerFixture) {
+  const date = new Date(fixture.played_at)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function aggregateFixtures(fixtures: PlayerFixture[]) {
+  const months = new Map<string, FixtureMonthStats>()
+  for (const fixture of fixtures) {
+    const date = fixtureDate(fixture)
+    if (!date) continue
+    const key = monthKey(date)
+    const current = months.get(key) ?? { points: 0, matches: 0, goals: 0, assists: 0 }
+    current.points += fixture.sfa_pts
+    current.matches += 1
+    current.goals += (fixture.breakdown?.goal?.count ?? 0) + (fixture.breakdown?.goal_penalty?.count ?? 0)
+    current.assists += fixture.breakdown?.assist?.count ?? 0
+    months.set(key, current)
   }
-  return buckets
+  return months
 }
 
-function sumRange(values: number[], start: number, end: number) {
-  return values.slice(start, end).reduce((sum, value) => sum + value, 0)
+function monthRange(fixturesA: PlayerFixture[], fixturesB: PlayerFixture[]) {
+  const dates = [...fixturesA, ...fixturesB]
+    .map(fixtureDate)
+    .filter((date): date is Date => date !== null)
+  if (dates.length === 0) return []
+
+  const first = new Date(Math.min(...dates.map((date) => date.getTime())))
+  const last = new Date(Math.max(...dates.map((date) => date.getTime())))
+  const cursor = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1))
+  const end = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), 1))
+  const keys: string[] = []
+
+  while (cursor <= end) {
+    keys.push(monthKey(cursor))
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1)
+  }
+  return keys
+}
+
+function buildMonths(fixturesA: PlayerFixture[], fixturesB: PlayerFixture[]): MonthStats[] {
+  const statsA = aggregateFixtures(fixturesA)
+  const statsB = aggregateFixtures(fixturesB)
+  return monthRange(fixturesA, fixturesB).map((key) => {
+    const date = dateFromMonthKey(key)
+    const a = statsA.get(key) ?? { points: 0, matches: 0, goals: 0, assists: 0 }
+    const b = statsB.get(key) ?? { points: 0, matches: 0, goals: 0, assists: 0 }
+    return {
+      key,
+      shortLabel: new Intl.DateTimeFormat('es-ES', { month: 'short', timeZone: 'UTC' })
+        .format(date).replace('.', '').toUpperCase(),
+      fullLabel: new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+        .format(date),
+      a: a.points,
+      b: b.points,
+      matchesA: a.matches,
+      matchesB: b.matches,
+      goalsA: a.goals,
+      goalsB: b.goals,
+      assistsA: a.assists,
+      assistsB: b.assists,
+    }
+  })
 }
 
 function leaderText(a: number, b: number, nameA: string, nameB: string) {
@@ -39,60 +110,65 @@ function fmtPts(value: number) {
   return Math.round(value).toLocaleString('es-ES')
 }
 
+function peakMonth(months: MonthStats[], side: 'a' | 'b') {
+  return months.reduce((peak, month) => month[side] > peak[side] ? month : peak, months[0])
+}
+
 export default function MomentumChart({
-  eventsA,
-  eventsB,
+  fixturesA,
+  fixturesB,
   nameA,
   nameB,
 }: {
-  eventsA: PlayerEvent[]
-  eventsB: PlayerEvent[]
+  fixturesA: PlayerFixture[]
+  fixturesB: PlayerFixture[]
   nameA: string
   nameB: string
 }) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const valuesA = useMemo(() => bucketEvents(eventsA), [eventsA])
-  const valuesB = useMemo(() => bucketEvents(eventsB), [eventsB])
-  const maxValue = Math.max(0, ...valuesA, ...valuesB)
+  const months = useMemo(() => buildMonths(fixturesA, fixturesB), [fixturesA, fixturesB])
+  const defaultIndex = useMemo(() => {
+    if (months.length === 0) return null
+    return months.reduce((best, month, index) => (
+      month.a + month.b > months[best].a + months[best].b ? index : best
+    ), 0)
+  }, [months])
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const activeIndex = hoveredIndex !== null && hoveredIndex < months.length
+    ? hoveredIndex
+    : defaultIndex
+  const active = activeIndex === null ? null : months[activeIndex]
+  const maxValue = Math.max(0, ...months.flatMap((month) => [month.a, month.b]))
 
-  const buckets: Bucket[] = valuesA.map((a, index) => ({
-    start: index * BUCKET_SIZE,
-    end: index === BUCKET_COUNT - 1 ? 90 : (index + 1) * BUCKET_SIZE,
-    a,
-    b: valuesB[index],
-  }))
-
-  if (maxValue === 0) {
+  if (months.length === 0 || maxValue === 0) {
     return (
       <section className="cmp-momentum">
         <header className="cmp-momentum__header">
           <div>
-            <span className="cmp-momentum__eyebrow">Momento del partido</span>
-            <h2>Impacto por minuto</h2>
+            <span className="cmp-momentum__eyebrow">Ritmo de la temporada</span>
+            <h2>Impacto SFA por mes</h2>
           </div>
         </header>
-        <div className="cmp-momentum__empty">No hay eventos minutados con puntos en este periodo.</div>
+        <div className="cmp-momentum__empty">No hay partidos con puntos en este periodo.</div>
       </section>
     )
   }
 
-  const pointX = (index: number) => index / (BUCKET_COUNT - 1) * WIDTH
-  const pointsA = valuesA.map((value, index) => `${pointX(index)},${BASELINE - value / maxValue * AMPLITUDE}`)
-  const pointsB = valuesB.map((value, index) => `${pointX(index)},${BASELINE + value / maxValue * AMPLITUDE}`)
+  const pointX = (index: number) => (index + 0.5) / months.length * WIDTH
+  const pointsA = months.map((month, index) => `${pointX(index)},${BASELINE - month.a / maxValue * AMPLITUDE}`)
+  const pointsB = months.map((month, index) => `${pointX(index)},${BASELINE + month.b / maxValue * AMPLITUDE}`)
   const areaA = `0,${BASELINE} ${pointsA.join(' ')} ${WIDTH},${BASELINE}`
   const areaB = `0,${BASELINE} ${pointsB.join(' ')} ${WIDTH},${BASELINE}`
-  const earlyA = sumRange(valuesA, 0, 9)
-  const earlyB = sumRange(valuesB, 0, 9)
-  const lateA = sumRange(valuesA, 9, BUCKET_COUNT)
-  const lateB = sumRange(valuesB, 9, BUCKET_COUNT)
-  const active = activeIndex === null ? null : buckets[activeIndex]
+  const peakA = peakMonth(months, 'a')
+  const peakB = peakMonth(months, 'b')
+  const totalA = months.reduce((sum, month) => sum + month.a, 0)
+  const totalB = months.reduce((sum, month) => sum + month.b, 0)
 
   return (
     <section className="cmp-momentum">
       <header className="cmp-momentum__header">
         <div>
-          <span className="cmp-momentum__eyebrow">Momento del partido</span>
-          <h2>Impacto SFA por minuto</h2>
+          <span className="cmp-momentum__eyebrow">Ritmo de la temporada</span>
+          <h2>Impacto SFA por mes</h2>
         </div>
         <div className="cmp-momentum__legend" aria-label="Leyenda">
           <span><i className="cmp-momentum__key cmp-momentum__key--a" />{nameA}, arriba</span>
@@ -106,67 +182,82 @@ export default function MomentumChart({
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           preserveAspectRatio="none"
           role="img"
-          aria-label={`Impacto SFA por minuto de ${nameA} y ${nameB}`}
+          aria-label={`Impacto SFA mensual de ${nameA} y ${nameB}`}
         >
-          {[0, 15, 30, 45, 60, 75, 90].map((minute) => (
+          {months.map((month, index) => (
             <line
-              key={minute}
+              key={month.key}
               className="cmp-momentum__grid"
-              x1={minute / 90 * WIDTH}
-              x2={minute / 90 * WIDTH}
+              x1={pointX(index)}
+              x2={pointX(index)}
               y1="0"
               y2={HEIGHT}
             />
           ))}
+          {activeIndex !== null && (
+            <line
+              className="cmp-momentum__active-line"
+              x1={pointX(activeIndex)}
+              x2={pointX(activeIndex)}
+              y1="0"
+              y2={HEIGHT}
+            />
+          )}
           <line className="cmp-momentum__baseline" x1="0" x2={WIDTH} y1={BASELINE} y2={BASELINE} />
           <polygon className="cmp-momentum__area cmp-momentum__area--a" points={areaA} />
           <polyline className="cmp-momentum__line cmp-momentum__line--a" points={pointsA.join(' ')} />
           <polygon className="cmp-momentum__area cmp-momentum__area--b" points={areaB} />
           <polyline className="cmp-momentum__line cmp-momentum__line--b" points={pointsB.join(' ')} />
-          {buckets.map((bucket, index) => (
+          {months.map((month, index) => (
             <rect
-              key={bucket.start}
+              key={month.key}
               className="cmp-momentum__hit"
-              x={index / BUCKET_COUNT * WIDTH}
+              x={index / months.length * WIDTH}
               y="0"
-              width={WIDTH / BUCKET_COUNT}
+              width={WIDTH / months.length}
               height={HEIGHT}
               tabIndex={0}
               role="button"
-              aria-label={`Minutos ${bucket.start + 1} a ${bucket.end}: ${nameA} ${fmtPts(bucket.a)} puntos, ${nameB} ${fmtPts(bucket.b)} puntos`}
-              onMouseEnter={() => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
-              onFocus={() => setActiveIndex(index)}
-              onBlur={() => setActiveIndex(null)}
+              aria-label={`${month.fullLabel}: ${nameA} ${fmtPts(month.a)} puntos, ${nameB} ${fmtPts(month.b)} puntos`}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              onFocus={() => setHoveredIndex(index)}
+              onBlur={() => setHoveredIndex(null)}
             />
           ))}
         </svg>
-        <div className="cmp-momentum__axis" aria-hidden="true">
-          {[0, 15, 30, 45, 60, 75, '90+'].map((minute) => <span key={minute}>{minute}'</span>)}
+        <div
+          className="cmp-momentum__axis cmp-momentum__axis--months"
+          style={{ gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }}
+          aria-hidden="true"
+        >
+          {months.map((month) => <span key={month.key}>{month.shortLabel}</span>)}
         </div>
       </div>
 
-      <div className="cmp-momentum__readout" aria-live="polite">
-        {active
-          ? <>
-              <strong>Min. {active.start + 1}–{active.end}</strong>
-              <span>{nameA}: {fmtPts(active.a)} pts</span>
-              <span>{nameB}: {fmtPts(active.b)} pts</span>
-            </>
-          : <span>Enfoca o pasa sobre un tramo para ver el detalle.</span>
-        }
-      </div>
+      {active && (
+        <div className="cmp-momentum__readout" aria-live="polite">
+          <strong>{active.fullLabel}</strong>
+          <span>{nameA}: {fmtPts(active.a)} pts · {active.matchesA} PJ · {active.goalsA} G · {active.assistsA} A</span>
+          <span>{nameB}: {fmtPts(active.b)} pts · {active.matchesB} PJ · {active.goalsB} G · {active.assistsB} A</span>
+        </div>
+      )}
 
-      <div className="cmp-momentum__halves">
+      <div className="cmp-momentum__halves cmp-momentum__halves--season">
         <div>
-          <span>0–45'</span>
-          <strong>{leaderText(earlyA, earlyB, nameA, nameB)}</strong>
-          <small>{fmtPts(earlyA)} · {fmtPts(earlyB)} pts</small>
+          <span>Pico {nameA}</span>
+          <strong>{peakA.fullLabel}</strong>
+          <small>{fmtPts(peakA.a)} pts</small>
         </div>
         <div>
-          <span>46–90+'</span>
-          <strong>{leaderText(lateA, lateB, nameA, nameB)}</strong>
-          <small>{fmtPts(lateA)} · {fmtPts(lateB)} pts</small>
+          <span>Pico {nameB}</span>
+          <strong>{peakB.fullLabel}</strong>
+          <small>{fmtPts(peakB.b)} pts</small>
+        </div>
+        <div>
+          <span>Impacto en cancha</span>
+          <strong>{leaderText(totalA, totalB, nameA, nameB)}</strong>
+          <small>{fmtPts(totalA)} · {fmtPts(totalB)} pts</small>
         </div>
       </div>
     </section>

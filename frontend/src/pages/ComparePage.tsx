@@ -337,8 +337,8 @@ function CompareResults({ data }: { data: CompareResponse }) {
     <div className="cmp-results">
       <ComparisonSummary data={data} />
       <MomentumChart
-        eventsA={data.player_a_analytics.events}
-        eventsB={data.player_b_analytics.events}
+        fixturesA={data.player_a_analytics.fixtures}
+        fixturesB={data.player_b_analytics.fixtures}
         nameA={data.player_a.name}
         nameB={data.player_b.name}
       />

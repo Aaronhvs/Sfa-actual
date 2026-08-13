@@ -802,6 +802,13 @@
   vector-effect: non-scaling-stroke;
 }
 
+.cmp-momentum__active-line {
+  stroke: rgba(255,255,255,0.22);
+  stroke-width: 1;
+  stroke-dasharray: 4 5;
+  vector-effect: non-scaling-stroke;
+}
+
 .cmp-momentum__area--a { fill: rgba(201, 168, 76, 0.26); }
 .cmp-momentum__area--b { fill: var(--cmp-blue-soft); }
 
@@ -839,6 +846,20 @@
   color: var(--text-dim);
 }
 
+.cmp-momentum__axis--months {
+  right: 0;
+  left: 0;
+  display: grid;
+  justify-content: initial;
+  text-align: center;
+}
+
+.cmp-momentum__axis--months span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
 .cmp-momentum__readout {
   display: flex;
   align-items: center;
@@ -860,6 +881,10 @@
   grid-template-columns: 1fr 1fr;
 }
 
+.cmp-momentum__halves--season {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .cmp-momentum__halves > div {
   display: grid;
   grid-template-columns: 60px minmax(0, 1fr) auto;
@@ -870,6 +895,15 @@
 }
 
 .cmp-momentum__halves > div + div {
+  border-left: 1px solid var(--border-sub);
+}
+
+.cmp-momentum__halves--season > div {
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr) auto;
+}
+
+.cmp-momentum__halves--season > div + div {
+  border-top: 0;
   border-left: 1px solid var(--border-sub);
 }
 
@@ -1234,7 +1268,15 @@
     text-align: center;
   }
 
+  .cmp-momentum__axis--months span:nth-child(even) {
+    visibility: hidden;
+  }
+
   .cmp-momentum__halves {
+    grid-template-columns: 1fr;
+  }
+
+  .cmp-momentum__halves--season {
     grid-template-columns: 1fr;
   }
 
@@ -1244,6 +1286,11 @@
   }
 
   .cmp-momentum__halves > div + div {
+    border-top: 1px solid var(--border-sub);
+    border-left: 0;
+  }
+
+  .cmp-momentum__halves--season > div + div {
     border-top: 1px solid var(--border-sub);
     border-left: 0;
   }
