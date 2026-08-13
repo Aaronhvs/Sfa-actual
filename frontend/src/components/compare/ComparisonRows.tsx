@@ -17,33 +17,28 @@ export function ComparisonRow({ metric }: { metric: CompareMetric }) {
   const aValue = a ?? 0
   const bValue = b ?? 0
   const comparable = a !== null && b !== null
-  const maxMagnitude = Math.max(Math.abs(aValue), Math.abs(bValue))
-  let aScale = maxMagnitude > 0 ? Math.abs(aValue) / maxMagnitude : 0
-  let bScale = maxMagnitude > 0 ? Math.abs(bValue) / maxMagnitude : 0
-  if (comparable && lowerIsBetter && aValue !== bValue) {
-    const lowerToHigherRatio = maxMagnitude > 0
-      ? Math.min(Math.abs(aValue), Math.abs(bValue)) / maxMagnitude
-      : 0
-    aScale = aValue < bValue ? 1 : lowerToHigherRatio
-    bScale = bValue < aValue ? 1 : lowerToHigherRatio
-  }
+  const visualA = comparable && lowerIsBetter ? Math.abs(bValue) : Math.abs(aValue)
+  const visualB = comparable && lowerIsBetter ? Math.abs(aValue) : Math.abs(bValue)
+  const visualTotal = visualA + visualB
+  const aShare = visualTotal > 0 ? visualA / visualTotal * 100 : 50
+  const bShare = 100 - aShare
   const aWins = comparable && (lowerIsBetter ? aValue < bValue : aValue > bValue)
   const bWins = comparable && (lowerIsBetter ? bValue < aValue : bValue > aValue)
 
   return (
     <div className="cmp-metric-row">
-      <span className={`cmp-metric-row__value cmp-metric-row__value--a${aWins ? ' cmp-metric-row__value--winner' : ''}`}>
-        {a === null ? '—' : format(a)}
-      </span>
-      <div className="cmp-metric-row__center">
-        <span className="cmp-metric-row__label">{label}</span>
-        <span className="cmp-metric-row__track" aria-hidden="true">
-          <span className="cmp-metric-row__fill-a" style={{ transform: `scaleX(${aScale})` }} />
-          <span className="cmp-metric-row__fill-b" style={{ transform: `scaleX(${bScale})` }} />
+      <span className="cmp-metric-row__label">{label}</span>
+      <div className="cmp-metric-row__values">
+        <span className={`cmp-metric-row__value cmp-metric-row__value--a${aWins ? ' cmp-metric-row__value--winner' : ''}`}>
+          {a === null ? '-' : format(a)}
+        </span>
+        <span className={`cmp-metric-row__value cmp-metric-row__value--b${bWins ? ' cmp-metric-row__value--winner' : ''}`}>
+          {b === null ? '-' : format(b)}
         </span>
       </div>
-      <span className={`cmp-metric-row__value cmp-metric-row__value--b${bWins ? ' cmp-metric-row__value--winner' : ''}`}>
-        {b === null ? '—' : format(b)}
+      <span className="cmp-metric-row__track" aria-hidden="true">
+        <span className="cmp-metric-row__fill-a" style={{ width: `${aShare}%` }} />
+        <span className="cmp-metric-row__fill-b" style={{ width: `${bShare}%` }} />
       </span>
     </div>
   )
