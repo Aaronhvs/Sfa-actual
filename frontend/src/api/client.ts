@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDetailResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDashboardResponse, TournamentDetailResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -136,6 +136,23 @@ export async function fetchTournament(
   if (cached) return cached
   const data = await get<TournamentDetailResponse>(
     `/tournaments/${competitionId}?season=${encodeURIComponent(season)}`,
+  )
+  setCache(key, data)
+  return data
+}
+
+export async function fetchTournamentDashboard(
+  season?: string,
+  date?: string,
+): Promise<TournamentDashboardResponse> {
+  const q = new URLSearchParams()
+  if (season) q.set('season', season)
+  if (date) q.set('date', date)
+  const key = `tournament-dashboard:${season ?? 'latest'}:${date ?? 'nearest'}`
+  const cached = getCached<TournamentDashboardResponse>(key)
+  if (cached) return cached
+  const data = await get<TournamentDashboardResponse>(
+    `/tournaments/dashboard${q.size ? `?${q}` : ''}`,
   )
   setCache(key, data)
   return data

@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -5,13 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sfa.api.v1.schemas.tournaments import (
     TournamentCatalogResponseSchema,
     TournamentCompetitionSchema,
+    TournamentDashboardResponseSchema,
     TournamentDetailResponseSchema,
 )
 from sfa.application.use_cases.get_tournaments import (
+    GetTournamentDashboardUseCase,
     GetTournamentUseCase,
     ListTournamentsUseCase,
 )
 from sfa.core.dependencies import (
+    get_tournament_dashboard_use_case,
     get_tournament_use_case,
     get_tournaments_use_case,
 )
@@ -38,6 +42,25 @@ async def list_tournaments(
             for item in result.competitions
         ],
     )
+
+
+@router.get(
+    "/tournaments/dashboard",
+    response_model=TournamentDashboardResponseSchema,
+)
+async def get_tournament_dashboard(
+    use_case: Annotated[
+        GetTournamentDashboardUseCase,
+        Depends(get_tournament_dashboard_use_case),
+    ],
+    season: str | None = Query(default=None),
+    fixture_date: date | None = Query(default=None, alias="date"),
+) -> TournamentDashboardResponseSchema:
+    try:
+        result = await use_case.execute(season, fixture_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return TournamentDashboardResponseSchema.model_validate(result)
 
 
 @router.get(

@@ -217,6 +217,21 @@ class TournamentDetailDTO:
 
 
 @dataclass(frozen=True)
+class TournamentFixtureGroupDTO:
+    competition: TournamentCompetitionDTO
+    fixtures: tuple[TournamentFixtureDTO, ...]
+
+
+@dataclass(frozen=True)
+class TournamentDashboardDTO:
+    season: str
+    selected_date: date | None
+    previous_date: date | None
+    next_date: date | None
+    groups: tuple[TournamentFixtureGroupDTO, ...]
+
+
+@dataclass(frozen=True)
 class StandingEntryDTO:
     position: int
     team: str
@@ -408,6 +423,12 @@ class TournamentRepositoryProtocol(Protocol):
     async def get_tournament(
         self, competition_id: int, season: str,
     ) -> TournamentDetailDTO | None: ...
+
+    async def list_fixture_dates(self, season: str) -> list[date]: ...
+
+    async def get_fixture_groups(
+        self, season: str, fixture_date: date,
+    ) -> list[TournamentFixtureGroupDTO]: ...
 
 
 @runtime_checkable

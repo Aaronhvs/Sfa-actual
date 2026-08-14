@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from sqlalchemy import case, func, select
+from datetime import date
+
+from sqlalchemy import Date, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.ports import (
     TournamentCompetitionDTO,
     TournamentDetailDTO,
     TournamentFixtureDTO,
+    TournamentFixtureGroupDTO,
     TournamentStandingDTO,
     TournamentTeamDTO,
 )
@@ -16,6 +19,30 @@ from sfa.infrastructure.models.standings.models import StandingSnapshot
 from sfa.infrastructure.models.teams.models import Team
 
 FINAL_STATUSES = ("FT", "AET", "PEN")
+
+
+def _fixture_dto(row) -> TournamentFixtureDTO:
+    return TournamentFixtureDTO(
+        id=row["id"],
+        external_id=row["external_id"],
+        competition_id=row["competition_id"],
+        stage=row["stage"],
+        matchday=row["matchday"],
+        played_at=row["played_at"],
+        status=row["status"],
+        home_goals=row["home_goals"],
+        away_goals=row["away_goals"],
+        home_team=TournamentTeamDTO(
+            id=row["home_team_id"],
+            external_id=row["home_team_external_id"],
+            name=row["home_team_name"],
+        ),
+        away_team=TournamentTeamDTO(
+            id=row["away_team_id"],
+            external_id=row["away_team_external_id"],
+            name=row["away_team_name"],
+        ),
+    )
 
 
 class TournamentRepository:
@@ -115,30 +142,7 @@ class TournamentRepository:
             .order_by(Fixture.played_at, Fixture.id)
         )
         fixture_rows = (await self._session.execute(fixture_stmt)).mappings().all()
-        fixtures = tuple(
-            TournamentFixtureDTO(
-                id=row["id"],
-                external_id=row["external_id"],
-                competition_id=row["competition_id"],
-                stage=row["stage"],
-                matchday=row["matchday"],
-                played_at=row["played_at"],
-                status=row["status"],
-                home_goals=row["home_goals"],
-                away_goals=row["away_goals"],
-                home_team=TournamentTeamDTO(
-                    id=row["home_team_id"],
-                    external_id=row["home_team_external_id"],
-                    name=row["home_team_name"],
-                ),
-                away_team=TournamentTeamDTO(
-                    id=row["away_team_id"],
-                    external_id=row["away_team_external_id"],
-                    name=row["away_team_name"],
-                ),
-            )
-            for row in fixture_rows
-        )
+        fixtures = tuple(_fixture_dto(row) for row in fixture_rows)
 
         matchday = await self._session.scalar(
             select(func.max(StandingSnapshot.matchday)).where(
@@ -184,3 +188,71 @@ class TournamentRepository:
             fixtures=fixtures,
             standings=standings,
         )
+
+    async def list_fixture_dates(self, season: str) -> list[date]:
+        fixture_day = cast(Fixture.played_at, Date)
+        stmt = (
+            select(fixture_day.label("fixture_date"))
+            .join(Competition, Competition.id == Fixture.competition_id)
+            .where(
+                Fixture.season == season,
+                Competition.participant_kind == "club",
+            )
+            .distinct()
+            .order_by(fixture_day)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return list(rows)
+
+    async def get_fixture_groups(
+        self,
+        season: str,
+        fixture_date: date,
+    ) -> list[TournamentFixtureGroupDTO]:
+        competitions = {
+            item.id: item for item in await self.list_competitions(season)
+        }
+        home = Team.__table__.alias("dashboard_home_team")
+        away = Team.__table__.alias("dashboard_away_team")
+        stmt = (
+            select(
+                Fixture.id,
+                Fixture.external_id,
+                Fixture.competition_id,
+                Fixture.stage,
+                Fixture.matchday,
+                Fixture.played_at,
+                Fixture.status,
+                Fixture.home_goals,
+                Fixture.away_goals,
+                home.c.id.label("home_team_id"),
+                home.c.external_id.label("home_team_external_id"),
+                home.c.name.label("home_team_name"),
+                away.c.id.label("away_team_id"),
+                away.c.external_id.label("away_team_external_id"),
+                away.c.name.label("away_team_name"),
+            )
+            .join(home, home.c.id == Fixture.home_team_id)
+            .join(away, away.c.id == Fixture.away_team_id)
+            .join(Competition, Competition.id == Fixture.competition_id)
+            .where(
+                Fixture.season == season,
+                Competition.participant_kind == "club",
+                cast(Fixture.played_at, Date) == fixture_date,
+            )
+            .order_by(Fixture.played_at, Fixture.id)
+        )
+        rows = (await self._session.execute(stmt)).mappings().all()
+        grouped: dict[int, list[TournamentFixtureDTO]] = {}
+        for row in rows:
+            grouped.setdefault(row["competition_id"], []).append(
+                _fixture_dto(row)
+            )
+        return [
+            TournamentFixtureGroupDTO(
+                competition=competitions[competition_id],
+                fixtures=tuple(fixtures),
+            )
+            for competition_id, fixtures in grouped.items()
+            if competition_id in competitions
+        ]

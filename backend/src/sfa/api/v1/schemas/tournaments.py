@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -60,3 +60,20 @@ class TournamentDetailResponseSchema(BaseModel):
     standings_matchday: int | None
     fixtures: list[TournamentFixtureSchema]
     standings: list[TournamentStandingSchema]
+
+
+class TournamentFixtureGroupSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    competition: TournamentCompetitionSchema
+    fixtures: list[TournamentFixtureSchema]
+
+
+class TournamentDashboardResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    season: str
+    selected_date: date | None
+    previous_date: date | None
+    next_date: date | None
+    groups: list[TournamentFixtureGroupSchema]

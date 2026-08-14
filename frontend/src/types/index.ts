@@ -72,6 +72,19 @@ export interface TournamentDetailResponse {
   standings: TournamentStanding[]
 }
 
+export interface TournamentFixtureGroup {
+  competition: TournamentCompetition
+  fixtures: TournamentFixture[]
+}
+
+export interface TournamentDashboardResponse {
+  season: string
+  selected_date: string | null
+  previous_date: string | null
+  next_date: string | null
+  groups: TournamentFixtureGroup[]
+}
+
 export interface RankedPlayer {
   rank: number
   id: number

@@ -28,6 +28,14 @@ function getSeoData(pathname: string): SeoData {
     }
   }
 
+  if (pathname.startsWith('/torneos/')) {
+    return {
+      title: 'Competicion de futbol | Tabla, partidos y cruces SFA',
+      description: 'Consulta la tabla, el calendario, los resultados y los cruces de la competicion.',
+      canonicalPath: pathname,
+    }
+  }
+
   const pages: Record<string, SeoData> = {
     '/': {
       title: DEFAULT_TITLE,

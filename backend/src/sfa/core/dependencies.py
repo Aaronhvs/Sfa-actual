@@ -154,6 +154,7 @@ from sfa.application.use_cases.get_seasons import GetSeasonsUseCase
 from sfa.application.use_cases.get_standings import GetStandingsUseCase
 from sfa.application.use_cases.get_status import GetStatusUseCase
 from sfa.application.use_cases.get_tournaments import (
+    GetTournamentDashboardUseCase,
     GetTournamentUseCase,
     ListTournamentsUseCase,
 )
@@ -327,6 +328,15 @@ async def get_tournaments_use_case(
     ],
 ) -> ListTournamentsUseCase:
     return ListTournamentsUseCase(repository)
+
+
+async def get_tournament_dashboard_use_case(
+    repository: Annotated[
+        TournamentRepository,
+        Depends(get_tournament_repository),
+    ],
+) -> GetTournamentDashboardUseCase:
+    return GetTournamentDashboardUseCase(repository)
 
 
 async def get_tournament_use_case(

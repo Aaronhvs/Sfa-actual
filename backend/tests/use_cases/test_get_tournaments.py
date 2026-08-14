@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
 from sfa.application.use_cases.get_tournaments import (
+    GetTournamentDashboardUseCase,
     GetTournamentUseCase,
     ListTournamentsUseCase,
 )
@@ -12,6 +13,7 @@ from sfa.domain.ports import (
     TournamentCompetitionDTO,
     TournamentDetailDTO,
     TournamentFixtureDTO,
+    TournamentFixtureGroupDTO,
     TournamentTeamDTO,
 )
 
@@ -54,8 +56,13 @@ def _detail() -> TournamentDetailDTO:
 
 
 class FakeTournamentRepository:
-    def __init__(self, detail: TournamentDetailDTO | None = None) -> None:
+    def __init__(
+        self,
+        detail: TournamentDetailDTO | None = None,
+        dates: list[date] | None = None,
+    ) -> None:
         self.detail = detail
+        self.dates = dates or []
 
     async def resolve_latest_season(self) -> str | None:
         return "2026"
@@ -67,6 +74,19 @@ class FakeTournamentRepository:
         if competition_id == 10 and season == "2026":
             return self.detail
         return None
+
+    async def list_fixture_dates(self, season: str):
+        return self.dates if season == "2026" else []
+
+    async def get_fixture_groups(self, season: str, fixture_date: date):
+        if season != "2026" or fixture_date not in self.dates:
+            return []
+        return [
+            TournamentFixtureGroupDTO(
+                competition=_competition(),
+                fixtures=_detail().fixtures,
+            )
+        ]
 
 
 @pytest.mark.anyio
@@ -91,3 +111,48 @@ async def test_detail_returns_fixtures_and_allows_empty_standings():
 async def test_detail_rejects_competition_without_fixtures_in_season():
     with pytest.raises(ValueError, match="not found"):
         await GetTournamentUseCase(FakeTournamentRepository()).execute(99)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("today", "dates", "expected"),
+    [
+        (date(2026, 8, 15), [date(2026, 8, 15), date(2026, 8, 16)], date(2026, 8, 15)),
+        (date(2026, 8, 15), [date(2026, 8, 16), date(2026, 8, 17)], date(2026, 8, 16)),
+        (date(2026, 8, 18), [date(2026, 8, 16), date(2026, 8, 17)], date(2026, 8, 17)),
+    ],
+)
+async def test_dashboard_resolves_nearest_fixture_date(today, dates, expected):
+    result = await GetTournamentDashboardUseCase(
+        FakeTournamentRepository(dates=dates),
+        today_provider=lambda: today,
+    ).execute()
+
+    assert result.selected_date == expected
+    assert len(result.groups) == 1
+
+
+@pytest.mark.anyio
+async def test_dashboard_preserves_explicit_empty_date_and_adjacent_dates():
+    result = await GetTournamentDashboardUseCase(
+        FakeTournamentRepository(
+            dates=[date(2026, 8, 14), date(2026, 8, 16)],
+        )
+    ).execute(fixture_date=date(2026, 8, 15))
+
+    assert result.selected_date == date(2026, 8, 15)
+    assert result.previous_date == date(2026, 8, 14)
+    assert result.next_date == date(2026, 8, 16)
+    assert result.groups == ()
+
+
+@pytest.mark.anyio
+async def test_dashboard_allows_season_without_fixtures():
+    result = await GetTournamentDashboardUseCase(
+        FakeTournamentRepository(),
+    ).execute()
+
+    assert result.selected_date is None
+    assert result.previous_date is None
+    assert result.next_date is None
+    assert result.groups == ()
