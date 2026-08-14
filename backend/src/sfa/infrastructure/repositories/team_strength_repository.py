@@ -38,6 +38,7 @@ ELO_SOURCES = (
     "national_elo_v1",
 )
 ELO_FINAL_FIXTURE_STATUSES = ("FT", "AET", "PEN")
+FIXTURE_STRENGTH_INSERT_BATCH_SIZE = 1_000
 
 
 def _serialize_seed_provenance(
@@ -432,27 +433,30 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                 }
                 for snapshot in snapshots
             ]
-            stmt = pg_insert(FixtureTeamStrength).values(values)
-            await self._session.execute(
-                stmt.on_conflict_do_update(
-                    index_elements=[
-                        FixtureTeamStrength.fixture_id,
-                        FixtureTeamStrength.team_id,
-                    ],
-                    set_={
-                        "season": stmt.excluded.season,
-                        "competition_id": stmt.excluded.competition_id,
-                        "participant_kind": stmt.excluded.participant_kind,
-                        "pre_match_elo_raw": stmt.excluded.pre_match_elo_raw,
-                        "post_match_elo_raw": stmt.excluded.post_match_elo_raw,
-                        "pre_match_strength": stmt.excluded.pre_match_strength,
-                        "post_match_strength": stmt.excluded.post_match_strength,
-                        "model_version": stmt.excluded.model_version,
-                        "seed_source": stmt.excluded.seed_source,
-                        "created_at": stmt.excluded.created_at,
-                    },
+            for offset in range(0, len(values), FIXTURE_STRENGTH_INSERT_BATCH_SIZE):
+                stmt = pg_insert(FixtureTeamStrength).values(
+                    values[offset:offset + FIXTURE_STRENGTH_INSERT_BATCH_SIZE]
                 )
-            )
+                await self._session.execute(
+                    stmt.on_conflict_do_update(
+                        index_elements=[
+                            FixtureTeamStrength.fixture_id,
+                            FixtureTeamStrength.team_id,
+                        ],
+                        set_={
+                            "season": stmt.excluded.season,
+                            "competition_id": stmt.excluded.competition_id,
+                            "participant_kind": stmt.excluded.participant_kind,
+                            "pre_match_elo_raw": stmt.excluded.pre_match_elo_raw,
+                            "post_match_elo_raw": stmt.excluded.post_match_elo_raw,
+                            "pre_match_strength": stmt.excluded.pre_match_strength,
+                            "post_match_strength": stmt.excluded.post_match_strength,
+                            "model_version": stmt.excluded.model_version,
+                            "seed_source": stmt.excluded.seed_source,
+                            "created_at": stmt.excluded.created_at,
+                        },
+                    )
+                )
         await self._session.flush()
 
     async def get_team_name_id_map(

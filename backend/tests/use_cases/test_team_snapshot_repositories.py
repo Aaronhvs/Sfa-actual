@@ -212,3 +212,36 @@ async def test_replace_fixture_team_strengths_replaces_scope_and_bulk_inserts() 
     insert_sql = str(session.statements[1])
     assert "INSERT INTO fixture_team_strengths" in insert_sql
     assert "ON CONFLICT (fixture_id, team_id) DO UPDATE" in insert_sql
+
+
+@pytest.mark.anyio
+async def test_replace_fixture_team_strengths_batches_large_replay() -> None:
+    session = FakeSession([FakeResult(), FakeResult(), FakeResult()])
+    snapshots = [
+        FixtureTeamStrengthDTO(
+            fixture_id=fixture_id,
+            team_id=fixture_id,
+            season="2025",
+            competition_id=3,
+            participant_kind="club",
+            pre_match_elo_raw=1500.0,
+            post_match_elo_raw=1500.0,
+            pre_match_strength=14.29,
+            post_match_strength=14.29,
+            model_version="club_elo_v2",
+            seed_source="clubelo_snapshot",
+        )
+        for fixture_id in range(1, 1_002)
+    ]
+
+    await TeamStrengthRepository(session).replace_fixture_team_strengths(
+        "2025",
+        "club",
+        [3],
+        snapshots,
+    )
+
+    assert len(session.statements) == 3
+    assert "DELETE FROM fixture_team_strengths" in str(session.statements[0])
+    assert "INSERT INTO fixture_team_strengths" in str(session.statements[1])
+    assert "INSERT INTO fixture_team_strengths" in str(session.statements[2])
