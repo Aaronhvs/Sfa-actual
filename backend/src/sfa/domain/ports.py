@@ -168,6 +168,55 @@ class CompetitionDTO:
 
 
 @dataclass(frozen=True)
+class TournamentCompetitionDTO:
+    id: int
+    name: str
+    country: str
+    season: str
+    participant_kind: str
+    total_fixtures: int
+    completed_fixtures: int
+    upcoming_fixtures: int
+
+
+@dataclass(frozen=True)
+class TournamentTeamDTO:
+    id: int
+    external_id: int | None
+    name: str
+
+
+@dataclass(frozen=True)
+class TournamentFixtureDTO:
+    id: int
+    external_id: int
+    competition_id: int
+    stage: str
+    matchday: int | None
+    played_at: datetime
+    status: str
+    home_goals: int | None
+    away_goals: int | None
+    home_team: TournamentTeamDTO
+    away_team: TournamentTeamDTO
+
+
+@dataclass(frozen=True)
+class TournamentStandingDTO:
+    position: int
+    team: TournamentTeamDTO
+    points: int
+
+
+@dataclass(frozen=True)
+class TournamentDetailDTO:
+    competition: TournamentCompetitionDTO
+    standings_matchday: int | None
+    fixtures: tuple[TournamentFixtureDTO, ...]
+    standings: tuple[TournamentStandingDTO, ...]
+
+
+@dataclass(frozen=True)
 class StandingEntryDTO:
     position: int
     team: str
@@ -346,6 +395,19 @@ class SeasonRepositoryProtocol(Protocol):
 class CompetitionRepositoryProtocol(Protocol):
     async def get_all(self) -> list[CompetitionDTO]: ...
     async def get_by_id(self, competition_id: int) -> CompetitionDTO | None: ...
+
+
+@runtime_checkable
+class TournamentRepositoryProtocol(Protocol):
+    async def resolve_latest_season(self) -> str | None: ...
+
+    async def list_competitions(
+        self, season: str,
+    ) -> list[TournamentCompetitionDTO]: ...
+
+    async def get_tournament(
+        self, competition_id: int, season: str,
+    ) -> TournamentDetailDTO | None: ...
 
 
 @runtime_checkable

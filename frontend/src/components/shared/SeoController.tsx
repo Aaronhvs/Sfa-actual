@@ -39,10 +39,10 @@ function getSeoData(pathname: string): SeoData {
       description: DEFAULT_DESCRIPTION,
       canonicalPath: '/ranking',
     },
-    '/mundial': {
-      title: 'Mundial 2026 | Partidos, clasificación y ranking SFA',
-      description: 'Sigue los partidos, la clasificación y el ranking independiente de jugadores del Mundial 2026.',
-      canonicalPath: '/mundial',
+    '/torneos': {
+      title: 'Torneos de fútbol | Fechas, resultados, tablas y cruces',
+      description: 'Consulta fechas, resultados, clasificaciones y cruces de las competiciones de la temporada.',
+      canonicalPath: '/torneos',
     },
     '/compare': {
       title: 'Comparar jugadores de fútbol | Stats Football Award',

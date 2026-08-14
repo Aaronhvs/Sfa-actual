@@ -18,6 +18,7 @@ from .sfa_score_repository import SFAScoreRepository
 from .standing_repository import StandingRepository
 from .system_repository import SystemRepository
 from .team_strength_repository import TeamStrengthRepository
+from .tournament_repository import TournamentRepository
 from .world_cup_repository import WorldCupRepository
 
 __all__ = [
@@ -42,4 +43,5 @@ __all__ = [
     "WorldCupRepository",
     "SystemRepository",
     "TeamStrengthRepository",
+    "TournamentRepository",
 ]

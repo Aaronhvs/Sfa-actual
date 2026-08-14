@@ -17,6 +17,7 @@ from sfa.api.v1.ranking_explanations import router as ranking_explanations_route
 from sfa.api.v1.scoring_rules_router import router as scoring_rules_router
 from sfa.api.v1.seasons import router as seasons_router
 from sfa.api.v1.status import router as status_router
+from sfa.api.v1.tournaments import router as tournaments_router
 from sfa.api.v1.wc_router import router as wc_router
 from sfa.core.config import get_settings
 from sfa.infrastructure.database import AsyncSessionLocal, engine
@@ -32,6 +33,7 @@ tags_metadata = [
     {"name": "seasons", "description": "Temporadas disponibles en el sistema"},
     {"name": "players", "description": "Detalle de jugadores, eventos y fixtures"},
     {"name": "competitions", "description": "Competiciones y clasificaciones"},
+    {"name": "tournaments", "description": "Calendario, resultados, tablas y cruces"},
     {"name": "compare", "description": "Comparación head-to-head entre dos jugadores"},
     {"name": "status", "description": "Estado del sistema"},
     {"name": "health", "description": "Health check de infraestructura"},
@@ -90,6 +92,7 @@ app.include_router(ranking_explanations_router, prefix="/api/v1", tags=["ranking
 app.include_router(seasons_router, prefix="/api/v1", tags=["seasons"])
 app.include_router(players_router, prefix="/api/v1", tags=["players"])
 app.include_router(competitions_router, prefix="/api/v1", tags=["competitions"])
+app.include_router(tournaments_router, prefix="/api/v1", tags=["tournaments"])
 app.include_router(compare_router, prefix="/api/v1", tags=["compare"])
 app.include_router(status_router, prefix="/api/v1", tags=["status"])
 app.include_router(admin_router, prefix="/api/v1", tags=["admin"])

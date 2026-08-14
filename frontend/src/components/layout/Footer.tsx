@@ -85,6 +85,7 @@ export default function Footer() {
 
         <nav className="site-footer__nav" aria-label="Pie de página">
           <Link to="/ranking" className="site-footer__nav-link">Ranking</Link>
+          <Link to="/torneos" className="site-footer__nav-link">Torneos</Link>
           <Link to="/compare" className="site-footer__nav-link">Comparar</Link>
           <Link to="/metodologia" className="site-footer__nav-link">Metodología</Link>
           <Link to="/legal" className="site-footer__nav-link">Legal y privacidad</Link>

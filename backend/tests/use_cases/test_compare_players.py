@@ -187,7 +187,7 @@ async def test_compare_returns_complete_analytics_for_both_players():
     assert result.player_a_analytics.stats.shots_total == 50
     assert result.player_b_analytics.events[0].minute == 78
     assert result.player_a_analytics.fixtures[0].sfa_pts == 1800.0
-    assert all(call[3] is False for call in fixtures_uc.calls)
+    assert all(call[3] is True for call in fixtures_uc.calls)
 
 
 @pytest.mark.anyio

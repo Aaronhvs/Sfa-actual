@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDetailResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -112,6 +112,31 @@ export async function fetchCompare(playerA: number, playerB: number, scope: stri
   q.set('player_b', String(playerB))
   q.set('scope', scope)
   const data = await get<CompareResponse>(`/compare?${q.toString()}`)
+  setCache(key, data)
+  return data
+}
+
+export async function fetchTournaments(season?: string): Promise<TournamentCatalogResponse> {
+  const q = new URLSearchParams()
+  if (season) q.set('season', season)
+  const key = `tournaments:${season ?? 'latest'}`
+  const cached = getCached<TournamentCatalogResponse>(key)
+  if (cached) return cached
+  const data = await get<TournamentCatalogResponse>(`/tournaments${q.size ? `?${q}` : ''}`)
+  setCache(key, data)
+  return data
+}
+
+export async function fetchTournament(
+  competitionId: number,
+  season: string,
+): Promise<TournamentDetailResponse> {
+  const key = `tournament:${competitionId}:${season}`
+  const cached = getCached<TournamentDetailResponse>(key)
+  if (cached) return cached
+  const data = await get<TournamentDetailResponse>(
+    `/tournaments/${competitionId}?season=${encodeURIComponent(season)}`,
+  )
   setCache(key, data)
   return data
 }

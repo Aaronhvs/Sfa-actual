@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 
 const LINKS = [
   { to: '/ranking', label: 'Ranking', wc: false, soon: false },
-  { to: '/mundial', label: 'Mundial 26', wc: true, soon: false },
+  { to: '/torneos', label: 'Torneos', wc: false, soon: false },
   { to: '/teams', label: 'Equipos', wc: false, soon: false },
   { to: '/compare', label: 'Comparar', wc: false, soon: false },
   { to: '/metodologia', label: 'Metodología', wc: false },

@@ -23,6 +23,55 @@ export interface Competition {
   factor: number
 }
 
+export interface TournamentCompetition {
+  id: number
+  name: string
+  country: string
+  season: string
+  participant_kind: 'club' | 'national_team'
+  total_fixtures: number
+  completed_fixtures: number
+  upcoming_fixtures: number
+}
+
+export interface TournamentTeam {
+  id: number
+  external_id: number | null
+  name: string
+}
+
+export interface TournamentFixture {
+  id: number
+  external_id: number
+  competition_id: number
+  stage: string
+  matchday: number | null
+  played_at: string
+  status: string
+  home_goals: number | null
+  away_goals: number | null
+  home_team: TournamentTeam
+  away_team: TournamentTeam
+}
+
+export interface TournamentStanding {
+  position: number
+  team: TournamentTeam
+  points: number
+}
+
+export interface TournamentCatalogResponse {
+  season: string
+  competitions: TournamentCompetition[]
+}
+
+export interface TournamentDetailResponse {
+  competition: TournamentCompetition
+  standings_matchday: number | null
+  fixtures: TournamentFixture[]
+  standings: TournamentStanding[]
+}
+
 export interface RankedPlayer {
   rank: number
   id: number

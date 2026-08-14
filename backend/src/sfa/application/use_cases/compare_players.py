@@ -112,7 +112,7 @@ class ComparePlayersUseCase(ComparePlayersUseCaseProtocol):
         fixtures = await self._fixtures_uc.execute(
             player_id,
             season=season,
-            include_breakdown=False,
+            include_breakdown=True,
             scope=scope,
         )
         return ComparePlayerAnalytics(

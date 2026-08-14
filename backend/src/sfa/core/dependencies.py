@@ -25,6 +25,7 @@ from sfa.infrastructure.repositories import (
     StandingRepository,
     SystemRepository,
     TeamStrengthRepository,
+    TournamentRepository,
     WorldCupRepository,
 )
 
@@ -60,6 +61,12 @@ async def get_standing_repository(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StandingRepository:
     return StandingRepository(db)
+
+
+async def get_tournament_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TournamentRepository:
+    return TournamentRepository(db)
 
 
 async def get_player_event_repository(
@@ -146,6 +153,10 @@ from sfa.application.use_cases.get_ranking_explanations import GetRankingExplana
 from sfa.application.use_cases.get_seasons import GetSeasonsUseCase
 from sfa.application.use_cases.get_standings import GetStandingsUseCase
 from sfa.application.use_cases.get_status import GetStatusUseCase
+from sfa.application.use_cases.get_tournaments import (
+    GetTournamentUseCase,
+    ListTournamentsUseCase,
+)
 from sfa.application.use_cases.get_world_cup import (
     GetWcTeamProfileUseCase,
     GetWcTeamSFARankingUseCase,
@@ -307,6 +318,24 @@ async def get_standings_use_case(
     standing_repo: Annotated[StandingRepository, Depends(get_standing_repository)],
 ) -> GetStandingsUseCase:
     return GetStandingsUseCase(standing_repo)
+
+
+async def get_tournaments_use_case(
+    repository: Annotated[
+        TournamentRepository,
+        Depends(get_tournament_repository),
+    ],
+) -> ListTournamentsUseCase:
+    return ListTournamentsUseCase(repository)
+
+
+async def get_tournament_use_case(
+    repository: Annotated[
+        TournamentRepository,
+        Depends(get_tournament_repository),
+    ],
+) -> GetTournamentUseCase:
+    return GetTournamentUseCase(repository)
 
 
 async def get_status_use_case(

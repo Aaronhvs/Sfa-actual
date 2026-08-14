@@ -9,7 +9,7 @@ const PlayerPage = lazy(() => import('./pages/PlayerPage'))
 const TeamsPage = lazy(() => import('./pages/TeamsPage'))
 const ComparePage = lazy(() => import('./pages/ComparePage'))
 const MetodologiaPage = lazy(() => import('./pages/MetodologiaPage'))
-const MundialPage = lazy(() => import('./pages/MundialPage'))
+const TournamentsPage = lazy(() => import('./pages/TournamentsPage'))
 const MundialMatchPage = lazy(() => import('./pages/MundialMatchPage'))
 const MundialTeamPage = lazy(() => import('./pages/MundialTeamPage'))
 const LegalPage = lazy(() => import('./pages/LegalPage'))
@@ -37,7 +37,8 @@ export default function App() {
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/metodologia" element={<MetodologiaPage />} />
-            <Route path="/mundial" element={<MundialPage />} />
+            <Route path="/torneos" element={<TournamentsPage />} />
+            <Route path="/mundial" element={<Navigate to="/torneos" replace />} />
             <Route path="/mundial/partido/:fixtureId" element={<MundialMatchPage />} />
             <Route path="/mundial/seleccion/:teamId" element={<MundialTeamPage />} />
             <Route path="/legal" element={<LegalPage />} />
