@@ -9,6 +9,7 @@
 - [x] `tests/use_cases/test_get_tournaments.py` - resolucion de temporada, catalogo y detalle.
 - [x] `http/tournaments.http` - ejemplos de ambos endpoints y errores.
 - [x] `../frontend/src/pages/TournamentsPage.tsx` - pagina de resultados de temporada.
+- [x] `../frontend/src/utils/teamBrandColor.ts` - colores de club y fallback estable.
 
 ## Archivos a modificar
 
@@ -43,6 +44,7 @@
 - [x] Verificar hat-tricks, dobletes de gol, dobletes de asistencias y gol+asistencia.
 - [x] Aumentar numeros estadisticos, llevarlos a blanco y reducir grosor de barras.
 - [x] Desaturar los colores comparativos manteniendo contraste AA.
+- [x] Aplicar el color del equipo a barras, grafica, leyendas y acentos del jugador.
 - [x] Verificar teclado, foco, touch targets y `prefers-reduced-motion`.
 - [x] Ejecutar pruebas backend enfocadas y completas.
 - [x] Ejecutar `flake8`, `isort --check-only`, `git diff --check` y `npm run build`.

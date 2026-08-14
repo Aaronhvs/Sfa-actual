@@ -20079,8 +20079,8 @@ body.mode-tournament .main-content {
 
 /* Final comparison overrides: quieter color, stronger values, thinner bars. */
 .compare-page {
-  --compare-a: #c87870;
-  --compare-b: #579b93;
+  --compare-a: color-mix(in srgb, var(--compare-a-team, #c87870) 72%, #777);
+  --compare-b: color-mix(in srgb, var(--compare-b-team, #579b93) 72%, #777);
 }
 
 .cmp-metric-row__value,

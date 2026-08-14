@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { fetchCompare, fetchSeasons } from '../api/client'
 import MomentumChart from '../components/compare/MomentumChart'
 import PlayerPicker from '../components/compare/PlayerPicker'
@@ -13,6 +13,7 @@ import type {
   SeasonItem,
 } from '../types'
 import { seasonItemValue } from '../utils/season'
+import { teamBrandColor } from '../utils/teamBrandColor'
 
 function fmtInteger(value: number) {
   return Math.round(value).toLocaleString('es-ES')
@@ -390,9 +391,19 @@ export default function ComparePage() {
   }, [scope, selectedA?.id, selectedB?.id])
 
   const selectedCount = Number(Boolean(selectedA)) + Number(Boolean(selectedB))
+  const compareColors = {
+    '--compare-a-team': teamBrandColor(
+      data?.player_a.team ?? selectedA?.team,
+      '#c87870',
+    ),
+    '--compare-b-team': teamBrandColor(
+      data?.player_b.team ?? selectedB?.team,
+      '#579b93',
+    ),
+  } as CSSProperties
 
   return (
-    <main className="compare-page">
+    <main className="compare-page" style={compareColors}>
       <header className="cmp-page-header">
         <div>
           <span className="cmp-page-header__eyebrow">Head to head SFA</span>

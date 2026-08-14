@@ -32,7 +32,7 @@ visual mas legible y corregir los hitos por partido que hoy aparecen siempre en 
 | Separar catalogo y detalle de torneo | Devolver toda la temporada en una respuesta | Reduce payload y permite cambiar de competicion sin cargar miles de partidos. |
 | Derivar cruces desde `fixture.stage` | Crear una tabla de brackets | Los cruces ya estan representados por fixtures y fase; duplicarlos agregaria sincronizacion. |
 | Solicitar breakdown en `ComparePlayersUseCase` | Inferir hitos desde goles totales | Hat-tricks y dobletes requieren conteos por partido, ya disponibles en el repositorio. |
-| Mantener dos colores de jugador desaturados | Usar blanco para todo | La barra necesita identidad lateral, pero los valores deben priorizar legibilidad. |
+| Derivar el color lateral del equipo y desaturarlo | Mantener colores fijos por lado | Refuerza la identidad de cada jugador sin competir con los valores blancos. |
 | Redirigir `/mundial` a `/torneos` | Eliminar las rutas | Conserva enlaces previos y evita errores 404. |
 
 ## Contratos de lectura
@@ -55,3 +55,7 @@ consulta de torneos. No se modifica el dominio de scoring.
 
 Ninguna en tiempo de lectura. La ingestion existente sigue siendo responsable de cargar fixtures,
 marcadores y standings desde API-Football.
+
+Los colores del comparador se resuelven localmente a partir del nombre del equipo. Los clubes y
+selecciones reconocidos usan su color de marca; los demas reciben un fallback estable derivado del
+nombre. La interfaz mezcla el color con gris antes de aplicarlo para evitar saturacion excesiva.
