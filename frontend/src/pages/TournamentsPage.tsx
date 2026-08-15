@@ -17,7 +17,6 @@ import {
   tournamentCompetitionPriority,
   tournamentDateLabel,
   tournamentSeasonLabel,
-  usesMonochromeTournamentLogo,
 } from '../utils/tournaments'
 
 type MatchFilter = 'all' | 'live' | 'upcoming' | 'results'
@@ -48,7 +47,6 @@ function CompetitionList({ competitions, season }: {
           <Link to={`/torneos/${competition.id}?season=${season}`} key={competition.id}>
             <img
               src={tournamentCompetitionLogo(competition)}
-              className={usesMonochromeTournamentLogo(competition) ? 'is-monochrome' : undefined}
               alt=""
               loading="lazy"
             />

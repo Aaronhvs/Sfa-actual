@@ -1812,11 +1812,6 @@
   object-fit: contain;
 }
 
-.trn-leagues nav img.is-monochrome {
-  filter: grayscale(1) brightness(0) invert(1) drop-shadow(0 0 4px rgba(255, 255, 255, 0.14));
-  opacity: 0.9;
-}
-
 .trn-leagues nav span {
   overflow: hidden;
   font: 700 0.82rem/1.1 var(--font-display);
@@ -6235,6 +6230,15 @@ img { display: block; }
     min-width: 0;
     font-size: 0.56rem;
   }
+}
+
+/* Dark source artwork needs a consistent light treatment on every SFA surface. */
+img[src*="/football/leagues/2.png"],
+img[src*="/football/leagues/39.png"],
+img[src*="/football/leagues/61.png"],
+img[src*="/football/teams/85.png"] {
+  filter: grayscale(1) brightness(0) invert(1) drop-shadow(0 0 4px rgba(255, 255, 255, 0.14)) !important;
+  opacity: 0.92 !important;
 }
 
 /* ─── Responsive ─────────────────────────────────────────────── */

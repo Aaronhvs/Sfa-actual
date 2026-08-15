@@ -53,13 +53,6 @@ export function tournamentCompetitionLogo(competition: TournamentCompetition) {
     : `https://media.api-sports.io/football/leagues/${apiFootballId}.png`
 }
 
-export function usesMonochromeTournamentLogo(competition: TournamentCompetition) {
-  const name = normalizedCompetitionName(competition.name)
-  return name.includes('champions league')
-    || name.includes('premier league')
-    || name.includes('ligue 1')
-}
-
 export function tournamentDateKey(value: string | Date) {
   const date = value instanceof Date ? value : new Date(value)
   const year = date.getFullYear()
