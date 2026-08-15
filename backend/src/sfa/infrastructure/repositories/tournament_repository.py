@@ -13,6 +13,9 @@ from sfa.domain.ports import (
     TournamentStandingDTO,
     TournamentTeamDTO,
 )
+from sfa.infrastructure.models.competition_achievements.models import (
+    CompetitionAchievementModel,
+)
 from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.standings.models import StandingSnapshot
@@ -182,11 +185,40 @@ class TournamentRepository:
                 for row in rows
             )
 
+        champion_row = (
+            await self._session.execute(
+                select(
+                    Team.id.label("team_id"),
+                    Team.external_id.label("team_external_id"),
+                    Team.name.label("team_name"),
+                )
+                .join(
+                    CompetitionAchievementModel,
+                    CompetitionAchievementModel.team_id == Team.id,
+                )
+                .where(
+                    CompetitionAchievementModel.competition_id == competition_id,
+                    CompetitionAchievementModel.season == season,
+                    CompetitionAchievementModel.phase == "winner",
+                )
+                .order_by(CompetitionAchievementModel.created_at.desc())
+                .limit(1)
+            )
+        ).mappings().first()
+        champion = None
+        if champion_row is not None:
+            champion = TournamentTeamDTO(
+                id=champion_row["team_id"],
+                external_id=champion_row["team_external_id"],
+                name=champion_row["team_name"],
+            )
+
         return TournamentDetailDTO(
             competition=competition,
             standings_matchday=matchday,
             fixtures=fixtures,
             standings=standings,
+            champion=champion,
         )
 
     async def list_fixture_dates(self, season: str) -> list[date]:

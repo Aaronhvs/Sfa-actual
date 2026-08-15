@@ -70,6 +70,7 @@ export interface TournamentDetailResponse {
   standings_matchday: number | null
   fixtures: TournamentFixture[]
   standings: TournamentStanding[]
+  champion: TournamentTeam | null
 }
 
 export interface TournamentFixtureGroup {

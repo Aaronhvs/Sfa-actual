@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { fetchTournament, fetchTournaments } from '../api/client'
 import TournamentFixtureRow from '../components/tournaments/TournamentFixtureRow'
+import TournamentKnockoutBracket from '../components/tournaments/TournamentKnockoutBracket'
 import type {
   TournamentDetailResponse,
   TournamentFixture,
@@ -237,24 +238,6 @@ function MatchExplorer({ fixtures }: { fixtures: TournamentFixture[] }) {
   )
 }
 
-function Bracket({ fixtures }: { fixtures: TournamentFixture[] }) {
-  const knockout = fixtures.filter((fixture) => isTournamentKnockout(fixture.stage))
-  const stages = knockout.reduce<Map<string, TournamentFixture[]>>((groups, fixture) => {
-    groups.set(fixture.stage, [...(groups.get(fixture.stage) ?? []), fixture])
-    return groups
-  }, new Map())
-  if (stages.size === 0) {
-    return <div className="trn-state trn-state--inline">Los cruces apareceran cuando se definan las fases eliminatorias.</div>
-  }
-  return (
-    <div className="trn-bracket">
-      {[...stages.entries()].map(([stage, items]) => (
-        <section key={stage}><h3>{stage.replace(/_/g, ' ')}</h3>{items.map((fixture) => <TournamentFixtureRow fixture={fixture} key={fixture.id} />)}</section>
-      ))}
-    </div>
-  )
-}
-
 function Overview({ detail }: { detail: TournamentDetailResponse }) {
   const upcoming = detail.fixtures.filter((fixture) => !FINAL_TOURNAMENT_STATUSES.has(fixture.status)).slice(0, 8)
   return (
@@ -314,7 +297,7 @@ export default function TournamentDetailPage() {
         {view === 'overview' && <Overview detail={detail} />}
         {view === 'standings' && <StandingsTable detail={detail} />}
         {view === 'matches' && <MatchExplorer fixtures={detail.fixtures} />}
-        {view === 'bracket' && <Bracket fixtures={detail.fixtures} />}
+        {view === 'bracket' && <TournamentKnockoutBracket fixtures={detail.fixtures} champion={detail.champion} />}
       </div>
     </main>
   )

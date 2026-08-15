@@ -214,6 +214,7 @@ class TournamentDetailDTO:
     standings_matchday: int | None
     fixtures: tuple[TournamentFixtureDTO, ...]
     standings: tuple[TournamentStandingDTO, ...]
+    champion: TournamentTeamDTO | None = None
 
 
 @dataclass(frozen=True)

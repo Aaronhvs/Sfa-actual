@@ -60,6 +60,7 @@ class TournamentDetailResponseSchema(BaseModel):
     standings_matchday: int | None
     fixtures: list[TournamentFixtureSchema]
     standings: list[TournamentStandingSchema]
+    champion: TournamentTeamSchema | None = None
 
 
 class TournamentFixtureGroupSchema(BaseModel):

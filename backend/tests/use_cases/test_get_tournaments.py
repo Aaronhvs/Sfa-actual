@@ -52,6 +52,7 @@ def _detail() -> TournamentDetailDTO:
         standings_matchday=None,
         fixtures=(fixture,),
         standings=(),
+        champion=home,
     )
 
 
@@ -105,6 +106,8 @@ async def test_detail_returns_fixtures_and_allows_empty_standings():
 
     assert result.fixtures[0].status == "NS"
     assert result.standings == ()
+    assert result.champion is not None
+    assert result.champion.name == "Liverpool"
 
 
 @pytest.mark.anyio
