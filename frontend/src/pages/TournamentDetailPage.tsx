@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { fetchTournament, fetchTournaments } from '../api/client'
 import TournamentFixtureRow from '../components/tournaments/TournamentFixtureRow'
 import TournamentKnockoutBracket from '../components/tournaments/TournamentKnockoutBracket'
+import TournamentLeaders from '../components/tournaments/TournamentLeaders'
 import type {
   TournamentDetailResponse,
   TournamentFixture,
@@ -299,6 +300,11 @@ export default function TournamentDetailPage() {
         {view === 'matches' && <MatchExplorer fixtures={detail.fixtures} />}
         {view === 'bracket' && <TournamentKnockoutBracket fixtures={detail.fixtures} champion={detail.champion} />}
       </div>
+      <TournamentLeaders
+        season={detail.competition.season}
+        competitionId={detail.competition.id}
+        contextLabel={detail.competition.name}
+      />
     </main>
   )
 }

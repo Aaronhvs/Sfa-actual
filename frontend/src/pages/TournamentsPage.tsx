@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchRanking, fetchTournamentDashboard, fetchTournaments } from '../api/client'
 import TournamentFixtureRow from '../components/tournaments/TournamentFixtureRow'
+import TournamentLeaders from '../components/tournaments/TournamentLeaders'
 import type {
   RankedPlayer,
   TournamentCompetition,
@@ -188,6 +189,12 @@ export default function TournamentsPage() {
 
         <SeasonTop players={topPlayers} season={dashboard?.season ?? ''} />
       </div>
+      {dashboard && (
+        <TournamentLeaders
+          season={dashboard.season}
+          contextLabel="la temporada"
+        />
+      )}
     </main>
   )
 }
