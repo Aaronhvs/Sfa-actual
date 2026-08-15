@@ -20,6 +20,8 @@ import {
 
 type DetailView = 'overview' | 'standings' | 'matches' | 'bracket'
 type MatchMode = 'date' | 'matchday' | 'team'
+type StandingVenue = 'all' | 'home' | 'away'
+type FormResult = 'G' | 'E' | 'P'
 
 interface TableRow {
   standing: TournamentStanding
@@ -29,6 +31,8 @@ interface TableRow {
   lost: number
   goalsFor: number
   goalsAgainst: number
+  points: number
+  form: FormResult[]
 }
 
 function TeamMark({ team }: { team: TournamentTeam }) {
@@ -38,7 +42,7 @@ function TeamMark({ team }: { team: TournamentTeam }) {
     : <span aria-hidden="true">{team.name.slice(0, 2).toUpperCase()}</span>
 }
 
-function deriveTable(detail: TournamentDetailResponse): TableRow[] {
+function deriveTable(detail: TournamentDetailResponse, venue: StandingVenue): TableRow[] {
   const rows = new Map<number, TableRow>(detail.standings.map((standing) => [
     standing.team.id,
     {
@@ -49,63 +53,98 @@ function deriveTable(detail: TournamentDetailResponse): TableRow[] {
       lost: 0,
       goalsFor: 0,
       goalsAgainst: 0,
+      points: 0,
+      form: [],
     },
   ]))
 
-  for (const fixture of detail.fixtures) {
-    if (!FINAL_TOURNAMENT_STATUSES.has(fixture.status)) continue
-    if (fixture.home_goals == null || fixture.away_goals == null) continue
-    const home = rows.get(fixture.home_team.id)
-    const away = rows.get(fixture.away_team.id)
-    if (!home || !away) continue
-    home.played += 1
-    away.played += 1
-    home.goalsFor += fixture.home_goals
-    home.goalsAgainst += fixture.away_goals
-    away.goalsFor += fixture.away_goals
-    away.goalsAgainst += fixture.home_goals
-    if (fixture.home_goals === fixture.away_goals) {
-      home.drawn += 1
-      away.drawn += 1
-    } else if (fixture.home_goals > fixture.away_goals) {
-      home.won += 1
-      away.lost += 1
+  const finalFixtures = detail.fixtures
+    .filter((fixture) => (
+      FINAL_TOURNAMENT_STATUSES.has(fixture.status)
+      && !isTournamentKnockout(fixture.stage)
+    ))
+    .sort((a, b) => new Date(a.played_at).getTime() - new Date(b.played_at).getTime())
+
+  const applyResult = (row: TableRow | undefined, goalsFor: number, goalsAgainst: number) => {
+    if (!row) return
+    row.played += 1
+    row.goalsFor += goalsFor
+    row.goalsAgainst += goalsAgainst
+    if (goalsFor > goalsAgainst) {
+      row.won += 1
+      row.points += 3
+      row.form.push('G')
+    } else if (goalsFor === goalsAgainst) {
+      row.drawn += 1
+      row.points += 1
+      row.form.push('E')
     } else {
-      away.won += 1
-      home.lost += 1
+      row.lost += 1
+      row.form.push('P')
     }
   }
-  return [...rows.values()].sort((a, b) => a.standing.position - b.standing.position)
+
+  for (const fixture of finalFixtures) {
+    if (fixture.home_goals == null || fixture.away_goals == null) continue
+    if (venue !== 'away') {
+      applyResult(rows.get(fixture.home_team.id), fixture.home_goals, fixture.away_goals)
+    }
+    if (venue !== 'home') {
+      applyResult(rows.get(fixture.away_team.id), fixture.away_goals, fixture.home_goals)
+    }
+  }
+
+  const result = [...rows.values()]
+  if (venue === 'all') {
+    result.forEach((row) => { row.points = row.standing.points })
+    return result.sort((a, b) => a.standing.position - b.standing.position)
+  }
+  return result.sort((a, b) => (
+    b.points - a.points
+    || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst)
+    || b.goalsFor - a.goalsFor
+    || a.standing.position - b.standing.position
+  ))
 }
 
-function StandingsTable({ detail, compact = false }: {
-  detail: TournamentDetailResponse
-  compact?: boolean
-}) {
-  const rows = useMemo(() => deriveTable(detail), [detail])
+function StandingsTable({ detail }: { detail: TournamentDetailResponse }) {
+  const [venue, setVenue] = useState<StandingVenue>('all')
+  const rows = useMemo(() => deriveTable(detail, venue), [detail, venue])
   if (rows.length === 0) {
     return <div className="trn-state trn-state--inline">La tabla todavia no esta disponible.</div>
   }
-  const visible = compact ? rows.slice(0, 8) : rows
   return (
-    <div className="trn-table-wrap">
-      <table className="trn-table">
-        <thead><tr><th>#</th><th>Equipo</th><th>J</th><th>G</th><th>E</th><th>P</th><th>DG</th><th>Pts</th></tr></thead>
-        <tbody>
-          {visible.map((row) => (
-            <tr key={row.standing.team.id}>
-              <td>{row.standing.position}</td>
-              <th scope="row"><TeamMark team={row.standing.team} /><span>{row.standing.team.name}</span></th>
-              <td>{row.played}</td>
-              <td>{row.won}</td>
-              <td>{row.drawn}</td>
-              <td>{row.lost}</td>
-              <td>{row.goalsFor - row.goalsAgainst}</td>
-              <td><strong>{row.standing.points}</strong></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="trn-standings">
+      <div className="trn-table-filters" role="group" aria-label="Clasificacion por localia">
+        {([['all', 'Todos'], ['home', 'Local'], ['away', 'Visitante']] as const).map(([value, label]) => (
+          <button type="button" className={venue === value ? 'is-active' : ''} onClick={() => setVenue(value)} key={value}>{label}</button>
+        ))}
+      </div>
+      <div className="trn-table-wrap">
+        <table className="trn-table">
+          <thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Goles</th><th>DG</th><th>Pts</th><th>Forma</th></tr></thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={row.standing.team.id}>
+                <td>{venue === 'all' ? row.standing.position : index + 1}</td>
+                <th scope="row"><TeamMark team={row.standing.team} /><span>{row.standing.team.name}</span></th>
+                <td>{row.played}</td>
+                <td>{row.won}</td>
+                <td>{row.drawn}</td>
+                <td>{row.lost}</td>
+                <td>{row.goalsFor}-{row.goalsAgainst}</td>
+                <td>{row.goalsFor - row.goalsAgainst > 0 ? '+' : ''}{row.goalsFor - row.goalsAgainst}</td>
+                <td><strong>{row.points}</strong></td>
+                <td>
+                  <span className="trn-form" aria-label={`Ultimos resultados: ${row.form.slice(-5).join(', ') || 'sin partidos'}`}>
+                    {row.form.slice(-5).map((result, formIndex) => <i className={`is-${result.toLowerCase()}`} key={`${result}-${formIndex}`}>{result}</i>)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -220,7 +259,7 @@ function Overview({ detail }: { detail: TournamentDetailResponse }) {
   const upcoming = detail.fixtures.filter((fixture) => !FINAL_TOURNAMENT_STATUSES.has(fixture.status)).slice(0, 8)
   return (
     <div className="trn-overview-grid">
-      <section><header><span>Clasificacion</span><h2>Tabla actual</h2></header><StandingsTable detail={detail} compact /></section>
+      <section><header><span>Clasificacion</span><h2>Tabla actual</h2></header><StandingsTable detail={detail} /></section>
       <section><header><span>Calendario</span><h2>Proximos partidos</h2></header><FixtureDateGroups fixtures={upcoming} /></section>
     </div>
   )
