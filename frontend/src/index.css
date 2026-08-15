@@ -1809,7 +1809,9 @@
 .trn-leagues nav img {
   width: 24px;
   height: 24px;
+  filter: grayscale(1) brightness(0) invert(1) drop-shadow(0 0 4px rgba(255, 255, 255, 0.14));
   object-fit: contain;
+  opacity: 0.9;
 }
 
 .trn-leagues nav span {
