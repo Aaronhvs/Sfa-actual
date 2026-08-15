@@ -10,6 +10,7 @@ import type {
 } from '../types'
 import {
   FINAL_TOURNAMENT_STATUSES,
+  isFeaturedTournamentCompetition,
   LIVE_TOURNAMENT_STATUSES,
   sortTournamentCompetitions,
   tournamentCompetitionLogo,
@@ -32,17 +33,19 @@ function CompetitionList({ competitions, season }: {
   competitions: TournamentCompetition[]
   season: string
 }) {
-  const sorted = [...competitions].sort((a, b) => (
-    tournamentCompetitionPriority(a) - tournamentCompetitionPriority(b)
-    || a.name.localeCompare(b.name)
-  ))
+  const sorted = competitions
+    .filter(isFeaturedTournamentCompetition)
+    .sort((a, b) => (
+      tournamentCompetitionPriority(a) - tournamentCompetitionPriority(b)
+      || a.name.localeCompare(b.name)
+    ))
   return (
     <aside className="trn-leagues" aria-label="Competiciones de la temporada">
       <header><span>Temporada</span><h2>Competiciones</h2></header>
       <nav>
         {sorted.map((competition) => (
           <Link to={`/torneos/${competition.id}?season=${season}`} key={competition.id}>
-            <img src={tournamentCompetitionLogo(competition.id)} alt="" loading="lazy" />
+            <img src={tournamentCompetitionLogo(competition)} alt="" loading="lazy" />
             <span>{competition.name}</span>
             <small>{competition.country}</small>
           </Link>
@@ -166,7 +169,7 @@ export default function TournamentsPage() {
             {visibleGroups.map((group) => (
               <section className="trn-match-group" key={group.competition.id}>
                 <Link className="trn-match-group__header" to={`/torneos/${group.competition.id}?season=${dashboard?.season}`}>
-                  <img src={tournamentCompetitionLogo(group.competition.id)} alt="" />
+                  <img src={tournamentCompetitionLogo(group.competition)} alt="" />
                   <span><strong>{group.competition.name}</strong><small>{group.competition.country}</small></span>
                   <b>Ver torneo &#8594;</b>
                 </Link>

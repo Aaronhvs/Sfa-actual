@@ -261,7 +261,7 @@ export default function TournamentDetailPage() {
       <Link className="trn-back" to="/torneos">&#8592; Todos los torneos</Link>
       <header className="trn-detail-header">
         <div className="trn-detail-header__identity">
-          <img src={tournamentCompetitionLogo(detail.competition.id)} alt="" />
+          <img src={tournamentCompetitionLogo(detail.competition)} alt="" />
           <div><span>{detail.competition.country}</span><h1>{detail.competition.name}</h1></div>
         </div>
         <strong>Temporada {tournamentSeasonLabel(detail.competition.season)}</strong>

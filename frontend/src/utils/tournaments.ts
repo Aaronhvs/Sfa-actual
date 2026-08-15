@@ -14,8 +14,43 @@ export function tournamentTeamLogo(team: TournamentTeam) {
     : `https://media.api-sports.io/football/teams/${team.external_id}.png`
 }
 
-export function tournamentCompetitionLogo(competitionId: number) {
-  return `https://media.api-sports.io/football/leagues/${competitionId}.png`
+const API_FOOTBALL_COMPETITION_IDS: Array<[string, number]> = [
+  ['champions league', 2],
+  ['premier league', 39],
+  ['la liga', 140],
+  ['serie a', 135],
+  ['bundesliga', 78],
+  ['ligue 1', 61],
+  ['europa league', 3],
+  ['conference league', 848],
+  ['uefa super cup', 531],
+  ['copa del rey', 143],
+  ['supercopa de espana', 556],
+  ['fa cup', 45],
+  ['efl cup', 48],
+  ['community shield', 528],
+  ['dfb-pokal', 81],
+  ['dfl-supercup', 529],
+  ['coppa italia', 137],
+  ['supercoppa italiana', 547],
+  ['coupe de france', 66],
+  ['trophee des champions', 526],
+]
+
+function normalizedCompetitionName(name: string) {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+export function tournamentCompetitionLogo(competition: TournamentCompetition) {
+  const name = normalizedCompetitionName(competition.name)
+  const apiFootballId = API_FOOTBALL_COMPETITION_IDS
+    .find(([key]) => name.includes(key))?.[1]
+  return apiFootballId == null
+    ? undefined
+    : `https://media.api-sports.io/football/leagues/${apiFootballId}.png`
 }
 
 export function tournamentDateKey(value: string | Date) {
@@ -97,6 +132,10 @@ export function tournamentCompetitionPriority(competition: TournamentCompetition
     ['copa libertadores', 80],
   ]
   return priorities.find(([key]) => name.includes(key))?.[1] ?? 500
+}
+
+export function isFeaturedTournamentCompetition(competition: TournamentCompetition) {
+  return tournamentCompetitionPriority(competition) <= 50
 }
 
 export function sortTournamentCompetitions<T extends { competition: TournamentCompetition }>(items: T[]) {
