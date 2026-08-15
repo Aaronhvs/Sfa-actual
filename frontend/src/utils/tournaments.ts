@@ -55,7 +55,9 @@ export function tournamentCompetitionLogo(competition: TournamentCompetition) {
 
 export function usesMonochromeTournamentLogo(competition: TournamentCompetition) {
   const name = normalizedCompetitionName(competition.name)
-  return name.includes('champions league') || name.includes('premier league')
+  return name.includes('champions league')
+    || name.includes('premier league')
+    || name.includes('ligue 1')
 }
 
 export function tournamentDateKey(value: string | Date) {
