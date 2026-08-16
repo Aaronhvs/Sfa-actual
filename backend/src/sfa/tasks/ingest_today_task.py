@@ -81,11 +81,19 @@ def _collect_relevant_fixtures(
     return selected
 
 
+def _dates_to_check(now_utc: datetime) -> list[str]:
+    dates = [now_utc.date().isoformat()]
+    if now_utc.hour < 4:
+        dates.insert(0, (now_utc - timedelta(days=1)).date().isoformat())
+    return dates
+
+
 @celery_app.task(bind=True, max_retries=1)
 def ingest_today_task(self):
     """
     Ingest only the competitions that have live or recently finished fixtures today.
-    Runs every 30 minutes via beat schedule. Costs 1 API call when nothing is active.
+    Runs at the configured beat interval. Costs one API call when nothing is active,
+    except around UTC midnight when yesterday is checked as well.
     """
     try:
         return asyncio.run(_run_ingest_today())
@@ -101,10 +109,7 @@ async def _run_ingest_today() -> dict:
 
     settings = get_settings()
     now_utc = datetime.now(timezone.utc)
-    dates_to_check = [
-        (now_utc - timedelta(days=1)).date().isoformat(),
-        now_utc.date().isoformat(),
-    ]
+    dates_to_check = _dates_to_check(now_utc)
 
     provider = APIFootballProvider(settings.API_FOOTBALL_KEY, settings.API_FOOTBALL_BASE_URL)
 

@@ -25,13 +25,22 @@ function Team({ name, externalId }: { name: string; externalId: number | null })
 
 export default function TournamentMatchHeader({ fixture }: { fixture: TournamentMatchFixture }) {
   const competitionLogo = tournamentCompetitionLogoByName(fixture.competition_name)
+  const activeLabels: Record<string, string> = {
+    HT: 'Descanso',
+    ET: 'Prórroga',
+    BT: 'Pausa',
+    P: 'Penaltis',
+    INT: 'Interrumpido',
+    SUSP: 'Suspendido',
+  }
+  const activeLabel = activeLabels[fixture.status]
   const status = fixture.is_live
-    ? fixture.status === 'HT'
-      ? 'Descanso'
-      : `${fixture.elapsed != null ? `${fixture.elapsed}' · ` : ''}En vivo`
+    ? activeLabel ?? `${fixture.elapsed != null ? `${fixture.elapsed}' · ` : ''}En vivo`
     : isTournamentFinal(fixture.status)
-      ? tournamentStatusLabel(fixture.status)
-      : `${formatLocalTime(fixture.played_at)} · ${localTimeZoneLabel()}`
+      ? fixture.status_label
+      : ['NS', 'TBD'].includes(fixture.status)
+        ? `${formatLocalTime(fixture.played_at)} · ${localTimeZoneLabel()}`
+        : fixture.status_label || tournamentStatusLabel(fixture.status)
 
   return (
     <header className={`trm-scoreboard${fixture.is_live ? ' trm-scoreboard--live' : ''}`}>

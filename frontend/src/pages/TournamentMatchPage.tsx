@@ -102,7 +102,20 @@ export default function TournamentMatchPage() {
       polling.current = true
       try {
         const result = await fetchTournamentFixtureDetail(numericFixtureId, season, true)
-        if (active) setDetail(result)
+        if (active) {
+          setDetail((previous) => {
+            if (!previous) return result
+            return {
+              ...result,
+              venue: result.venue.name || result.venue.city ? result.venue : previous.venue,
+              referee: result.referee ?? previous.referee,
+              lineups: result.lineups.length > 0 ? result.lineups : previous.lineups,
+              statistics: result.statistics.length > 0 ? result.statistics : previous.statistics,
+              events: result.events.length > 0 ? result.events : previous.events,
+              sfa_momentum: result.sfa_momentum.length > 0 ? result.sfa_momentum : previous.sfa_momentum,
+            }
+          })
+        }
       } catch {
         // Keep the last canonical snapshot visible during a transient refresh failure.
       } finally {

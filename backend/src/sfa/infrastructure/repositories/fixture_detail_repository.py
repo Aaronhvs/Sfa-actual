@@ -259,14 +259,34 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
                 .order_by(bucket_start)
             )
         ).mappings().all()
+        if not rows:
+            return []
+        points_by_bucket = {row["minute_start"]: row for row in rows}
+        last_bucket = max(points_by_bucket)
         return [
             FixtureSFAMomentumBucketDTO(
-                minute_start=row["minute_start"],
-                minute_end=row["minute_start"] + 5,
-                home_points=round(float(row["home_points"] or 0), 2),
-                away_points=round(float(row["away_points"] or 0), 2),
+                minute_start=minute_start,
+                minute_end=minute_start + 5,
+                home_points=round(
+                    float(
+                        (points_by_bucket.get(minute_start) or {}).get(
+                            "home_points",
+                        )
+                        or 0
+                    ),
+                    2,
+                ),
+                away_points=round(
+                    float(
+                        (points_by_bucket.get(minute_start) or {}).get(
+                            "away_points",
+                        )
+                        or 0
+                    ),
+                    2,
+                ),
             )
-            for row in rows
+            for minute_start in range(0, last_bucket + 1, 5)
         ]
 
     @staticmethod

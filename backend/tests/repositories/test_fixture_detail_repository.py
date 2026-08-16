@@ -116,7 +116,7 @@ async def test_returns_none_when_supplement_provider_fails():
 async def test_maps_sfa_momentum_buckets_for_both_teams():
     session = FakeSession([
         {"minute_start": 0, "home_points": 120.25, "away_points": 0},
-        {"minute_start": 5, "home_points": 0, "away_points": 80.5},
+        {"minute_start": 10, "home_points": 0, "away_points": 80.5},
     ])
     repository = FixtureDetailRepository(
         FakeProvider(),
@@ -129,7 +129,10 @@ async def test_maps_sfa_momentum_buckets_for_both_teams():
     assert [(item.minute_start, item.minute_end) for item in result] == [
         (0, 5),
         (5, 10),
+        (10, 15),
     ]
     assert result[0].home_points == 120.25
-    assert result[1].away_points == 80.5
+    assert result[1].home_points == 0
+    assert result[1].away_points == 0
+    assert result[2].away_points == 80.5
     assert len(session.statements) == 1

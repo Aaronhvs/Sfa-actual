@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sfa.tasks.ingest_today_task import (
     ACTIVE_COMPETITIONS,
     _collect_relevant_fixtures,
+    _dates_to_check,
 )
 
 
@@ -37,3 +38,12 @@ def test_collects_only_live_or_recent_current_season_fixture_ids():
     )
 
     assert selected == {(39, 2026): {10}}
+
+
+def test_checks_yesterday_only_near_utc_midnight():
+    assert _dates_to_check(
+        datetime(2026, 8, 17, 2, tzinfo=timezone.utc),
+    ) == ["2026-08-16", "2026-08-17"]
+    assert _dates_to_check(
+        datetime(2026, 8, 17, 12, tzinfo=timezone.utc),
+    ) == ["2026-08-17"]
