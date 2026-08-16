@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { TournamentFixture, TournamentTeam } from '../../types'
 import {
   FINAL_TOURNAMENT_STATUSES,
@@ -19,7 +20,11 @@ export default function TournamentFixtureRow({ fixture }: { fixture: TournamentF
   const finished = FINAL_TOURNAMENT_STATUSES.has(fixture.status)
   const live = LIVE_TOURNAMENT_STATUSES.has(fixture.status)
   return (
-    <article className={`trn-match${live ? ' trn-match--live' : ''}`}>
+    <Link
+      className={`trn-match trn-match--link${live ? ' trn-match--live' : ''}`}
+      to={`/torneos/partido/${fixture.external_id}?season=2026`}
+      aria-label={`${fixture.home_team.name} vs ${fixture.away_team.name}`}
+    >
       <div className="trn-match__time">
         <strong>{finished ? tournamentStatusLabel(fixture.status) : tournamentTimeLabel(fixture.played_at)}</strong>
         <span>{tournamentStageLabel(fixture.stage, fixture.matchday)}</span>
@@ -33,6 +38,6 @@ export default function TournamentFixtureRow({ fixture }: { fixture: TournamentF
         <strong>{fixture.away_goals ?? '-'}</strong>
       </div>
       {live && <span className="trn-match__live">En vivo</span>}
-    </article>
+    </Link>
   )
 }

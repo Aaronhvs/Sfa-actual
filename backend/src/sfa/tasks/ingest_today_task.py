@@ -18,18 +18,29 @@ FINISHED_STATUSES = {"FT", "AET", "PEN"}
 RECENT_WINDOW = timedelta(hours=4)
 
 # ─── Whitelist de competiciones activas ──────────────────────────────────────
-# Solo estas combinaciones (league_id, season) serán ingresadas automáticamente.
-# Actualizar manualmente cuando empiece una nueva temporada o competición.
-#
-# Ejemplos:
-#   (1,   2026)  → World Cup 2026
-#   (140, 2026)  → La Liga 2026/27  (agregar en agosto 2026)
-#   (39,  2026)  → Premier League 2026/27
-#   (78,  2026)  → Bundesliga 2026/27
-#   (2,   2026)  → Champions League 2026/27
-#
+# Solo estos pares (league_id, season) se ingieren automaticamente.
+# API-Football representa la temporada de clubes 2026/2027 con season=2026.
 ACTIVE_COMPETITIONS: frozenset[tuple[int, int]] = frozenset({
-    (1, 2026),   # World Cup 2026
+    (531, 2026),  # UEFA Super Cup
+    (528, 2026),  # Community Shield
+    (140, 2026),  # La Liga
+    (39, 2026),   # Premier League
+    (78, 2026),   # Bundesliga
+    (135, 2026),  # Serie A
+    (61, 2026),   # Ligue 1
+    (2, 2026),    # Champions League
+    (3, 2026),    # Europa League
+    (848, 2026),  # Conference League
+    (143, 2026),  # Copa del Rey
+    (556, 2026),  # Supercopa de Espana
+    (45, 2026),   # FA Cup
+    (48, 2026),   # EFL Cup
+    (81, 2026),   # DFB-Pokal
+    (529, 2026),  # DFL-Supercup
+    (137, 2026),  # Coppa Italia
+    (547, 2026),  # Supercoppa Italiana
+    (66, 2026),   # Coupe de France
+    (526, 2026),  # Trophee des Champions
 })
 
 
@@ -46,6 +57,28 @@ def _fixture_is_relevant(fixture: dict) -> bool:
         except (ValueError, TypeError):
             return True
     return False
+
+
+def _collect_relevant_fixtures(
+    fixtures: list[dict],
+    known_league_ids: set[int],
+) -> dict[tuple[int, int], set[int]]:
+    selected: dict[tuple[int, int], set[int]] = {}
+    for fixture in fixtures:
+        if not _fixture_is_relevant(fixture):
+            continue
+        league = fixture.get("league", {})
+        fixture_data = fixture.get("fixture", {})
+        league_id = league.get("id")
+        season = league.get("season")
+        fixture_id = fixture_data.get("id")
+        if not all(isinstance(value, int) for value in (league_id, season, fixture_id)):
+            continue
+        pair = (league_id, season)
+        if pair not in ACTIVE_COMPETITIONS or league_id not in known_league_ids:
+            continue
+        selected.setdefault(pair, set()).add(fixture_id)
+    return selected
 
 
 @celery_app.task(bind=True, max_retries=1)
@@ -86,16 +119,10 @@ async def _run_ingest_today() -> dict:
 
     # Collect (league_id, season) pairs that have relevant fixtures right now,
     # but ONLY if they are in the ACTIVE_COMPETITIONS whitelist.
-    to_ingest: dict[int, int] = {}  # league_id → season
-    for fixture in fixtures_today:
-        if not _fixture_is_relevant(fixture):
-            continue
-        league_id = fixture["league"]["id"]
-        season = fixture["league"]["season"]
-        if (league_id, season) not in ACTIVE_COMPETITIONS:
-            continue
-        if league_id in league_map and league_id not in to_ingest:
-            to_ingest[league_id] = season
+    to_ingest = _collect_relevant_fixtures(
+        fixtures_today,
+        set(league_map),
+    )
 
     if not to_ingest:
         logger.info(
@@ -109,19 +136,27 @@ async def _run_ingest_today() -> dict:
     logger.info(
         "[ingest_today_task] Competitions to ingest today (%s): %s",
         dates_to_check,
-        {league_map[lid].name: s for lid, s in to_ingest.items()},
+        {
+            league_map[league_id].name: sorted(fixture_ids)
+            for (league_id, _season), fixture_ids in to_ingest.items()
+        },
     )
 
     # Ingest sequentially — never in parallel to avoid DB deadlocks
     results = []
-    for league_id, season in to_ingest.items():
+    for (league_id, season), fixture_ids in to_ingest.items():
         logger.info(
             "[ingest_today_task] Ingesting %s (league_id=%d season=%d)",
             league_map[league_id].name,
             league_id,
             season,
         )
-        result = await _run_ingest_competition(league_id, season, force=True)
+        result = await _run_ingest_competition(
+            league_id,
+            season,
+            force=True,
+            fixture_external_ids=sorted(fixture_ids),
+        )
         results.append(result)
 
     return {"dates": dates_to_check, "ingested": results}

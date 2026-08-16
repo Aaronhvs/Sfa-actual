@@ -1935,6 +1935,9 @@
 }
 
 .trn-match:last-child { border-bottom: 0; }
+.trn-match--link { color: inherit; text-decoration: none; transition: background-color 160ms ease, box-shadow 160ms ease; }
+.trn-match--link:hover { background: rgba(255, 255, 255, 0.035); box-shadow: inset 2px 0 0 var(--gold); }
+.trn-match--link:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
 .trn-match--live { box-shadow: inset 3px 0 0 #4aa873; }
 .trn-match__time strong { display: block; font: 700 0.82rem/1 var(--font-display); text-transform: uppercase; }
 .trn-match__time span { display: block; margin-top: 5px; font: 0.53rem/1.2 var(--font-mono); text-transform: uppercase; color: var(--text-faint); }

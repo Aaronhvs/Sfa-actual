@@ -26,7 +26,7 @@ celery_app.conf.beat_schedule = {
     },
     # Runs once a day at 3 AM UTC to fix player positions via Transfermarkt.
     # Important during active competitions where new players appear daily.
-    # season="2026" targets World Cup players — update when active season changes.
+    # API-Football season="2026" targets club season 2026/2027.
     "enrich-player-positions-daily": {
         "task": "enrich_player_positions_task",
         "schedule": crontab(hour=3, minute=0),

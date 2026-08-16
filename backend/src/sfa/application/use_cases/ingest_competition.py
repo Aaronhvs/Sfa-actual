@@ -118,7 +118,12 @@ class IngestCompetitionUseCase:
         self._provider = provider
         self._repo = repo
 
-    async def execute(self, league: LeagueConfig, season: int) -> IngestionResult:
+    async def execute(
+        self,
+        league: LeagueConfig,
+        season: int,
+        target_fixture_external_ids: set[int] | None = None,
+    ) -> IngestionResult:
         competition_id: int | None = None
         fixtures_processed = 0
         season_str = str(season)
@@ -132,7 +137,7 @@ class IngestCompetitionUseCase:
             borrowing_standings = standings_league_id != league.id
 
             standings = await self._provider.fetch_standings(standings_league_id, season)
-            if not standings:
+            if not standings and not borrowing_standings:
                 return IngestionResult(
                     competition=league.name,
                     players_processed=0,
@@ -215,6 +220,13 @@ class IngestCompetitionUseCase:
                         away_goals=fixture.away_goals,
                         score_source="api_football",
                     )
+
+                    if (
+                        target_fixture_external_ids is not None
+                        and fixture.external_id not in target_fixture_external_ids
+                    ):
+                        fixtures_processed += 1
+                        continue
 
                     # Skip events/players for fixtures already completed in DB
                     if fixture.external_id in completed_ids:

@@ -11,6 +11,7 @@ from sfa.infrastructure.repositories import (
     CompetitionAchievementRepository,
     CompetitionRepository,
     EnrichPositionRepository,
+    FixtureDetailRepository,
     IndividualHonorRepository,
     InferAchievementsRepository,
     PlayerEventRepository,
@@ -153,6 +154,9 @@ from sfa.application.use_cases.get_ranking_explanations import GetRankingExplana
 from sfa.application.use_cases.get_seasons import GetSeasonsUseCase
 from sfa.application.use_cases.get_standings import GetStandingsUseCase
 from sfa.application.use_cases.get_status import GetStatusUseCase
+from sfa.application.use_cases.get_tournament_fixture_detail import (
+    GetTournamentFixtureDetailUseCase,
+)
 from sfa.application.use_cases.get_tournaments import (
     GetTournamentDashboardUseCase,
     GetTournamentUseCase,
@@ -346,6 +350,37 @@ async def get_tournament_use_case(
     ],
 ) -> GetTournamentUseCase:
     return GetTournamentUseCase(repository)
+
+
+async def get_fixture_detail_repository(
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> FixtureDetailRepository:
+    from sfa.core.config import get_settings
+    from sfa.infrastructure.providers.api_football import APIFootballProvider
+
+    settings = get_settings()
+    provider = APIFootballProvider(
+        settings.API_FOOTBALL_KEY,
+        settings.API_FOOTBALL_BASE_URL,
+    )
+    return FixtureDetailRepository(provider=provider, redis=redis, session=db)
+
+
+async def get_tournament_fixture_detail_use_case(
+    tournament_repository: Annotated[
+        TournamentRepository,
+        Depends(get_tournament_repository),
+    ],
+    detail_repository: Annotated[
+        FixtureDetailRepository,
+        Depends(get_fixture_detail_repository),
+    ],
+) -> GetTournamentFixtureDetailUseCase:
+    return GetTournamentFixtureDetailUseCase(
+        tournament_repository,
+        detail_repository,
+    )
 
 
 async def get_status_use_case(

@@ -431,6 +431,10 @@ class TournamentRepositoryProtocol(Protocol):
         self, season: str, fixture_date: date,
     ) -> list[TournamentFixtureGroupDTO]: ...
 
+    async def get_fixture_by_external_id(
+        self, fixture_external_id: int, season: str,
+    ) -> TournamentFixtureDTO | None: ...
+
 
 @runtime_checkable
 class StandingRepositoryProtocol(Protocol):

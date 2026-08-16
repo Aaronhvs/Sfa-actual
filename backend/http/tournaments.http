@@ -9,6 +9,9 @@ GET {{baseUrl}}/tournaments?season=2026
 ### Competition detail
 GET {{baseUrl}}/tournaments/10?season=2026
 
+### Current-season fixture detail (replace with an ingested external fixture ID)
+GET {{baseUrl}}/tournaments/fixtures/1591866?season=2026
+
 ### Dashboard resolves today or nearest available date
 GET {{baseUrl}}/tournaments/dashboard?season=2026
 

@@ -15,11 +15,22 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=300)
 def ingest_competition_task(
-    self, league_id: int, season: int, force: bool = False,
+    self,
+    league_id: int,
+    season: int,
+    force: bool = False,
+    fixture_external_ids: list[int] | None = None,
 ):
     """Ingest a single league. Thin sync to async wrapper."""
     try:
-        return asyncio.run(_run_ingest_competition(league_id, season, force))
+        return asyncio.run(
+            _run_ingest_competition(
+                league_id,
+                season,
+                force,
+                fixture_external_ids,
+            )
+        )
     except Exception as exc:
         raise self.retry(exc=exc)
 
@@ -88,7 +99,10 @@ def _serialize_result(result):
 
 
 async def _run_ingest_competition(
-    league_id: int, season: int, force: bool = False,
+    league_id: int,
+    season: int,
+    force: bool = False,
+    fixture_external_ids: list[int] | None = None,
 ):
     from sfa.application.use_cases.ingest_competition import (
         LEAGUES,
@@ -120,7 +134,15 @@ async def _run_ingest_competition(
     async with AsyncSessionLocal() as session:
         repo = IngestionRepository(session)
         use_case = IngestCompetitionUseCase(provider, repo)
-        result = await use_case.execute(league, season)
+        result = await use_case.execute(
+            league,
+            season,
+            target_fixture_external_ids=(
+                set(fixture_external_ids)
+                if fixture_external_ids is not None
+                else None
+            ),
+        )
         await session.commit()
 
     competition_id = await _get_competition_id_by_league(league)

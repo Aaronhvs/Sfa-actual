@@ -3,6 +3,7 @@ from .competition_achievement_repository import CompetitionAchievementRepository
 from .competition_repository import CompetitionRepository
 from .enrich_position_repository import EnrichPositionRepository
 from .enrichment_repository import EnrichmentRepository
+from .fixture_detail_repository import FixtureDetailRepository
 from .individual_honor_repository import IndividualHonorRepository
 from .infer_achievements_repository import InferAchievementsRepository
 from .ingestion_repository import IngestionRepository
@@ -26,6 +27,7 @@ __all__ = [
     "CompetitionAchievementRepository",
     "InferAchievementsRepository",
     "IndividualHonorRepository",
+    "FixtureDetailRepository",
     "CompetitionRepository",
     "EnrichPositionRepository",
     "EnrichmentRepository",

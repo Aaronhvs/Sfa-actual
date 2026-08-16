@@ -1,33 +1,35 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from sfa.domain.fixture_detail_ports import FixtureDetailDTO as WorldCupFixtureDetailDTO
+from sfa.domain.fixture_detail_ports import FixtureLineupPlayerDTO as WorldCupLineupPlayerDTO
+from sfa.domain.fixture_detail_ports import FixtureStatisticDTO as WorldCupStatisticDTO
+from sfa.domain.fixture_detail_ports import FixtureSummaryDTO as WorldCupFixtureDTO
+from sfa.domain.fixture_detail_ports import FixtureTeamDTO as WorldCupTeamDTO
+from sfa.domain.fixture_detail_ports import FixtureTeamLineupDTO as WorldCupTeamLineupDTO
+from sfa.domain.fixture_detail_ports import FixtureTimelineEventDTO as WorldCupFixtureEventDTO
+from sfa.domain.fixture_detail_ports import FixtureVenueDTO as WorldCupVenueDTO
 from sfa.domain.ports import RankedPlayerDTO
 
-
-@dataclass(frozen=True)
-class WorldCupTeamDTO:
-    external_id: int
-    name: str
-
-
-@dataclass(frozen=True)
-class WorldCupFixtureDTO:
-    external_id: int
-    stage: str
-    matchday: int | None
-    played_at: datetime
-    status: str
-    status_label: str
-    elapsed: int | None
-    home_team: WorldCupTeamDTO
-    away_team: WorldCupTeamDTO
-    home_goals: int | None
-    away_goals: int | None
-    home_winner: bool | None = None
-    away_winner: bool | None = None
+__all__ = [
+    "WorldCupFixtureDetailDTO",
+    "WorldCupFixtureDTO",
+    "WorldCupFixtureEventDTO",
+    "WorldCupLineupPlayerDTO",
+    "WorldCupStatisticDTO",
+    "WorldCupTeamDTO",
+    "WorldCupTeamLineupDTO",
+    "WorldCupVenueDTO",
+    "WorldCupStandingDTO",
+    "WorldCupFixturesResultDTO",
+    "WorldCupLiveResultDTO",
+    "WorldCupStandingsResultDTO",
+    "WcTeamSFARankingDTO",
+    "WcTeamProfileDTO",
+    "WorldCupRepositoryProtocol",
+]
 
 
 @dataclass(frozen=True)
@@ -44,62 +46,6 @@ class WorldCupStandingDTO:
     goal_difference: int
     points: int
     form: str | None
-
-
-@dataclass(frozen=True)
-class WorldCupVenueDTO:
-    name: str | None
-    city: str | None
-
-
-@dataclass(frozen=True)
-class WorldCupLineupPlayerDTO:
-    external_id: int | None
-    name: str
-    number: int | None
-    position: str | None
-    grid: str | None
-    player_id: int | None = None
-    sfa_points: float | None = None
-
-
-@dataclass(frozen=True)
-class WorldCupTeamLineupDTO:
-    team: WorldCupTeamDTO
-    formation: str | None
-    coach_name: str | None
-    coach_photo: str | None
-    start_xi: list[WorldCupLineupPlayerDTO]
-    substitutes: list[WorldCupLineupPlayerDTO]
-
-
-@dataclass(frozen=True)
-class WorldCupStatisticDTO:
-    label: str
-    home_value: str | None
-    away_value: str | None
-    home_numeric: float | None
-    away_numeric: float | None
-
-
-@dataclass(frozen=True)
-class WorldCupFixtureEventDTO:
-    minute: int
-    extra_minute: int
-    team_external_id: int
-    event_type: str
-    player_name: str
-    assist_name: str | None
-
-
-@dataclass(frozen=True)
-class WorldCupFixtureDetailDTO:
-    fixture: WorldCupFixtureDTO
-    venue: WorldCupVenueDTO
-    referee: str | None
-    lineups: list[WorldCupTeamLineupDTO]
-    statistics: list[WorldCupStatisticDTO]
-    events: list[WorldCupFixtureEventDTO] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

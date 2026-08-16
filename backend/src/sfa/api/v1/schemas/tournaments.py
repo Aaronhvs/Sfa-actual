@@ -2,6 +2,26 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from sfa.api.v1.schemas.wc_schemas import (
+    WcFixtureDetailResponseSchema,
+    WcFixtureEventSchema,
+    WcFixtureSchema,
+    WcLineupPlayerSchema,
+    WcStatisticSchema,
+    WcTeamLineupSchema,
+    WcTeamSchema,
+    WcVenueSchema,
+)
+
+TournamentMatchTeamSchema = WcTeamSchema
+TournamentMatchFixtureSchema = WcFixtureSchema
+TournamentMatchVenueSchema = WcVenueSchema
+TournamentMatchLineupPlayerSchema = WcLineupPlayerSchema
+TournamentMatchTeamLineupSchema = WcTeamLineupSchema
+TournamentMatchStatisticSchema = WcStatisticSchema
+TournamentMatchEventSchema = WcFixtureEventSchema
+TournamentMatchDetailResponseSchema = WcFixtureDetailResponseSchema
+
 
 class TournamentCompetitionSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)

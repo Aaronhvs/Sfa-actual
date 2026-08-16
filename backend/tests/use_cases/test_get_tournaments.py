@@ -89,6 +89,20 @@ class FakeTournamentRepository:
             )
         ]
 
+    async def get_fixture_by_external_id(
+        self, fixture_external_id: int, season: str,
+    ):
+        if season != "2026" or self.detail is None:
+            return None
+        return next(
+            (
+                fixture
+                for fixture in self.detail.fixtures
+                if fixture.external_id == fixture_external_id
+            ),
+            None,
+        )
+
 
 @pytest.mark.anyio
 async def test_catalog_resolves_latest_club_season():

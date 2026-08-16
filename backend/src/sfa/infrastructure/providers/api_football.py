@@ -7,6 +7,15 @@ from datetime import date, datetime
 import httpx
 
 from sfa.domain.enrichment.birth_date_ports import PlayerBirthDateRawDTO
+from sfa.domain.fixture_detail_ports import (
+    FixtureDetailDTO,
+    FixtureLineupPlayerDTO,
+    FixtureStatisticDTO,
+    FixtureSummaryDTO,
+    FixtureTeamDTO,
+    FixtureTeamLineupDTO,
+    FixtureVenueDTO,
+)
 from sfa.domain.ingestion_ports import (
     FixtureEventRawDTO,
     FixtureRawDTO,
@@ -17,12 +26,8 @@ from sfa.domain.ingestion_ports import (
 from sfa.domain.world_cup_ports import (
     WorldCupFixtureDetailDTO,
     WorldCupFixtureDTO,
-    WorldCupLineupPlayerDTO,
     WorldCupStandingDTO,
-    WorldCupStatisticDTO,
     WorldCupTeamDTO,
-    WorldCupTeamLineupDTO,
-    WorldCupVenueDTO,
 )
 
 logger = logging.getLogger(__name__)
@@ -231,10 +236,10 @@ class APIFootballProvider:
 
         return standings
 
-    async def fetch_world_cup_fixture_detail(
+    async def fetch_fixture_detail(
         self,
         fixture_id: int,
-    ) -> WorldCupFixtureDetailDTO | None:
+    ) -> FixtureDetailDTO | None:
         fixture_data, lineup_data, statistics_data = await asyncio.gather(
             self._get("fixtures", {"id": fixture_id}),
             self._get("fixtures/lineups", {"fixture": fixture_id}),
@@ -262,7 +267,7 @@ class APIFootballProvider:
             )
             return None
 
-        fixture_dto = WorldCupFixtureDTO(
+        fixture_dto = FixtureSummaryDTO(
             external_id=fixture["id"],
             stage=round_name,
             matchday=self._world_cup_matchday(round_name),
@@ -288,9 +293,9 @@ class APIFootballProvider:
             home_team.external_id,
             away_team.external_id,
         )
-        return WorldCupFixtureDetailDTO(
+        return FixtureDetailDTO(
             fixture=fixture_dto,
-            venue=WorldCupVenueDTO(
+            venue=FixtureVenueDTO(
                 name=venue.get("name"),
                 city=venue.get("city"),
             ),
@@ -300,19 +305,25 @@ class APIFootballProvider:
             events=[],
         )
 
+    async def fetch_world_cup_fixture_detail(
+        self,
+        fixture_id: int,
+    ) -> WorldCupFixtureDetailDTO | None:
+        return await self.fetch_fixture_detail(fixture_id)
+
     @staticmethod
-    def _world_cup_team(data: dict | None) -> WorldCupTeamDTO | None:
+    def _world_cup_team(data: dict | None) -> FixtureTeamDTO | None:
         if not data or not isinstance(data.get("id"), int):
             return None
-        return WorldCupTeamDTO(
+        return FixtureTeamDTO(
             external_id=data["id"],
             name=data.get("name") or "",
         )
 
     @staticmethod
-    def _world_cup_lineup_player(data: dict) -> WorldCupLineupPlayerDTO:
+    def _world_cup_lineup_player(data: dict) -> FixtureLineupPlayerDTO:
         player = data.get("player") or {}
-        return WorldCupLineupPlayerDTO(
+        return FixtureLineupPlayerDTO(
             external_id=player.get("id"),
             name=player.get("name") or "",
             number=player.get("number"),
@@ -323,12 +334,12 @@ class APIFootballProvider:
     def _world_cup_lineup(
         self,
         data: dict,
-    ) -> WorldCupTeamLineupDTO | None:
+    ) -> FixtureTeamLineupDTO | None:
         team = self._world_cup_team(data.get("team"))
         if team is None:
             return None
         coach = data.get("coach") or {}
-        return WorldCupTeamLineupDTO(
+        return FixtureTeamLineupDTO(
             team=team,
             formation=data.get("formation"),
             coach_name=coach.get("name"),
@@ -349,7 +360,7 @@ class APIFootballProvider:
         team_statistics: list[dict],
         home_team_id: int,
         away_team_id: int,
-    ) -> list[WorldCupStatisticDTO]:
+    ) -> list[FixtureStatisticDTO]:
         values_by_team: dict[int, dict[str, object]] = {}
         labels: list[str] = []
         for entry in team_statistics:
@@ -369,7 +380,7 @@ class APIFootballProvider:
         home_values = values_by_team.get(home_team_id, {})
         away_values = values_by_team.get(away_team_id, {})
         return [
-            WorldCupStatisticDTO(
+            FixtureStatisticDTO(
                 label=label,
                 home_value=cls._stat_display(home_values.get(label)),
                 away_value=cls._stat_display(away_values.get(label)),

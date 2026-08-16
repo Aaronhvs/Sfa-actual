@@ -288,3 +288,41 @@ class TournamentRepository:
             for competition_id, fixtures in grouped.items()
             if competition_id in competitions
         ]
+
+    async def get_fixture_by_external_id(
+        self,
+        fixture_external_id: int,
+        season: str,
+    ) -> TournamentFixtureDTO | None:
+        home = Team.__table__.alias("fixture_detail_home_team")
+        away = Team.__table__.alias("fixture_detail_away_team")
+        stmt = (
+            select(
+                Fixture.id,
+                Fixture.external_id,
+                Fixture.competition_id,
+                Fixture.stage,
+                Fixture.matchday,
+                Fixture.played_at,
+                Fixture.status,
+                Fixture.home_goals,
+                Fixture.away_goals,
+                home.c.id.label("home_team_id"),
+                home.c.external_id.label("home_team_external_id"),
+                home.c.name.label("home_team_name"),
+                away.c.id.label("away_team_id"),
+                away.c.external_id.label("away_team_external_id"),
+                away.c.name.label("away_team_name"),
+            )
+            .join(home, home.c.id == Fixture.home_team_id)
+            .join(away, away.c.id == Fixture.away_team_id)
+            .join(Competition, Competition.id == Fixture.competition_id)
+            .where(
+                Fixture.external_id == fixture_external_id,
+                Fixture.season == season,
+                Competition.participant_kind == "club",
+            )
+            .limit(1)
+        )
+        row = (await self._session.execute(stmt)).mappings().first()
+        return _fixture_dto(row) if row is not None else None

@@ -572,3 +572,52 @@ async def test_events_fetched_for_non_completed_fixture():
     await IngestCompetitionUseCase(provider, repo).execute(_LEAGUE, 2024)
 
     assert 9002 in provider.fixture_events_calls
+
+
+@pytest.mark.anyio
+async def test_target_fixture_ids_skip_expensive_phase_for_other_fixtures():
+    fixtures = [
+        _fixture(ext_id=9002, home_team=1, away_team=2),
+        _fixture(ext_id=9003, home_team=1, away_team=3),
+    ]
+    provider = _TrackingProvider(fixtures=fixtures, player=_player_stats())
+    repo = _FakeRepoWithCompleted(completed=set())
+
+    await IngestCompetitionUseCase(provider, repo).execute(
+        _LEAGUE,
+        2024,
+        target_fixture_external_ids={9003},
+    )
+
+    assert provider.fixture_events_calls == [9003]
+    assert all(fixture_id == 9003 for fixture_id, _ in provider.fixture_players_calls)
+
+
+class _NoStandingsProvider(_TrackingProvider):
+    async def fetch_standings(
+        self, league_id: int, season: int,
+    ) -> list[StandingRawDTO]:
+        return []
+
+
+@pytest.mark.anyio
+async def test_single_match_cup_ingests_without_borrowed_standings():
+    fixture = _fixture(ext_id=9010, home_team=85, away_team=66)
+    provider = _NoStandingsProvider(fixtures=[fixture], player=_player_stats())
+    repo = _FakeRepoWithCompleted(completed=set())
+    cup = LeagueConfig(
+        id=531,
+        name="UEFA Super Cup",
+        country="EUR",
+        comp_factor=1.05,
+        standings_league_id=2,
+    )
+
+    result = await IngestCompetitionUseCase(provider, repo).execute(
+        cup,
+        2026,
+        target_fixture_external_ids={9010},
+    )
+
+    assert result.fixtures_processed == 1
+    assert provider.fixture_events_calls == [9010]

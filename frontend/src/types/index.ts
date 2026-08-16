@@ -386,6 +386,8 @@ export interface WcFixtureDetailResponse {
   events: WcFixtureEvent[]
 }
 
+export type FixtureDetailResponse = WcFixtureDetailResponse
+
 export interface WcTeamSFARankingItem {
   rank: number
   team_external_id: number

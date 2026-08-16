@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchWcFixtureDetail } from '../api/client'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { fetchTournamentFixtureDetail, fetchWcFixtureDetail } from '../api/client'
 import type {
   WcFixture,
   WcFixtureDetailResponse,
@@ -14,6 +14,7 @@ import { formatLocalDateLong, formatLocalTime, localTimeZoneLabel } from '../uti
 import { worldCupTeamName, worldCupStageLabel } from '../utils/worldCupTeams'
 
 type DetailTab = 'lineups' | 'statistics' | 'performance'
+type MatchDetailMode = 'world-cup' | 'tournament'
 
 const TEAM_LOGO = (externalId: number | null) =>
   externalId ? `https://media.api-sports.io/football/teams/${externalId}.png` : null
@@ -79,7 +80,15 @@ function matchStatus(fixture: WcFixture): string {
   return `${formatLocalDateLong(fixture.played_at)} · ${formatLocalTime(fixture.played_at)} ${localTimeZoneLabel()}`
 }
 
-function PlayerRow({ player, color }: { player: WcLineupPlayer; color: string }) {
+function PlayerRow({
+  player,
+  color,
+  scope,
+}: {
+  player: WcLineupPlayer
+  color: string
+  scope: string
+}) {
   const photo = PLAYER_PHOTO(player.external_id)
   const style = { '--team-color': color } as React.CSSProperties
   const content = (
@@ -111,7 +120,7 @@ function PlayerRow({ player, color }: { player: WcLineupPlayer; color: string })
 
   if (player.player_id != null) {
     return (
-      <Link className="wmd-player wmd-player--link" style={style} to={`/player/${player.player_id}?scope=world-cup-2026`}>
+      <Link className="wmd-player wmd-player--link" style={style} to={`/player/${player.player_id}?scope=${scope}`}>
         {content}
       </Link>
     )
@@ -248,12 +257,14 @@ function PitchPlayer({
   side,
   teamColorValue,
   index,
+  scope,
 }: {
   player: WcLineupPlayer
   players: WcLineupPlayer[]
   side: 'home' | 'away'
   teamColorValue: string
   index: number
+  scope: string
 }) {
   const position = playerGridPosition(player, players, side)
   if (!position) return null
@@ -285,7 +296,7 @@ function PitchPlayer({
 
   return player.player_id != null ? (
     <Link
-      to={`/player/${player.player_id}?scope=world-cup-2026`}
+      to={`/player/${player.player_id}?scope=${scope}`}
       className="wmd-pitch-player wmd-pitch-player--link"
       style={playerStyle}
     >
@@ -301,9 +312,11 @@ function PitchPlayer({
 function CombinedTacticalPitch({
   homeLineup,
   awayLineup,
+  scope,
 }: {
   homeLineup: WcTeamLineup
   awayLineup: WcTeamLineup
+  scope: string
 }) {
   const homeColor = teamColor(homeLineup.team.name, homeLineup.team.external_id)
   const awayColor = teamColor(awayLineup.team.name, awayLineup.team.external_id)
@@ -337,6 +350,7 @@ function CombinedTacticalPitch({
             side="home"
             teamColorValue={homeColor}
             index={index}
+            scope={scope}
             key={`home-${player.external_id ?? player.name}-${index}`}
           />
         ))}
@@ -347,6 +361,7 @@ function CombinedTacticalPitch({
             side="away"
             teamColorValue={awayColor}
             index={index}
+            scope={scope}
             key={`away-${player.external_id ?? player.name}-${index}`}
           />
         ))}
@@ -355,11 +370,21 @@ function CombinedTacticalPitch({
   )
 }
 
-function LineupColumn({ lineup, color }: { lineup: WcTeamLineup; color: string }) {
+function LineupColumn({
+  lineup,
+  color,
+  scope,
+  linkTeam,
+}: {
+  lineup: WcTeamLineup
+  color: string
+  scope: string
+  linkTeam: boolean
+}) {
   return (
     <section className="wmd-lineup">
       <header className="wmd-lineup__header">
-        <TeamIdentity team={lineup.team} asLink />
+        <TeamIdentity team={lineup.team} asLink={linkTeam} />
         <div>
           <span>{lineup.formation ?? 'Formación pendiente'}</span>
           <small>{lineup.coach_name ? `DT · ${lineup.coach_name}` : 'Entrenador pendiente'}</small>
@@ -368,7 +393,7 @@ function LineupColumn({ lineup, color }: { lineup: WcTeamLineup; color: string }
       <h3>Titulares</h3>
       <div className="wmd-player-list">
         {lineup.start_xi.map((player, index) => (
-          <PlayerRow player={player} color={color} key={`${player.external_id ?? player.name}-${index}`} />
+          <PlayerRow player={player} color={color} scope={scope} key={`${player.external_id ?? player.name}-${index}`} />
         ))}
       </div>
       {lineup.substitutes.length > 0 && (
@@ -376,7 +401,7 @@ function LineupColumn({ lineup, color }: { lineup: WcTeamLineup; color: string }
           <h3>Suplentes</h3>
           <div className="wmd-player-list wmd-player-list--subs">
             {lineup.substitutes.map((player, index) => (
-              <PlayerRow player={player} color={color} key={`${player.external_id ?? player.name}-${index}`} />
+              <PlayerRow player={player} color={color} scope={scope} key={`${player.external_id ?? player.name}-${index}`} />
             ))}
           </div>
         </>
@@ -405,7 +430,7 @@ function StatisticRow({ statistic }: { statistic: WcStatistic }) {
   )
 }
 
-function PlayerPerformancePanel({ lineups }: { lineups: WcTeamLineup[] }) {
+function PlayerPerformancePanel({ lineups, scope }: { lineups: WcTeamLineup[]; scope: string }) {
   const players = lineups
     .flatMap((lineup) => (
       [...lineup.start_xi, ...lineup.substitutes].map((player) => ({
@@ -464,7 +489,7 @@ function PlayerPerformancePanel({ lineups }: { lineups: WcTeamLineup[] }) {
 
           return player.player_id != null ? (
             <Link
-              to={`/player/${player.player_id}?scope=world-cup-2026`}
+              to={`/player/${player.player_id}?scope=${scope}`}
               className="wmd-performance__row"
               key={`${player.external_id ?? player.name}-${index}`}
             >
@@ -481,9 +506,14 @@ function PlayerPerformancePanel({ lineups }: { lineups: WcTeamLineup[] }) {
   )
 }
 
-export default function MundialMatchPage() {
+export function MatchDetailPage({ mode }: { mode: MatchDetailMode }) {
   const navigate = useNavigate()
   const { fixtureId } = useParams<{ fixtureId: string }>()
+  const [searchParams] = useSearchParams()
+  const season = searchParams.get('season') ?? '2026'
+  const isTournament = mode === 'tournament'
+  const playerScope = isTournament ? `season-${season}` : 'world-cup-2026'
+  const backLabel = isTournament ? 'Volver a Torneos' : 'Volver al Mundial'
   const [detail, setDetail] = useState<WcFixtureDetailResponse | null>(null)
   const [tab, setTab] = useState<DetailTab>('lineups')
   const [loading, setLoading] = useState(true)
@@ -496,16 +526,21 @@ export default function MundialMatchPage() {
 
   useEffect(() => {
     const id = Number(fixtureId)
+    setLoading(true)
+    setError(null)
     if (!Number.isFinite(id)) {
       setError('Partido no válido.')
       setLoading(false)
       return
     }
-    fetchWcFixtureDetail(id)
+    const request = isTournament
+      ? fetchTournamentFixtureDetail(id, season)
+      : fetchWcFixtureDetail(id)
+    request
       .then(setDetail)
-      .catch((requestError) => setError(requestError.message ?? 'No se pudo cargar el partido.'))
+      .catch(() => setError('No se pudo cargar el partido.'))
       .finally(() => setLoading(false))
-  }, [fixtureId])
+  }, [fixtureId, isTournament, season])
 
   const lineupByTeam = useMemo(() => {
     const result = new Map<number, WcTeamLineup>()
@@ -519,7 +554,7 @@ export default function MundialMatchPage() {
       navigate(-1)
       return
     }
-    navigate('/mundial')
+    navigate(isTournament ? '/torneos' : '/mundial')
   }
 
   if (loading) {
@@ -534,7 +569,7 @@ export default function MundialMatchPage() {
     return (
       <div className="wmd-page">
         <button type="button" className="wm-hero__back" onClick={goBack}>
-          <span aria-hidden="true">←</span> Volver al Mundial
+          <span aria-hidden="true">←</span> {backLabel}
         </button>
         <div className="empty-state">{error ?? 'Partido no encontrado.'}</div>
       </div>
@@ -549,21 +584,21 @@ export default function MundialMatchPage() {
   return (
     <div className="wmd-page">
       <button type="button" className="wm-hero__back wmd-back" onClick={goBack}>
-        <span aria-hidden="true">←</span> Volver al Mundial
+        <span aria-hidden="true">←</span> {backLabel}
       </button>
 
       <header className="wmd-scoreboard">
         <div className="wmd-scoreboard__spectrum" />
         <span className="wmd-scoreboard__stage">{worldCupStageLabel(fixture.stage)}</span>
         <div className="wmd-scoreboard__match">
-          <TeamIdentity team={fixture.home_team} asLink />
+          <TeamIdentity team={fixture.home_team} asLink={!isTournament} />
           <div className="wmd-scoreboard__score">
             <strong>
               {fixture.home_goals ?? '—'} <span>:</span> {fixture.away_goals ?? '—'}
             </strong>
             <small className={fixture.is_live ? 'wmd-scoreboard__live' : ''}>{matchStatus(fixture)}</small>
           </div>
-          <TeamIdentity team={fixture.away_team} asLink />
+          <TeamIdentity team={fixture.away_team} asLink={!isTournament} />
         </div>
         <div className="wmd-scoreboard__meta">
           <span>{venueText || 'Estadio por confirmar'}</span>
@@ -606,15 +641,15 @@ export default function MundialMatchPage() {
                 homeTeamExternalId={fixture.home_team.external_id ?? fixture.home_team.id}
               />
               {homeLineup && awayLineup && (
-                <CombinedTacticalPitch homeLineup={homeLineup} awayLineup={awayLineup} />
+                <CombinedTacticalPitch homeLineup={homeLineup} awayLineup={awayLineup} scope={playerScope} />
               )}
               <div className="wmd-lineups-heading">
                 <span>Alineaciones completas</span>
                 <small>Los puntos SFA aparecen cuando el partido ya fue procesado.</small>
               </div>
               <div className="wmd-lineups-grid">
-                {homeLineup && <LineupColumn lineup={homeLineup} color={teamColor(homeLineup.team.name, homeLineup.team.external_id)} />}
-                {awayLineup && <LineupColumn lineup={awayLineup} color={teamColor(awayLineup.team.name, awayLineup.team.external_id)} />}
+                {homeLineup && <LineupColumn lineup={homeLineup} color={teamColor(homeLineup.team.name, homeLineup.team.external_id)} scope={playerScope} linkTeam={!isTournament} />}
+                {awayLineup && <LineupColumn lineup={awayLineup} color={teamColor(awayLineup.team.name, awayLineup.team.external_id)} scope={playerScope} linkTeam={!isTournament} />}
               </div>
             </>
           ) : <div className="empty-state">Las alineaciones todavía no fueron publicadas.</div>
@@ -635,9 +670,13 @@ export default function MundialMatchPage() {
           ) : <div className="empty-state">Las estadísticas estarán disponibles cuando comience el partido.</div>
         )}
         {tab === 'performance' && (
-          <PlayerPerformancePanel lineups={detail.lineups} />
+          <PlayerPerformancePanel lineups={detail.lineups} scope={playerScope} />
         )}
       </main>
     </div>
   )
+}
+
+export default function MundialMatchPage() {
+  return <MatchDetailPage mode="world-cup" />
 }
