@@ -15,7 +15,7 @@ class FakeGenerateRankingExplanationsTask:
         return SimpleNamespace(id="task-123")
 
 
-def test_queue_world_cup_explanations_uses_incremental_refresh(monkeypatch):
+def test_queue_world_cup_explanations_uses_explicit_context(monkeypatch):
     fake_task = FakeGenerateRankingExplanationsTask()
     monkeypatch.setattr(
         explanations_task_module,
@@ -28,7 +28,12 @@ def test_queue_world_cup_explanations_uses_incremental_refresh(monkeypatch):
         lambda: SimpleNamespace(AI_EXPLANATIONS_TOP_N=3),
     )
 
-    task_id = task_module._queue_ranking_explanations_after_recalculation("2026", 4)
+    task_id = task_module._queue_ranking_explanations_after_recalculation(
+        "2026",
+        4,
+        competition_id=350,
+        scope="world_cup",
+    )
 
     assert task_id == "task-123"
     assert fake_task.calls == [
@@ -54,4 +59,25 @@ def test_queue_global_explanations_for_non_world_cup_season(monkeypatch):
     assert task_id == "task-123"
     assert fake_task.calls == [
         ("2025", 4, None, "ranking", 10, False, True),
+    ]
+
+
+def test_queue_global_explanations_for_2026_club_season(monkeypatch):
+    fake_task = FakeGenerateRankingExplanationsTask()
+    monkeypatch.setattr(
+        explanations_task_module,
+        "generate_ranking_explanations_task",
+        fake_task,
+    )
+    monkeypatch.setattr(
+        config_module,
+        "get_settings",
+        lambda: SimpleNamespace(AI_EXPLANATIONS_TOP_N=3),
+    )
+
+    task_id = task_module._queue_ranking_explanations_after_recalculation("2026", 4)
+
+    assert task_id == "task-123"
+    assert fake_task.calls == [
+        ("2026", 4, None, "ranking", 3, False, True),
     ]

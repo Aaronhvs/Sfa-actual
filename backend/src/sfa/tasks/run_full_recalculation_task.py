@@ -18,9 +18,20 @@ def run_full_recalculation_task(
     season: str,
     force_recalculate: bool = True,
     infer_achievements: bool = True,
+    explanation_competition_id: int | None = None,
+    explanation_scope: str = "ranking",
 ):
     """Run scoring recalculation, achievement inference, and achievement bonuses in one task."""
-    asyncio.run(_run(rules_version_id, season, force_recalculate, infer_achievements))
+    asyncio.run(
+        _run(
+            rules_version_id,
+            season,
+            force_recalculate,
+            infer_achievements,
+            explanation_competition_id=explanation_competition_id,
+            explanation_scope=explanation_scope,
+        )
+    )
 
 
 async def _run(
@@ -29,6 +40,8 @@ async def _run(
     force_recalculate: bool,
     infer_achievements: bool = True,
     queue_explanations: bool = True,
+    explanation_competition_id: int | None = None,
+    explanation_scope: str = "ranking",
 ) -> None:
     from sfa.application.use_cases.run_full_recalculation import (
         RunFullRecalculationUseCase,
@@ -83,18 +96,26 @@ async def _run(
     if result.status != "completed":
         raise RuntimeError(result.error or "Full recalculation failed")
     if result.status == "completed" and queue_explanations:
-        _queue_ranking_explanations_after_recalculation(season, rules_version_id)
+        _queue_ranking_explanations_after_recalculation(
+            season,
+            rules_version_id,
+            explanation_competition_id,
+            explanation_scope,
+        )
 
 
-def _queue_ranking_explanations_after_recalculation(season: str, rules_version_id: int) -> str:
+def _queue_ranking_explanations_after_recalculation(
+    season: str,
+    rules_version_id: int,
+    competition_id: int | None = None,
+    scope: str = "ranking",
+) -> str:
     from sfa.core.config import get_settings
     from sfa.tasks.generate_ranking_explanations_task import (
         generate_ranking_explanations_task,
     )
 
     settings = get_settings()
-    competition_id = 350 if season == "2026" else None
-    scope = "world_cup" if competition_id == 350 else "ranking"
     task = generate_ranking_explanations_task.delay(
         season,
         rules_version_id,

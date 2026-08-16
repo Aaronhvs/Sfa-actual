@@ -5,6 +5,8 @@ from sfa.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
+WORLD_CUP_COMPETITION_ID = 350
+
 
 @celery_app.task(bind=True, max_retries=2, default_retry_delay=300)
 def seed_clubelo_task(self, date_str: str, season: str):
@@ -283,6 +285,18 @@ async def _run_elo_update_then_recalculate(
                 season=season,
                 force_recalculate=True,
                 infer_achievements=True,
+                explanation_competition_id=(
+                    WORLD_CUP_COMPETITION_ID
+                    if source == "national_elo_v1"
+                    and competition_ids == [WORLD_CUP_COMPETITION_ID]
+                    else None
+                ),
+                explanation_scope=(
+                    "world_cup"
+                    if source == "national_elo_v1"
+                    and competition_ids == [WORLD_CUP_COMPETITION_ID]
+                    else "ranking"
+                ),
             )
         finally:
             await lock_session.execute(
@@ -349,6 +363,18 @@ async def _run_elo_pools_then_recalculate(
                 season=season,
                 force_recalculate=True,
                 infer_achievements=True,
+                explanation_competition_id=(
+                    WORLD_CUP_COMPETITION_ID
+                    if not club_competition_ids
+                    and national_competition_ids == [WORLD_CUP_COMPETITION_ID]
+                    else None
+                ),
+                explanation_scope=(
+                    "world_cup"
+                    if not club_competition_ids
+                    and national_competition_ids == [WORLD_CUP_COMPETITION_ID]
+                    else "ranking"
+                ),
             )
         finally:
             await lock_session.execute(
