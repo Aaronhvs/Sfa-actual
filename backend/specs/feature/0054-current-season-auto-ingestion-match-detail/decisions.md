@@ -33,6 +33,7 @@ desde Torneos con el mismo nivel de detalle que tuvo el Mundial.
 | Resolver y validar el fixture local antes de consultar API-Football | Consultar API-Football primero | Protege cuota y evita acceso a fixtures fuera de SFA |
 | Activar una whitelist declarativa de competiciones club 2026 | Activar cualquier fixture del feed diario | Mantiene control de costo y alcance |
 | Pasar los fixture IDs relevantes a la ingesta periodica | Reprocesar todos los partidos no finalizados de la competicion | Reduce llamadas de eventos/jugadores durante cada ciclo live |
+| Importar fixtures aunque la competicion aun no publique standings | Tratar standings vacios como temporada inexistente | Las rondas preliminares UEFA y copas pueden tener calendario antes de tener tabla; los equipos se validan desde cada fixture |
 | Reutilizar `MatchTimeline` y la pagina tactica existente | Crear una segunda UI de partido | Mantiene una experiencia unica y reduce divergencia visual |
 
 ## Limites arquitectonicos
@@ -64,4 +65,6 @@ desde Torneos con el mismo nivel de detalle que tuvo el Mundial.
 - Fixture inexistente, de otra temporada o de selecciones: `404` sin llamada externa.
 - Detalle aun no publicado: se devuelven listas vacias con los empty states existentes.
 - Fallo de API-Football: se conserva la politica de retry del provider.
+- Standings aun no publicados: se importa el calendario y se usan posiciones rivales
+  neutrales hasta que una ingesta posterior disponga de la tabla.
 - El endpoint WC conserva su response y ruta actuales mediante aliases y el wrapper compatible del provider.

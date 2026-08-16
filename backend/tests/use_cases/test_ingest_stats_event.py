@@ -601,6 +601,29 @@ class _NoStandingsProvider(_TrackingProvider):
 
 
 @pytest.mark.anyio
+async def test_fixture_calendar_ingests_when_competition_has_no_standings_yet():
+    fixture = _fixture(ext_id=9009, home_team=85, away_team=66)
+    provider = _NoStandingsProvider(fixtures=[fixture], player=_player_stats())
+    repo = _FakeRepoWithCompleted(completed=set())
+    champions = LeagueConfig(
+        id=2,
+        name="Champions League",
+        country="EUR",
+        comp_factor=1.5,
+    )
+
+    result = await IngestCompetitionUseCase(provider, repo).execute(
+        champions,
+        2026,
+        target_fixture_external_ids=set(),
+    )
+
+    assert result.fixtures_processed == 1
+    assert provider.league_fixtures_calls == [(2, 2026)]
+    assert provider.fixture_events_calls == []
+
+
+@pytest.mark.anyio
 async def test_single_match_cup_ingests_without_borrowed_standings():
     fixture = _fixture(ext_id=9010, home_team=85, away_team=66)
     provider = _NoStandingsProvider(fixtures=[fixture], player=_player_stats())

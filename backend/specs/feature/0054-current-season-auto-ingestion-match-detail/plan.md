@@ -21,6 +21,7 @@
 - [x] `src/sfa/tasks/ingest_today_task.py` - competiciones activas 2026 y fixture IDs relevantes.
 - [x] `src/sfa/tasks/ingestion_tasks.py` - parametro opcional de fixtures objetivo.
 - [x] `src/sfa/application/use_cases/ingest_competition.py` - limitar fase 3 cuando hay objetivo.
+- [x] `tests/use_cases/test_ingest_stats_event.py` - permitir calendarios sin standings publicados.
 - [x] `frontend/src/api/client.ts` - cliente de detalle de Torneos.
 - [x] `frontend/src/types/index.ts` - aliases/tipos genericos de detalle.
 - [x] `frontend/src/components/tournaments/TournamentFixtureRow.tsx` - enlace accesible.
@@ -40,6 +41,7 @@
 - [x] Activar Super Cup, Community Shield, ligas principales y competiciones UEFA para season 2026.
 - [x] Hacer que la tarea diaria envie solo IDs live/recientes a la fase costosa de ingestion.
 - [x] Mantener ingestas manuales/full sin filtro cuando no se pasa una lista objetivo.
+- [x] Desacoplar la importacion de fixtures de la disponibilidad de standings.
 - [x] Crear pagina de detalle generica reutilizando timeline, cancha, alineaciones y estadisticas.
 - [x] Enlazar filas de partidos de Torneos y mantener navegacion de regreso contextual.
 - [x] Escribir tests de use case, whitelist/seleccion y parser compatible.

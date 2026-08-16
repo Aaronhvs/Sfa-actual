@@ -137,14 +137,6 @@ class IngestCompetitionUseCase:
             borrowing_standings = standings_league_id != league.id
 
             standings = await self._provider.fetch_standings(standings_league_id, season)
-            if not standings and not borrowing_standings:
-                return IngestionResult(
-                    competition=league.name,
-                    players_processed=0,
-                    fixtures_processed=0,
-                    status="completed",
-                    error=None,
-                )
 
             competition_id = await self._repo.upsert_competition(
                 league.name,
