@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.transfermarkt_ports import EnrichPositionRepositoryPort, PlayerForEnrichDTO
 from sfa.infrastructure.models.enums import Position
+from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.teams.models import Team
@@ -29,10 +30,19 @@ class EnrichPositionRepository(EnrichPositionRepositoryPort):
                 PlayerStats.team_id,
                 func.row_number().over(
                     partition_by=PlayerStats.player_id,
-                    order_by=PlayerStats.fixture_id.desc(),
+                    order_by=(
+                        Fixture.played_at.desc(),
+                        Fixture.id.desc(),
+                        PlayerStats.id.desc(),
+                    ),
                 ).label("rn"),
             )
+            .join(Fixture, Fixture.id == PlayerStats.fixture_id)
             .where(*appearance_filters)
+            .where(
+                (PlayerStats.team_id == Fixture.home_team_id)
+                | (PlayerStats.team_id == Fixture.away_team_id)
+            )
             .subquery()
         )
         stmt = (

@@ -6,7 +6,8 @@ WORLD_CUP_COMPETITION_ID = 350
 
 _OVERRIDE_NAMES_BY_POSITION: dict[str, tuple[str, ...]] = {
     "EXT": ("messi", "lionel messi", "alex baena"),
-    "MCO": ("olise", "michael olise"),
+    "MCO": ("olise", "michael olise", "fermin", "fermin lopez"),
+    "MC": ("zubimendi", "martin zubimendi"),
     "LAT": ("kimmich", "joshua kimmich"),
 }
 
@@ -40,6 +41,12 @@ def position_for_context(
     name = _normalize(player_name)
     team = _normalize(team_name)
     is_world_cup = competition_id == WORLD_CUP_COMPETITION_ID
+
+    if "fermin lopez" in name or name == "fermin":
+        return "MCO"
+
+    if "zubimendi" in name:
+        return "MC"
 
     if "messi" in name and (is_world_cup or team == "argentina"):
         return "EXT"

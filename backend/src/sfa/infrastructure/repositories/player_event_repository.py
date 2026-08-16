@@ -186,28 +186,6 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
     ) -> list[PlayerFixtureDTO]:
         home_alias = Team.__table__.alias("ht")
         away_alias = Team.__table__.alias("at")
-        player_stats_team_alias = Team.__table__.alias("pst")
-        player_event_team_alias = Team.__table__.alias("pet")
-        season_score_team_alias = Team.__table__.alias("sst")
-        season_score_team = (
-            select(
-                SFASeasonScore.player_id,
-                SFASeasonScore.season,
-                SFASeasonScore.competition_id,
-                SFASeasonScore.team_id,
-                func.row_number().over(
-                    partition_by=(
-                        SFASeasonScore.player_id,
-                        SFASeasonScore.season,
-                        SFASeasonScore.competition_id,
-                    ),
-                    order_by=SFASeasonScore.rules_version_id.desc(),
-                ).label("rn"),
-            )
-            .where(SFASeasonScore.player_id == player_id)
-            .where(SFASeasonScore.team_id.is_not(None))
-            .subquery()
-        )
         historical_scores = season is None and rules_version_id is None and scope is None
         if historical_scores:
             score_ranked = (
@@ -248,9 +226,16 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
                 home_alias.c.external_id.label("home_team_ext_id"),
                 away_alias.c.external_id.label("away_team_ext_id"),
                 func.coalesce(
-                    func.max(player_stats_team_alias.c.name),
-                    func.max(player_event_team_alias.c.name),
-                    func.max(season_score_team_alias.c.name),
+                    func.max(case(
+                        (PlayerStats.team_id == Fixture.home_team_id, home_alias.c.name),
+                        (PlayerStats.team_id == Fixture.away_team_id, away_alias.c.name),
+                        else_=None,
+                    )),
+                    func.max(case(
+                        (PlayerEvent.team_id == Fixture.home_team_id, home_alias.c.name),
+                        (PlayerEvent.team_id == Fixture.away_team_id, away_alias.c.name),
+                        else_=None,
+                    )),
                     func.max(
                         case(
                             (PlayerEvent.is_away.is_(True), away_alias.c.name),
@@ -260,9 +245,16 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
                     ),
                 ).label("player_team"),
                 func.coalesce(
-                    func.max(player_stats_team_alias.c.external_id),
-                    func.max(player_event_team_alias.c.external_id),
-                    func.max(season_score_team_alias.c.external_id),
+                    func.max(case(
+                        (PlayerStats.team_id == Fixture.home_team_id, home_alias.c.external_id),
+                        (PlayerStats.team_id == Fixture.away_team_id, away_alias.c.external_id),
+                        else_=None,
+                    )),
+                    func.max(case(
+                        (PlayerEvent.team_id == Fixture.home_team_id, home_alias.c.external_id),
+                        (PlayerEvent.team_id == Fixture.away_team_id, away_alias.c.external_id),
+                        else_=None,
+                    )),
                     func.max(
                         case(
                             (PlayerEvent.is_away.is_(True), away_alias.c.external_id),
@@ -305,18 +297,6 @@ class PlayerEventRepository(PlayerEventRepositoryProtocol):
                     PlayerStats.fixture_id == Fixture.id,
                 ),
             )
-            .outerjoin(player_stats_team_alias, PlayerStats.team_id == player_stats_team_alias.c.id)
-            .outerjoin(player_event_team_alias, PlayerEvent.team_id == player_event_team_alias.c.id)
-            .outerjoin(
-                season_score_team,
-                and_(
-                    season_score_team.c.player_id == player_id,
-                    season_score_team.c.season == Fixture.season,
-                    season_score_team.c.competition_id == Fixture.competition_id,
-                    season_score_team.c.rn == 1,
-                ),
-            )
-            .outerjoin(season_score_team_alias, season_score_team.c.team_id == season_score_team_alias.c.id)
             .where(PlayerEvent.player_id == player_id)
             .group_by(
                 Fixture.id,

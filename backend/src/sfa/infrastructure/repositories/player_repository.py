@@ -2,6 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.ports import PlayerDTO, PlayerRepositoryProtocol
+from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.teams.models import Team
@@ -18,10 +19,19 @@ class PlayerRepository(PlayerRepositoryProtocol):
                 PlayerStats.team_id,
                 func.row_number().over(
                     partition_by=PlayerStats.player_id,
-                    order_by=PlayerStats.fixture_id.desc(),
+                    order_by=(
+                        Fixture.played_at.desc(),
+                        Fixture.id.desc(),
+                        PlayerStats.id.desc(),
+                    ),
                 ).label("rn"),
             )
+            .join(Fixture, Fixture.id == PlayerStats.fixture_id)
             .where(PlayerStats.team_id.is_not(None))
+            .where(
+                (PlayerStats.team_id == Fixture.home_team_id)
+                | (PlayerStats.team_id == Fixture.away_team_id)
+            )
             .subquery()
         )
         stmt = (

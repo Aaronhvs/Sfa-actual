@@ -16,8 +16,10 @@ from sfa.domain.ports import (
 )
 from sfa.domain.season_scope import AwardPeriodScope, InconsistentScopeRulesVersionError, ScopeKind
 from sfa.infrastructure.models.competitions.models import Competition
+from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.individual_honors.models import IndividualHonorModel
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
+from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 from sfa.infrastructure.models.teams.models import Team
@@ -239,6 +241,54 @@ def _scope_filter(model, scope: AwardPeriodScope):
     )
 
 
+def _latest_verified_team(
+    season: str,
+    scope: AwardPeriodScope | None = None,
+    competition_id: int | None = None,
+):
+    filters = [
+        PlayerStats.team_id.is_not(None),
+        or_(
+            PlayerStats.team_id == Fixture.home_team_id,
+            PlayerStats.team_id == Fixture.away_team_id,
+        ),
+    ]
+    if scope is not None:
+        filters.append(_scope_filter(Fixture, scope))
+        if competition_id is None and scope.kind == ScopeKind.AWARD_PERIOD:
+            filters.append(Competition.participant_kind == "club")
+    else:
+        filters.append(Fixture.season == season)
+        if competition_id is None:
+            filters.append(Competition.participant_kind == "club")
+    if competition_id is not None:
+        filters.append(Fixture.competition_id == competition_id)
+
+    ranked = (
+        select(
+            PlayerStats.player_id,
+            PlayerStats.team_id.label("display_team_id"),
+            func.row_number().over(
+                partition_by=PlayerStats.player_id,
+                order_by=(
+                    Fixture.played_at.desc(),
+                    Fixture.id.desc(),
+                    PlayerStats.id.desc(),
+                ),
+            ).label("rn"),
+        )
+        .join(Fixture, Fixture.id == PlayerStats.fixture_id)
+        .join(Competition, Competition.id == Fixture.competition_id)
+        .where(*filters)
+        .subquery()
+    )
+    return (
+        select(ranked.c.player_id, ranked.c.display_team_id)
+        .where(ranked.c.rn == 1)
+        .subquery()
+    )
+
+
 def _honor_bonus_subquery(
     scope_key: str,
     rules_version_id: int,
@@ -277,6 +327,10 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         scope: AwardPeriodScope,
         rules_version_id: int,
     ) -> ScopedPlayerDetailDTO | None:
+        latest_team = _latest_verified_team(
+            season=scope.sources[0].season,
+            scope=scope,
+        )
         stmt = (
             select(
                 Player.id.label("player_id"),
@@ -293,7 +347,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 SFASeasonScore.breakdown,
             )
             .join(Player, Player.id == SFASeasonScore.player_id)
-            .join(Team, Team.id == SFASeasonScore.team_id)
+            .join(latest_team, latest_team.c.player_id == SFASeasonScore.player_id)
+            .join(Team, Team.id == latest_team.c.display_team_id)
             .join(Competition, Competition.id == SFASeasonScore.competition_id)
             .where(
                 SFASeasonScore.player_id == player_id,
@@ -445,6 +500,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             if rules_version_id is not None
             else SFASeasonScore.rules_version_id.is_(None)
         )
+        latest_team = _latest_verified_team(season=season)
         stmt = (
             select(
                 Player.id.label("player_id"),
@@ -459,7 +515,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 SFASeasonScore.breakdown,
             )
             .join(Player, SFASeasonScore.player_id == Player.id)
-            .join(Team, SFASeasonScore.team_id == Team.id)
+            .join(latest_team, latest_team.c.player_id == SFASeasonScore.player_id)
+            .join(Team, latest_team.c.display_team_id == Team.id)
             .join(Competition, SFASeasonScore.competition_id == Competition.id)
             .where(SFASeasonScore.player_id == player_id)
             .where(SFASeasonScore.season == season)
@@ -629,6 +686,11 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .subquery()
         )
 
+        latest_team = _latest_verified_team(
+            season=season,
+            scope=_scope,
+            competition_id=competition_id,
+        )
         ranked_scores = (
             select(
                 SFASeasonScore.player_id,
@@ -694,7 +756,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             )
             .join(agg, Player.id == agg.c.player_id)
             .join(best_comp, Player.id == best_comp.c.player_id)
-            .join(Team, best_comp.c.team_id == Team.id)
+            .join(latest_team, Player.id == latest_team.c.player_id)
+            .join(Team, latest_team.c.display_team_id == Team.id)
             .join(Competition, best_comp.c.competition_id == Competition.id)
             .outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
         )
@@ -789,27 +852,26 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         if competition_id is not None:
             score_filters.append(SFASeasonScore.competition_id == competition_id)
 
+        latest_team = _latest_verified_team(
+            season=season,
+            scope=_scope,
+            competition_id=competition_id,
+        )
         inner = (
             select(SFASeasonScore.player_id)
             .join(Player, SFASeasonScore.player_id == Player.id)
+            .join(latest_team, Player.id == latest_team.c.player_id)
+            .join(Team, latest_team.c.display_team_id == Team.id)
             .where(*score_filters)
             .group_by(SFASeasonScore.player_id)
         )
         if position is not None:
             inner = inner.where(_position_filter(position))
         if name is not None:
-            team_match = (
-                select(SFASeasonScore.player_id)
-                .join(Team, SFASeasonScore.team_id == Team.id)
-                .where(
-                    *score_filters,
-                    _any_unaccent_ilike(Team.name, _team_search_terms(name)),
-                )
-            )
             inner = inner.where(
                 or_(
                     _unaccent_ilike(Player.name, name),
-                    Player.id.in_(team_match),
+                    _any_unaccent_ilike(Team.name, _team_search_terms(name)),
                 )
             )
         b1_agg = None
@@ -880,7 +942,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                     SFASeasonScore.competition_id,
                 )
                 .join(Player, SFASeasonScore.player_id == Player.id)
-                .join(Team, SFASeasonScore.team_id == Team.id)
+                .join(latest_team, Player.id == latest_team.c.player_id)
+                .join(Team, latest_team.c.display_team_id == Team.id)
                 .where(*score_filters, _position_filter(position))
                 .group_by(
                     Player.id,
@@ -894,7 +957,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 exact_stmt = exact_stmt.where(
                     or_(
                         _unaccent_ilike(Player.name, name),
-                        Player.id.in_(team_match),
+                        _any_unaccent_ilike(Team.name, _team_search_terms(name)),
                     )
                 )
             if bonus_filter is not None and b1_agg is not None:
