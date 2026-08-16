@@ -45,6 +45,7 @@ def _fixture_dto(row) -> TournamentFixtureDTO:
             external_id=row["away_team_external_id"],
             name=row["away_team_name"],
         ),
+        competition_name=row.get("competition_name"),
     )
 
 
@@ -129,6 +130,7 @@ class TournamentRepository:
                 Fixture.status,
                 Fixture.home_goals,
                 Fixture.away_goals,
+                Competition.name.label("competition_name"),
                 home.c.id.label("home_team_id"),
                 home.c.external_id.label("home_team_external_id"),
                 home.c.name.label("home_team_name"),
@@ -138,6 +140,7 @@ class TournamentRepository:
             )
             .join(home, home.c.id == Fixture.home_team_id)
             .join(away, away.c.id == Fixture.away_team_id)
+            .join(Competition, Competition.id == Fixture.competition_id)
             .where(
                 Fixture.competition_id == competition_id,
                 Fixture.season == season,
@@ -257,6 +260,7 @@ class TournamentRepository:
                 Fixture.status,
                 Fixture.home_goals,
                 Fixture.away_goals,
+                Competition.name.label("competition_name"),
                 home.c.id.label("home_team_id"),
                 home.c.external_id.label("home_team_external_id"),
                 home.c.name.label("home_team_name"),
@@ -307,6 +311,7 @@ class TournamentRepository:
                 Fixture.status,
                 Fixture.home_goals,
                 Fixture.away_goals,
+                Competition.name.label("competition_name"),
                 home.c.id.label("home_team_id"),
                 home.c.external_id.label("home_team_external_id"),
                 home.c.name.label("home_team_name"),

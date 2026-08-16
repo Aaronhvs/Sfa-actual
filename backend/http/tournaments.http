@@ -12,6 +12,16 @@ GET {{baseUrl}}/tournaments/10?season=2026
 ### Current-season fixture detail (replace with an ingested external fixture ID)
 GET {{baseUrl}}/tournaments/fixtures/1591866?season=2026
 
+### Live fixture: status and score must match the dashboard PostgreSQL snapshot.
+# Supplemental venue, lineups and statistics may be empty without hiding the match.
+GET {{baseUrl}}/tournaments/fixtures/1570338?season=2026
+
+### Final fixture: polling clients must stop when fixture.is_live is false.
+GET {{baseUrl}}/tournaments/fixtures/1570338?season=2026
+
+### Fixture outside the canonical current club season (404)
+GET {{baseUrl}}/tournaments/fixtures/1570338?season=2025
+
 ### Dashboard resolves today or nearest available date
 GET {{baseUrl}}/tournaments/dashboard?season=2026
 

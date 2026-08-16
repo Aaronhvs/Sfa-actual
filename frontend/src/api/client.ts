@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, FixtureDetailResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDashboardResponse, TournamentDetailResponse, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDashboardResponse, TournamentDetailResponse, TournamentMatchDetail, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -162,13 +162,13 @@ export async function fetchTournamentFixtureDetail(
   fixtureId: number,
   season = '2026',
   fresh = false,
-): Promise<FixtureDetailResponse> {
+): Promise<TournamentMatchDetail> {
   const key = `tournament:fixture-detail:${fixtureId}:${season}`
   if (!fresh) {
-    const cached = getCached<FixtureDetailResponse>(key)
+    const cached = getCached<TournamentMatchDetail>(key)
     if (cached) return cached
   }
-  const data = await get<FixtureDetailResponse>(
+  const data = await get<TournamentMatchDetail>(
     `/tournaments/fixtures/${fixtureId}?season=${encodeURIComponent(season)}`,
   )
   setCache(key, data)

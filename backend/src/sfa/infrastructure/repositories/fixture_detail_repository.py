@@ -6,13 +6,14 @@ from dataclasses import replace
 from datetime import datetime
 
 import redis.asyncio as aioredis
-from sqlalchemy import func, select
+from sqlalchemy import Integer, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.fixture_detail_ports import (
     FixtureDetailDTO,
     FixtureDetailRepositoryProtocol,
     FixtureLineupPlayerDTO,
+    FixtureSFAMomentumBucketDTO,
     FixtureStatisticDTO,
     FixtureSummaryDTO,
     FixtureTeamDTO,
@@ -20,6 +21,7 @@ from sfa.domain.fixture_detail_ports import (
     FixtureTimelineEventDTO,
     FixtureVenueDTO,
 )
+from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixture_events.models import FixtureEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
@@ -54,13 +56,20 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
         self,
         fixture_external_id: int,
     ) -> FixtureDetailDTO | None:
-        cache_key = f"fixture:api:detail:{fixture_external_id}"
+        cache_key = f"fixture:api:supplement:v2:{fixture_external_id}"
         cached = await self._redis.get(cache_key)
         if cached:
             detail = self._detail_from_dict(json.loads(cached))
             return await self.attach_sfa_scores(detail)
 
-        detail = await self._provider.fetch_fixture_detail(fixture_external_id)
+        try:
+            detail = await self._provider.fetch_fixture_detail(fixture_external_id)
+        except Exception:
+            logger.exception(
+                "[FixtureDetailRepository] Supplement fetch failed fixture=%d",
+                fixture_external_id,
+            )
+            return None
         if detail is None:
             return None
 
@@ -170,7 +179,16 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
         if stored:
             return stored
 
-        raw_events = await self._provider.fetch_fixture_events(fixture_external_id)
+        try:
+            raw_events = await self._provider.fetch_fixture_events(
+                fixture_external_id,
+            )
+        except Exception:
+            logger.exception(
+                "[FixtureDetailRepository] Event fetch failed fixture=%d",
+                fixture_external_id,
+            )
+            return []
         events: list[FixtureTimelineEventDTO] = []
         for raw in raw_events:
             event_type = _normalize_fixture_event_type(raw.type, raw.detail)
@@ -187,6 +205,69 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
                 )
             )
         return events
+
+    async def get_fixture_sfa_momentum(
+        self,
+        fixture_id: int,
+        home_team_id: int,
+        away_team_id: int,
+    ) -> list[FixtureSFAMomentumBucketDTO]:
+        active_version_subq = (
+            select(ScoringRulesVersion.id)
+            .where(ScoringRulesVersion.is_active.is_(True))
+            .limit(1)
+            .scalar_subquery()
+        )
+        bucket_start = (
+            func.floor((PlayerEvent.minute - 1) / 5) * 5
+        ).cast(Integer).label("minute_start")
+        rows = (
+            await self._session.execute(
+                select(
+                    bucket_start,
+                    func.sum(
+                        case(
+                            (
+                                PlayerEvent.team_id == home_team_id,
+                                PlayerEventScore.final_points,
+                            ),
+                            else_=0,
+                        )
+                    ).label("home_points"),
+                    func.sum(
+                        case(
+                            (
+                                PlayerEvent.team_id == away_team_id,
+                                PlayerEventScore.final_points,
+                            ),
+                            else_=0,
+                        )
+                    ).label("away_points"),
+                )
+                .join(
+                    PlayerEventScore,
+                    PlayerEventScore.event_id == PlayerEvent.id,
+                )
+                .where(
+                    PlayerEvent.fixture_id == fixture_id,
+                    PlayerEvent.minute >= 1,
+                    PlayerEvent.team_id.in_((home_team_id, away_team_id)),
+                    PlayerEventScore.rules_version_id == active_version_subq,
+                    PlayerEventScore.action_type != "stats",
+                )
+                .group_by(bucket_start)
+                .order_by(bucket_start)
+            )
+        ).mappings().all()
+        return [
+            FixtureSFAMomentumBucketDTO(
+                minute_start=row["minute_start"],
+                minute_end=row["minute_start"] + 5,
+                home_points=round(float(row["home_points"] or 0), 2),
+                away_points=round(float(row["away_points"] or 0), 2),
+            )
+            for row in rows
+        ]
 
     @staticmethod
     def _fixture_to_dict(fixture: FixtureSummaryDTO) -> dict:

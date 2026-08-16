@@ -386,7 +386,89 @@ export interface WcFixtureDetailResponse {
   events: WcFixtureEvent[]
 }
 
-export type FixtureDetailResponse = WcFixtureDetailResponse
+export interface TournamentMatchTeam {
+  id: number
+  name: string
+  external_id: number | null
+}
+
+export interface TournamentMatchFixture {
+  id: number
+  external_id: number
+  competition_id: number | null
+  competition_name: string | null
+  stage: string
+  matchday: number | null
+  played_at: string
+  is_live: boolean
+  status: string
+  status_label: string
+  elapsed: number | null
+  home_goals: number | null
+  away_goals: number | null
+  home_winner: boolean | null
+  away_winner: boolean | null
+  home_team: TournamentMatchTeam
+  away_team: TournamentMatchTeam
+}
+
+export interface TournamentMatchVenue {
+  name: string | null
+  city: string | null
+}
+
+export interface TournamentMatchLineupPlayer {
+  external_id: number | null
+  name: string
+  number: number | null
+  position: string | null
+  grid: string | null
+  player_id: number | null
+  sfa_points: number | null
+}
+
+export interface TournamentMatchTeamLineup {
+  team: TournamentMatchTeam
+  formation: string | null
+  coach_name: string | null
+  coach_photo: string | null
+  start_xi: TournamentMatchLineupPlayer[]
+  substitutes: TournamentMatchLineupPlayer[]
+}
+
+export interface TournamentMatchStatistic {
+  label: string
+  home_value: string | null
+  away_value: string | null
+  home_numeric: number | null
+  away_numeric: number | null
+}
+
+export interface TournamentMatchEvent {
+  minute: number
+  extra_minute: number
+  team_external_id: number
+  event_type: string
+  player_name: string
+  assist_name: string | null
+}
+
+export interface TournamentMatchMomentumBucket {
+  minute_start: number
+  minute_end: number
+  home_points: number
+  away_points: number
+}
+
+export interface TournamentMatchDetail {
+  fixture: TournamentMatchFixture
+  venue: TournamentMatchVenue
+  referee: string | null
+  lineups: TournamentMatchTeamLineup[]
+  statistics: TournamentMatchStatistic[]
+  events: TournamentMatchEvent[]
+  sfa_momentum: TournamentMatchMomentumBucket[]
+}
 
 export interface WcTeamSFARankingItem {
   rank: number

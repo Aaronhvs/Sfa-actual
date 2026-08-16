@@ -26,6 +26,8 @@ class FixtureSummaryDTO:
     away_goals: int | None
     home_winner: bool | None = None
     away_winner: bool | None = None
+    competition_id: int | None = None
+    competition_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +77,14 @@ class FixtureTimelineEventDTO:
 
 
 @dataclass(frozen=True)
+class FixtureSFAMomentumBucketDTO:
+    minute_start: int
+    minute_end: int
+    home_points: float
+    away_points: float
+
+
+@dataclass(frozen=True)
 class FixtureDetailDTO:
     fixture: FixtureSummaryDTO
     venue: FixtureVenueDTO
@@ -82,6 +92,7 @@ class FixtureDetailDTO:
     lineups: list[FixtureTeamLineupDTO]
     statistics: list[FixtureStatisticDTO]
     events: list[FixtureTimelineEventDTO] = field(default_factory=list)
+    sfa_momentum: list[FixtureSFAMomentumBucketDTO] = field(default_factory=list)
 
 
 @runtime_checkable
@@ -93,3 +104,10 @@ class FixtureDetailRepositoryProtocol(Protocol):
     async def get_fixture_events(
         self, fixture_external_id: int,
     ) -> list[FixtureTimelineEventDTO]: ...
+
+    async def get_fixture_sfa_momentum(
+        self,
+        fixture_id: int,
+        home_team_id: int,
+        away_team_id: int,
+    ) -> list[FixtureSFAMomentumBucketDTO]: ...

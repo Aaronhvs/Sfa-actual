@@ -199,6 +199,7 @@ class TournamentFixtureDTO:
     away_goals: int | None
     home_team: TournamentTeamDTO
     away_team: TournamentTeamDTO
+    competition_name: str | None = None
 
 
 @dataclass(frozen=True)

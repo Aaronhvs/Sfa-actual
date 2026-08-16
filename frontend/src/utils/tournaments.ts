@@ -1,7 +1,9 @@
 import type { TournamentCompetition, TournamentTeam } from '../types'
 
-export const FINAL_TOURNAMENT_STATUSES = new Set(['FT', 'AET', 'PEN'])
-export const LIVE_TOURNAMENT_STATUSES = new Set(['LIVE', '1H', 'HT', '2H', 'ET', 'BT', 'P'])
+export const FINAL_TOURNAMENT_STATUSES = new Set(['FT', 'AET', 'PEN', 'AWD', 'WO'])
+export const LIVE_TOURNAMENT_STATUSES = new Set([
+  'LIVE', '1H', 'HT', '2H', 'ET', 'BT', 'P', 'INT', 'SUSP',
+])
 
 export function tournamentSeasonLabel(season: string) {
   const start = Number(season)
@@ -42,6 +44,16 @@ function normalizedCompetitionName(name: string) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+}
+
+export function tournamentCompetitionLogoByName(name: string | null) {
+  if (!name) return undefined
+  const normalized = normalizedCompetitionName(name)
+  const apiFootballId = API_FOOTBALL_COMPETITION_IDS
+    .find(([key]) => normalized.includes(key))?.[1]
+  return apiFootballId == null
+    ? undefined
+    : `https://media.api-sports.io/football/leagues/${apiFootballId}.png`
 }
 
 export function tournamentCompetitionLogo(competition: TournamentCompetition) {
@@ -106,8 +118,23 @@ export function tournamentStatusLabel(status: string) {
     HT: 'Descanso',
     '2H': '2.º tiempo',
     ET: 'Prorroga',
+    BT: 'Pausa',
+    P: 'Penaltis',
+    INT: 'Interrumpido',
+    SUSP: 'Suspendido',
+    ABD: 'Abandonado',
+    AWD: 'Victoria administrativa',
+    WO: 'Walkover',
   }
   return labels[status] ?? status
+}
+
+export function isTournamentLive(status: string) {
+  return LIVE_TOURNAMENT_STATUSES.has(status)
+}
+
+export function isTournamentFinal(status: string) {
+  return FINAL_TOURNAMENT_STATUSES.has(status)
 }
 
 export function isTournamentKnockout(stage: string) {

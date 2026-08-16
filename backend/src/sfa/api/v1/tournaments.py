@@ -12,6 +12,7 @@ from sfa.api.v1.schemas.tournaments import (
     TournamentMatchEventSchema,
     TournamentMatchFixtureSchema,
     TournamentMatchLineupPlayerSchema,
+    TournamentMatchMomentumBucketSchema,
     TournamentMatchStatisticSchema,
     TournamentMatchTeamLineupSchema,
     TournamentMatchTeamSchema,
@@ -49,6 +50,8 @@ def _match_fixture_schema(fixture) -> TournamentMatchFixtureSchema:
     return TournamentMatchFixtureSchema(
         id=fixture.external_id,
         external_id=fixture.external_id,
+        competition_id=fixture.competition_id,
+        competition_name=fixture.competition_name,
         stage=fixture.stage,
         matchday=fixture.matchday,
         played_at=fixture.played_at,
@@ -157,6 +160,10 @@ async def get_tournament_fixture_detail(
         events=[
             TournamentMatchEventSchema(**event.__dict__)
             for event in detail.events
+        ],
+        sfa_momentum=[
+            TournamentMatchMomentumBucketSchema(**bucket.__dict__)
+            for bucket in detail.sfa_momentum
         ],
     )
 
