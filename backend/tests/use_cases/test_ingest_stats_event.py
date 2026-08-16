@@ -593,6 +593,22 @@ async def test_target_fixture_ids_skip_expensive_phase_for_other_fixtures():
     assert all(fixture_id == 9003 for fixture_id, _ in provider.fixture_players_calls)
 
 
+@pytest.mark.anyio
+async def test_target_fixture_id_forces_detail_after_calendar_bootstrap():
+    fixture = _fixture(ext_id=9004, home_team=1, away_team=2)
+    provider = _TrackingProvider(fixtures=[fixture], player=_player_stats())
+    repo = _FakeRepoWithCompleted(completed={9004})
+
+    await IngestCompetitionUseCase(provider, repo).execute(
+        _LEAGUE,
+        2026,
+        target_fixture_external_ids={9004},
+    )
+
+    assert provider.fixture_events_calls == [9004]
+    assert all(fixture_id == 9004 for fixture_id, _ in provider.fixture_players_calls)
+
+
 class _NoStandingsProvider(_TrackingProvider):
     async def fetch_standings(
         self, league_id: int, season: int,

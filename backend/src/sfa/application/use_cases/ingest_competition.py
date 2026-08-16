@@ -221,7 +221,10 @@ class IngestCompetitionUseCase:
                         continue
 
                     # Skip events/players for fixtures already completed in DB
-                    if fixture.external_id in completed_ids:
+                    if (
+                        target_fixture_external_ids is None
+                        and fixture.external_id in completed_ids
+                    ):
                         fixtures_processed += 1
                         continue
 

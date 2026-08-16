@@ -40,6 +40,7 @@
 - [x] Agregar use case, DI, schemas, endpoint y archivo HTTP.
 - [x] Activar Super Cup, Community Shield, ligas principales y competiciones UEFA para season 2026.
 - [x] Hacer que la tarea diaria envie solo IDs live/recientes a la fase costosa de ingestion.
+- [x] Forzar la fase detallada para IDs objetivo aunque sus metadatos ya esten finalizados.
 - [x] Mantener ingestas manuales/full sin filtro cuando no se pasa una lista objetivo.
 - [x] Desacoplar la importacion de fixtures de la disponibilidad de standings.
 - [x] Crear pagina de detalle generica reutilizando timeline, cancha, alineaciones y estadisticas.
