@@ -103,6 +103,7 @@ async def _run_ingest_competition(
     season: int,
     force: bool = False,
     fixture_external_ids: list[int] | None = None,
+    enqueue_recalculation: bool = True,
 ):
     from sfa.application.use_cases.ingest_competition import (
         LEAGUES,
@@ -145,23 +146,24 @@ async def _run_ingest_competition(
         )
         await session.commit()
 
-    competition_id = await _get_competition_id_by_league(league)
-    if competition_id is None:
-        await _trigger_recalculation(season)
-    else:
-        await _trigger_recalculation_after_elo_pools(
-            season,
-            club_competition_ids=(
-                await _get_competition_ids_for_kind(season, "club")
-                if league.participant_kind == "club"
-                else []
-            ),
-            national_competition_ids=(
-                [competition_id]
-                if league.participant_kind == "national_team"
-                else []
-            ),
-        )
+    if enqueue_recalculation:
+        competition_id = await _get_competition_id_by_league(league)
+        if competition_id is None:
+            await _trigger_recalculation(season)
+        else:
+            await _trigger_recalculation_after_elo_pools(
+                season,
+                club_competition_ids=(
+                    await _get_competition_ids_for_kind(season, "club")
+                    if league.participant_kind == "club"
+                    else []
+                ),
+                national_competition_ids=(
+                    [competition_id]
+                    if league.participant_kind == "national_team"
+                    else []
+                ),
+            )
 
     return _serialize_result(result)
 
@@ -278,6 +280,7 @@ async def _trigger_recalculation_after_elo_pools(
     season: int,
     club_competition_ids: list[int],
     national_competition_ids: list[int],
+    force_recalculate: bool = True,
 ) -> None:
     from sfa.infrastructure.database import AsyncSessionLocal
     from sfa.infrastructure.repositories.scoring_rules_version_repository import ScoringRulesVersionRepository
@@ -296,6 +299,7 @@ async def _trigger_recalculation_after_elo_pools(
         active_version.id,
         club_competition_ids,
         national_competition_ids,
+        force_recalculate,
     )
     logger.info(
         "[ingestion] Queued ELO pools + recalculation rules_version_id=%d "
@@ -305,3 +309,39 @@ async def _trigger_recalculation_after_elo_pools(
         club_competition_ids,
         national_competition_ids,
     )
+
+
+async def _trigger_recalculation_for_leagues(
+    season: int,
+    leagues: list[LeagueConfig],
+    force_recalculate: bool = False,
+) -> bool:
+    """Queue one ELO/scoring replay for a completed ingestion batch."""
+    if not leagues:
+        return False
+
+    has_club = any(league.participant_kind == "club" for league in leagues)
+    club_competition_ids = (
+        await _get_competition_ids_for_kind(season, "club")
+        if has_club
+        else []
+    )
+    national_competition_ids: list[int] = []
+    for league in leagues:
+        if league.participant_kind != "national_team":
+            continue
+        competition_id = await _get_competition_id_by_league(league)
+        if competition_id is not None:
+            national_competition_ids.append(competition_id)
+
+    if not club_competition_ids and not national_competition_ids:
+        await _trigger_recalculation(season)
+        return True
+
+    await _trigger_recalculation_after_elo_pools(
+        season,
+        club_competition_ids=club_competition_ids,
+        national_competition_ids=sorted(set(national_competition_ids)),
+        force_recalculate=force_recalculate,
+    )
+    return True

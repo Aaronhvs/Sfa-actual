@@ -165,6 +165,7 @@ async def test_event_context_prefers_fixture_elo_snapshot_before_current_strengt
     assert "fixture_team_strengths AS elo_away" in sql
     assert "elo_home.pre_match_strength" in sql
     assert "elo_away.pre_match_strength" in sql
+    assert "fixtures.status IN" in sql
     assert " LEFT OUTER JOIN team_strengths " not in sql
 
 

@@ -23,6 +23,7 @@ from .ingest_fixture_events_task import ingest_fixture_events_task
 from .ingest_today_task import ingest_today_task
 from .ingestion_tasks import ingest_all_competitions_task, ingest_competition_task
 from .recalculate_award_period_task import recalculate_award_period_task
+from .reconcile_recent_ingestion_task import reconcile_recent_ingestion_task
 from .reingest_player_task import reingest_player_task
 from .run_full_recalculation_task import run_full_recalculation_task
 
@@ -43,6 +44,7 @@ __all__ = [
     "reingest_player_task",
     "run_full_recalculation_task",
     "recalculate_award_period_task",
+    "reconcile_recent_ingestion_task",
     "ingest_competition_task",
     "ingest_all_competitions_task",
     "ingest_today_task",

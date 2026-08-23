@@ -23,6 +23,7 @@ from sfa.infrastructure.models.players.models import Player
 logger = logging.getLogger(__name__)
 
 _FALLBACK_TEAM_POS = 10  # used when standings data is unavailable for historical events
+_FINAL_FIXTURE_STATUSES = ("FT", "AET", "PEN")
 
 
 class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
@@ -110,7 +111,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 (elo_away.c.fixture_id == Fixture.id)
                 & (elo_away.c.team_id == Fixture.away_team_id),
             )
-            .where(*filters)
+            .where(*filters, Fixture.status.in_(_FINAL_FIXTURE_STATUSES))
         )
         event_rows = (await self._session.execute(stmt)).all()
 

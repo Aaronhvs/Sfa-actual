@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     # Redis / Celery
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
-    INGEST_INTERVAL_MINUTES: int = 2
+    INGEST_INTERVAL_MINUTES: int = 10
+    INGEST_RECONCILE_HOUR_UTC: int = 4
+    INGEST_RECONCILE_LOOKBACK_DAYS: int = 3
     NATIONAL_TEAM_ELO_DEFAULT_K: float = 20.0
 
     # External APIs

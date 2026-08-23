@@ -61,6 +61,7 @@ services:
       - .env.prod
     environment:
       - SFA_NULLPOOL=1
+      - INGEST_INTERVAL_MINUTES=10
     depends_on:
       - db
       - redis
@@ -75,6 +76,7 @@ services:
       - .env.prod
     environment:
       - SFA_NULLPOOL=1
+      - INGEST_INTERVAL_MINUTES=10
     depends_on:
       - db
       - redis

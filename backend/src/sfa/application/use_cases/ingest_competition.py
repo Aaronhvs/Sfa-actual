@@ -8,6 +8,7 @@ from sfa.domain.ingestion_ports import (
     FixtureEventRawDTO,
     FootballDataProviderPort,
     IngestionRepositoryPort,
+    ProviderDailyQuotaExceededError,
 )
 from sfa.domain.name_matching import event_matches_player as _event_matches_player
 from sfa.domain.position_mapping import KNOWN_POSITIONS, map_position
@@ -437,6 +438,8 @@ class IngestCompetitionUseCase:
             )
 
         except Exception as exc:
+            if isinstance(exc, ProviderDailyQuotaExceededError):
+                raise
             logger.exception(
                 "Ingestion failed for %s season %s", league.name, season
             )

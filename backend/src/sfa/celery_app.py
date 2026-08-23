@@ -24,6 +24,12 @@ celery_app.conf.beat_schedule = {
         "task": "sfa.tasks.ingest_today_task.ingest_today_task",
         "schedule": timedelta(minutes=ingest_interval_minutes),
     },
+    # Repairs recent fixtures after the provider quota resets at midnight UTC.
+    "reconcile-recent-competitions": {
+        "task": "sfa.tasks.reconcile_recent_ingestion_task.reconcile_recent_ingestion_task",
+        "schedule": crontab(hour=settings.INGEST_RECONCILE_HOUR_UTC, minute=5),
+        "kwargs": {"lookback_days": settings.INGEST_RECONCILE_LOOKBACK_DAYS},
+    },
     # Runs once a day at 3 AM UTC to fix player positions via Transfermarkt.
     # Important during active competitions where new players appear daily.
     # API-Football season="2026" targets club season 2026/2027.

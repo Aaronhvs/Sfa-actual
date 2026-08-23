@@ -21,6 +21,7 @@ from sfa.domain.ingestion_ports import (
     FixtureRawDTO,
     FixtureScoreRawDTO,
     PlayerStatsRawDTO,
+    ProviderDailyQuotaExceededError,
     StandingRawDTO,
 )
 from sfa.domain.world_cup_ports import (
@@ -86,15 +87,15 @@ class APIFootballProvider:
                 errors = data.get("errors")
                 if errors:
                     err_str = str(errors)
+                    if "reached the request limit" in err_str.lower():
+                        raise ProviderDailyQuotaExceededError(
+                            "API-Football daily request limit reached; "
+                            f"resets at midnight UTC. endpoint={endpoint}"
+                        )
                     if "rateLimit" in err_str:
                         logger.warning("Rate limit hit, waiting 65s before retry")
                         await asyncio.sleep(65)
                         continue
-                    if "reached the request limit" in err_str.lower():
-                        raise RuntimeError(
-                            f"API-Football daily request limit reached — "
-                            f"resets at midnight UTC. endpoint={endpoint}"
-                        )
                     logger.warning("API errors for %s: %s", endpoint, errors)
 
                 return data

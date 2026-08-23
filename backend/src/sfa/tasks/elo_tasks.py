@@ -104,6 +104,7 @@ def apply_elo_pools_then_recalculate_task(
     rules_version_id: int,
     club_competition_ids: list[int] | None = None,
     national_competition_ids: list[int] | None = None,
+    force_recalculate: bool = True,
 ):
     """Replay every ELO pool in the season, then rebuild scoring once."""
     try:
@@ -113,6 +114,7 @@ def apply_elo_pools_then_recalculate_task(
                 rules_version_id=rules_version_id,
                 club_competition_ids=club_competition_ids or [],
                 national_competition_ids=national_competition_ids or [],
+                force_recalculate=force_recalculate,
             )
         )
     except Exception as exc:
@@ -318,6 +320,7 @@ async def _run_elo_pools_then_recalculate(
     rules_version_id: int,
     club_competition_ids: list[int],
     national_competition_ids: list[int],
+    force_recalculate: bool = True,
 ) -> None:
     from sqlalchemy import text
 
@@ -361,7 +364,7 @@ async def _run_elo_pools_then_recalculate(
             await _run_full_recalculation(
                 rules_version_id=rules_version_id,
                 season=season,
-                force_recalculate=True,
+                force_recalculate=force_recalculate,
                 infer_achievements=True,
                 explanation_competition_id=(
                     WORLD_CUP_COMPETITION_ID

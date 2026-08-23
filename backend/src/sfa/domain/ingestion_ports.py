@@ -7,6 +7,10 @@ from typing import Protocol, runtime_checkable
 from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
 
 
+class ProviderDailyQuotaExceededError(RuntimeError):
+    """Raised when an external provider's daily request quota is exhausted."""
+
+
 @dataclass(frozen=True)
 class StandingRawDTO:
     team_external_id: int
