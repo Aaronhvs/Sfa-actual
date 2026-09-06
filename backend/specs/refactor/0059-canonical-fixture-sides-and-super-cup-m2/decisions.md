@@ -33,12 +33,16 @@ supercups use factors from 1.00 to 1.30, so 2.00 duplicates trophy importance in
    and scoring for season 2026. This rebuilds all downstream snapshots deterministically.
 7. Audit all season-2026 events before and after repair. The postcondition is zero side
    inconsistencies and calculation details showing PSG ELO greater than Rennes ELO for PSG events.
+8. Before a strict club ELO replay, seed teams discovered after the season bootstrap. Carry the
+   prior-season closing ELO forward when available; otherwise use the approved 1000-point default
+   with explicit provenance. Keep strict baseline validation after this idempotent bootstrap.
 
 ## Architecture
 
-No new domain entity, endpoint or provider is required. The changes remain in existing output
-adapters and migration data. DDD Designer is not required because no scoring value object or
-formula is added; only canonical fixture invariants and one configured factor are corrected.
+No new domain entity, endpoint or provider is required. Fixture corrections remain in existing
+output adapters and migration data. Late entrant policy is isolated in an application use case
+called by the existing ELO task orchestration. DDD Designer is not required because no scoring
+value object or formula is added.
 
 ## Rollback
 

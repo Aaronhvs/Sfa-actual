@@ -191,13 +191,33 @@ async def _run_elo_update(
     initialize_missing_seed_baseline: bool = False,
 ) -> None:
     from sfa.application.use_cases.calculate_elo_ratings import CalculateEloRatingsUseCase
+    from sfa.application.use_cases.ensure_late_team_elo_seeds import (
+        EnsureLateTeamEloSeedsUseCase,
+    )
     from sfa.infrastructure.database import AsyncSessionLocal
     from sfa.infrastructure.repositories.team_strength_repository import TeamStrengthRepository
     from sfa.infrastructure.services.elo_calculator import EloCalculatorService
 
     async with AsyncSessionLocal() as session:
+        repo = TeamStrengthRepository(session)
+        if (
+            source == "club_elo_v2"
+            and use_seed_baseline
+            and require_seed_baseline
+        ):
+            seed_result = await EnsureLateTeamEloSeedsUseCase(repo).execute(
+                season=season,
+                participant_kind="club",
+                competition_ids=competition_ids,
+            )
+            if seed_result.status != "completed":
+                await session.rollback()
+                raise RuntimeError(
+                    seed_result.error or "Late-entry ELO seed bootstrap failed"
+                )
+
         use_case = CalculateEloRatingsUseCase(
-            repo=TeamStrengthRepository(session),
+            repo=repo,
             calculator=EloCalculatorService(),
         )
         result = await use_case.execute(
