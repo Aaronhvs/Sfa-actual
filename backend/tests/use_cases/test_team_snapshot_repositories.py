@@ -13,6 +13,7 @@ from sfa.infrastructure.repositories.competition_achievement_repository import (
 )
 from sfa.infrastructure.repositories.player_event_score_repository import (
     PlayerEventScoreRepository,
+    _resolve_event_is_away,
 )
 from sfa.infrastructure.repositories.sfa_score_repository import SFAScoreRepository
 from sfa.infrastructure.repositories.team_strength_repository import (
@@ -165,8 +166,28 @@ async def test_event_context_prefers_fixture_elo_snapshot_before_current_strengt
     assert "fixture_team_strengths AS elo_away" in sql
     assert "elo_home.pre_match_strength" in sql
     assert "elo_away.pre_match_strength" in sql
+    assert "player_events.team_id" in sql
     assert "fixtures.status IN" in sql
     assert " LEFT OUTER JOIN team_strengths " not in sql
+
+
+def test_event_side_uses_team_id_for_home_and_away() -> None:
+    assert _resolve_event_is_away(110, 110, 99, False) is False
+    assert _resolve_event_is_away(99, 110, 99, True) is True
+
+
+def test_event_side_uses_legacy_flag_when_team_is_missing() -> None:
+    assert _resolve_event_is_away(None, 110, 99, True) is True
+
+
+def test_event_side_rejects_team_outside_fixture() -> None:
+    with pytest.raises(ValueError, match="does not belong to fixture teams"):
+        _resolve_event_is_away(42, 110, 99, False)
+
+
+def test_event_side_rejects_contradictory_flag() -> None:
+    with pytest.raises(ValueError, match="contradicts fixture"):
+        _resolve_event_is_away(99, 110, 99, False)
 
 
 @pytest.mark.anyio

@@ -178,7 +178,12 @@ class IngestionRepository(IngestionRepositoryPort):
             .on_conflict_do_update(
                 index_elements=["external_id"],
                 set_={
+                    "competition_id": competition_id,
+                    "home_team_id": home_team_id,
+                    "away_team_id": away_team_id,
                     "stage": stage,
+                    "season": season,
+                    "played_at": played_at,
                     "matchday": matchday,
                     "status": status,
                     "home_goals": home_goals,

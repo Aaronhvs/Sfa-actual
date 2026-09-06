@@ -26,6 +26,31 @@ _FALLBACK_TEAM_POS = 10  # used when standings data is unavailable for historica
 _FINAL_FIXTURE_STATUSES = ("FT", "AET", "PEN")
 
 
+def _resolve_event_is_away(
+    event_team_id: int | None,
+    home_team_id: int,
+    away_team_id: int,
+    stored_is_away: bool | None,
+) -> bool:
+    if event_team_id is None:
+        return bool(stored_is_away)
+    if event_team_id == home_team_id:
+        resolved = False
+    elif event_team_id == away_team_id:
+        resolved = True
+    else:
+        raise ValueError(
+            f"Event team_id={event_team_id} does not belong to fixture teams "
+            f"{home_team_id}/{away_team_id}"
+        )
+    if stored_is_away is not None and bool(stored_is_away) != resolved:
+        raise ValueError(
+            f"Event side contradicts fixture: team_id={event_team_id}, "
+            f"is_away={stored_is_away}"
+        )
+    return resolved
+
+
 class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -73,6 +98,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 PlayerEvent.event_type,
                 PlayerEvent.score_diff,
                 PlayerEvent.psxg,
+                PlayerEvent.team_id.label("event_team_id"),
                 PlayerEvent.player_team_pos,
                 PlayerEvent.rival_team_pos,
                 PlayerEvent.is_away,
@@ -151,8 +177,13 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
             player_team_pos = row.player_team_pos if row.player_team_pos is not None else _FALLBACK_TEAM_POS
             rival_team_pos = row.rival_team_pos if row.rival_team_pos is not None else _FALLBACK_TEAM_POS
 
-            # Determine which team the player belongs to and assign strengths accordingly
-            is_away = bool(row.is_away)
+            # Resolve the side from the event's team; the boolean is only a legacy fallback.
+            is_away = _resolve_event_is_away(
+                row.event_team_id,
+                row.home_team_id,
+                row.away_team_id,
+                row.is_away,
+            )
             if is_away:
                 player_team_strength = (
                     float(row.away_team_strength) if row.away_team_strength is not None else None
@@ -190,7 +221,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 psxg=float(row.psxg) if row.psxg is not None else None,
                 player_team_pos=player_team_pos,
                 rival_team_pos=rival_team_pos,
-                is_away=row.is_away,
+                is_away=is_away,
                 stage_factor=float(row.stage_factor),
                 goals=stats.goals if stats else None,
                 assists=stats.assists if stats else None,
