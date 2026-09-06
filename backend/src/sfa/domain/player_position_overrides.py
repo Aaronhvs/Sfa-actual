@@ -5,6 +5,7 @@ import unicodedata
 WORLD_CUP_COMPETITION_ID = 350
 
 _OVERRIDE_NAMES_BY_POSITION: dict[str, tuple[str, ...]] = {
+    "DEL": ("aubameyang", "p. aubameyang", "pierre-emerick aubameyang"),
     "EXT": ("messi", "lionel messi", "alex baena"),
     "MCO": ("olise", "michael olise", "fermin", "fermin lopez"),
     "MC": ("zubimendi", "martin zubimendi"),
@@ -47,6 +48,9 @@ def position_for_context(
 
     if "zubimendi" in name:
         return "MC"
+
+    if "aubameyang" in name:
+        return "DEL"
 
     if "messi" in name and (is_world_cup or team == "argentina"):
         return "EXT"

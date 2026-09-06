@@ -108,6 +108,20 @@ def test_martin_zubimendi_is_mc_in_club_context_with_or_without_accents() -> Non
         )
 
 
+def test_aubameyang_is_forward_for_abbreviated_and_full_names() -> None:
+    for name in ("P. Aubameyang", "Pierre-Emerick Aubameyang"):
+        assert (
+            position_for_context(
+                "MC",
+                player_name=name,
+                team_name="Deportivo La Coruna",
+                competition_id=1,
+            )
+            == "DEL"
+        )
+
+
 def test_corrected_positions_are_available_to_ranking_prefilters() -> None:
+    assert "aubameyang" in override_name_terms_for_position("DEL")
     assert "fermin lopez" in override_name_terms_for_position("MCO")
     assert "martin zubimendi" in override_name_terms_for_position("MC")
