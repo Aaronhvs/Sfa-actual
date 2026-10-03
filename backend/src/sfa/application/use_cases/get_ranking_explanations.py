@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 
 from sfa.application.use_cases.generate_ranking_explanations import (
@@ -23,22 +24,39 @@ class GetRankingExplanationsUseCase:
         score_repo: SFAScoreRepositoryProtocol | None = None,
         season_repo: SeasonRepositoryProtocol | None = None,
         fallback_writer: RankingExplanationWriterPort | None = None,
+        default_rules_version_id: int | None = None,
     ) -> None:
         self._repo = repo
         self._score_repo = score_repo
         self._season_repo = season_repo
         self._fallback_writer = fallback_writer
+        self._default_rules_version_id = default_rules_version_id
 
     async def execute(self, request: RankingExplanationRequestDTO) -> list[RankingPlayerExplanationDTO]:
         if self._score_repo is None or self._fallback_writer is None:
             return await self._repo.get_cached_for_scope(request)
 
+        effective_request = request
+        if (
+            request.rules_version_id is None
+            and (request.scope_key is None or request.scope_key == "all")
+        ):
+            effective_request = replace(
+                request,
+                rules_version_id=self._default_rules_version_id,
+            )
+
         resolved_request, ranked_players, source_scope = await resolve_explanation_ranking(
             self._score_repo,
             self._season_repo,
-            request,
+            effective_request,
         )
-        cache_matches_context = request.position is None and request.bonus_label is None
+        is_all_time = resolved_request.scope == "all_time"
+        cache_matches_context = (
+            not is_all_time
+            and request.position is None
+            and request.bonus_label is None
+        )
         if cache_matches_context:
             cached = await self._repo.get_cached_for_scope(resolved_request)
             if self._cache_matches_ranking(cached, ranked_players, request.limit):

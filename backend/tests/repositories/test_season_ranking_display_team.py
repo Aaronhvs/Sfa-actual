@@ -1,7 +1,12 @@
 from sqlalchemy import select
 
 from sfa.domain.season_scope import AwardPeriodScope, ScopeKind, ScoreSource
-from sfa.infrastructure.repositories.sfa_score_repository import _latest_verified_team
+from sfa.infrastructure.models.players.models import Player
+from sfa.infrastructure.repositories.sfa_score_repository import (
+    _latest_verified_team,
+    _stable_ranking_order,
+    _verified_player_ids,
+)
 
 
 def _sql_for_latest_team(
@@ -32,6 +37,23 @@ def test_competition_filter_is_applied_without_forcing_club_kind() -> None:
     assert "competitions.participant_kind" not in sql
 
 
+def test_latest_team_can_be_limited_to_the_paginated_players() -> None:
+    projection = _latest_verified_team("2025", player_ids=[7, 11])
+    sql = str(select(projection)).lower()
+
+    assert "player_stats.player_id in" in sql
+
+
+def test_verified_player_projection_does_not_resolve_team_context() -> None:
+    projection = _verified_player_ids("2025")
+    sql = str(select(projection)).lower()
+
+    assert "select distinct player_stats.player_id" in sql
+    assert "player_stats.team_id = fixtures.home_team_id" in sql
+    assert "player_stats.team_id = fixtures.away_team_id" in sql
+    assert "row_number()" not in sql
+
+
 def test_award_scope_prefers_club_but_tournament_scope_keeps_national_team() -> None:
     award = AwardPeriodScope(
         key="season-2025",
@@ -52,3 +74,10 @@ def test_award_scope_prefers_club_but_tournament_scope_keeps_national_team() -> 
     assert "competitions.participant_kind" in award_sql
     assert "competitions.participant_kind" not in tournament_sql
     assert "fixtures.competition_id" in tournament_sql
+
+
+def test_stable_ranking_order_uses_player_id_only_as_final_tiebreaker() -> None:
+    order = _stable_ranking_order(Player.id, Player.id)
+    sql = [str(item).lower() for item in order]
+
+    assert sql == ["players.id desc", "players.id desc", "players.id asc"]

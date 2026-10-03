@@ -114,6 +114,24 @@ async def resolve_explanation_ranking(
     list[RankedPlayerDTO],
     AwardPeriodScope | None,
 ]:
+    if request.season == "all" or request.scope_key == "all":
+        resolved_request = replace(
+            request,
+            season="all",
+            scope="all_time",
+            scope_key="all",
+        )
+        players = await score_repo.get_ranking_all_seasons(
+            position=resolved_request.position,
+            competition_id=resolved_request.competition_id,
+            bonus_label=resolved_request.bonus_label,
+            limit=resolved_request.limit,
+            offset=0,
+            rules_version_id=resolved_request.rules_version_id,
+            use_total=resolved_request.use_total,
+        )
+        return resolved_request, players, None
+
     if request.scope_key is None:
         players = await score_repo.get_ranking(
             season=request.season,

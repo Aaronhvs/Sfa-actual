@@ -16,8 +16,8 @@ function setCache(key: string, data: unknown): void {
   _cache.set(key, { data, ts: Date.now() })
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`)
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { signal })
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }
@@ -32,6 +32,7 @@ export async function fetchRanking(params: {
   offset?: number
   name?: string
   bonus_label?: string
+  signal?: AbortSignal
 }): Promise<RankingResponse> {
   const q = new URLSearchParams()
   if (params.season)        q.set('season', params.season)
@@ -48,7 +49,7 @@ export async function fetchRanking(params: {
   const key = `ranking:${qs}`
   const cached = getCached<RankingResponse>(key)
   if (cached) return cached
-  const data = await get<RankingResponse>(`/ranking${qs ? `?${qs}` : ''}`)
+  const data = await get<RankingResponse>(`/ranking${qs ? `?${qs}` : ''}`, params.signal)
   setCache(key, data)
   return data
 }
@@ -224,6 +225,7 @@ export async function fetchRankingExplanations(params: {
   bonus_label?: string
   limit?: number
   use_total?: boolean
+  signal?: AbortSignal
 }): Promise<RankingExplanationsResponse> {
   const q = new URLSearchParams()
   q.set('season', params.season)
@@ -239,7 +241,7 @@ export async function fetchRankingExplanations(params: {
   const key = `ranking-explanations:${qs}`
   const cached = getCached<RankingExplanationsResponse>(key)
   if (cached) return cached
-  const data = await get<RankingExplanationsResponse>(`/ranking/explanations?${qs}`)
+  const data = await get<RankingExplanationsResponse>(`/ranking/explanations?${qs}`, params.signal)
   setCache(key, data)
   return data
 }

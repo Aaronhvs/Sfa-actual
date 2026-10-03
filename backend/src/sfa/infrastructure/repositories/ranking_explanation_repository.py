@@ -34,6 +34,14 @@ from sfa.infrastructure.models.enums import EventType
 from sfa.infrastructure.models.ranking_explanations.models import RankingPlayerExplanation
 
 PUBLIC_STATUSES = ("generated", "fallback")
+
+
+def _is_all_time(request: RankingExplanationRequestDTO) -> bool:
+    return (
+        request.season == "all"
+        or request.scope_key == "all"
+        or request.scope == "all_time"
+    )
 STAGE_LABELS_ES = {
     "group": "fase de grupos",
     "group_stage": "fase de grupos",
@@ -409,9 +417,9 @@ class RankingExplanationRepository:
                 SFASeasonScore.player_id == player_id,
             )
         )
-        if source_scope is None:
+        if source_scope is None and not _is_all_time(request):
             stmt = stmt.where(SFASeasonScore.season == request.season)
-        else:
+        elif source_scope is not None:
             stmt = stmt.where(
                 _source_filter(
                     SFASeasonScore.season,
@@ -430,7 +438,12 @@ class RankingExplanationRepository:
         source_scope: AwardPeriodScope | None = None,
     ) -> list[dict[str, Any]]:
         scope_key = source_scope.key if source_scope is not None else request.scope_key
-        if not request.use_total or scope_key is None or request.rules_version_id is None:
+        if (
+            _is_all_time(request)
+            or not request.use_total
+            or scope_key is None
+            or request.rules_version_id is None
+        ):
             return []
 
         stmt = (
@@ -502,9 +515,9 @@ class RankingExplanationRepository:
                 PlayerStats.player_id == player_id,
             )
         )
-        if source_scope is None:
+        if source_scope is None and not _is_all_time(request):
             stmt = stmt.where(PlayerStats.season == request.season)
-        else:
+        elif source_scope is not None:
             stmt = stmt.where(
                 _source_filter(
                     PlayerStats.season,
@@ -613,9 +626,9 @@ class RankingExplanationRepository:
             .order_by(PlayerEventScore.final_points.desc())
             .limit(5)
         )
-        if source_scope is None:
+        if source_scope is None and not _is_all_time(request):
             stmt = stmt.where(PlayerEventScore.season == request.season)
-        else:
+        elif source_scope is not None:
             stmt = stmt.where(
                 _source_filter(
                     PlayerEventScore.season,
@@ -668,9 +681,9 @@ class RankingExplanationRepository:
             )
             .order_by(Fixture.played_at.asc(), PlayerEvent.minute.asc())
         )
-        if source_scope is None:
+        if source_scope is None and not _is_all_time(request):
             stmt = stmt.where(PlayerEventScore.season == request.season)
-        else:
+        elif source_scope is not None:
             stmt = stmt.where(
                 _source_filter(
                     PlayerEventScore.season,
@@ -756,6 +769,8 @@ class RankingExplanationRepository:
             return str(self._localize_name(ranked.competition_name))
         if source_scope is not None:
             return source_scope.label
+        if _is_all_time(request):
+            return "Todas las temporadas"
         return request.season
 
     def _methodology_context(self) -> dict[str, Any]:

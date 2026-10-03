@@ -129,7 +129,8 @@ async def test_ranking_joins_team_from_season_score_snapshot() -> None:
     assert rows == []
     sql = str(session.statements[0])
     assert "players.team_id" not in sql
-    assert "team_id" in sql
+    assert "SELECT DISTINCT player_stats.player_id" in sql
+    assert "row_number() OVER (PARTITION BY player_stats.player_id" not in sql
 
 
 @pytest.mark.anyio

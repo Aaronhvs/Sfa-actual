@@ -224,16 +224,19 @@ async def get_ranking_explanations_use_case(
     repo: Annotated[RankingExplanationRepository, Depends(get_ranking_explanation_repository)],
     score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
     season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    ver_repo: Annotated[ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)],
     writer: Annotated[
         DeterministicRankingExplanationWriter,
         Depends(get_ranking_explanation_writer),
     ],
 ) -> GetRankingExplanationsUseCase:
+    active = await ver_repo.get_active_version()
     return GetRankingExplanationsUseCase(
         repo,
         score_repo=score_repo,
         season_repo=season_repo,
         fallback_writer=writer,
+        default_rules_version_id=active.id if active else None,
     )
 
 

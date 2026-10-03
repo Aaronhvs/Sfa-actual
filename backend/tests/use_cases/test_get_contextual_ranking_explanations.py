@@ -53,6 +53,8 @@ class FakeScoreRepository:
     def __init__(self, players: list[RankedPlayerDTO]) -> None:
         self.players = players
         self.scope_calls: list[dict] = []
+        self.all_seasons_calls: list[dict] = []
+        self.season_calls: list[dict] = []
 
     async def resolve_rules_version_id_for_scope(self, scope, preferred):
         assert scope == _scope()
@@ -62,9 +64,21 @@ class FakeScoreRepository:
         self.scope_calls.append(kwargs)
         return self.players[: kwargs["limit"]]
 
+    async def get_ranking_all_seasons(self, **kwargs):
+        self.all_seasons_calls.append(kwargs)
+        return self.players[: kwargs["limit"]]
+
+    async def get_ranking(self, **kwargs):
+        self.season_calls.append(kwargs)
+        return self.players[: kwargs["limit"]]
+
 
 class FakeSeasonRepository:
+    def __init__(self) -> None:
+        self.calls = []
+
     async def resolve_scope(self, scope_key):
+        self.calls.append(scope_key)
         assert scope_key == "season-2025"
         return _scope()
 
@@ -239,6 +253,76 @@ async def test_rebuilds_fallback_when_cached_top_points_are_stale():
 
     assert writer.player_ids == [10, 20, 30]
     assert all(item.status == "fallback" for item in result)
+
+
+@pytest.mark.anyio
+async def test_all_time_uses_historical_ranking_without_scope_or_editorial_cache():
+    players = [_player(10, 1), _player(20, 2), _player(30, 3)]
+    score_repo = FakeScoreRepository(players)
+    season_repo = FakeSeasonRepository()
+    explanation_repo = FakeExplanationRepository([_cached(player) for player in players])
+    writer = FakeWriter()
+    use_case = GetRankingExplanationsUseCase(
+        explanation_repo,
+        score_repo=score_repo,
+        season_repo=season_repo,
+        fallback_writer=writer,
+        default_rules_version_id=4,
+    )
+
+    result = await use_case.execute(
+        RankingExplanationRequestDTO(
+            season="all",
+            competition_id=None,
+            rules_version_id=None,
+            scope="ranking",
+            scope_key="all",
+            limit=3,
+        )
+    )
+
+    assert season_repo.calls == []
+    assert explanation_repo.cache_requests == []
+    assert explanation_repo.evidence_scopes == [None]
+    assert writer.player_ids == [10, 20, 30]
+    assert [item.player_id for item in result] == [10, 20, 30]
+    assert all(item.season == "all" and item.scope == "all_time" for item in result)
+    assert score_repo.all_seasons_calls == [
+        {
+            "position": None,
+            "competition_id": None,
+            "bonus_label": None,
+            "limit": 3,
+            "offset": 0,
+            "rules_version_id": 4,
+            "use_total": True,
+        }
+    ]
+
+
+@pytest.mark.anyio
+async def test_physical_season_uses_default_rules_version_from_application_boundary():
+    players = [_player(10, 1), _player(20, 2), _player(30, 3)]
+    score_repo = FakeScoreRepository(players)
+    use_case = GetRankingExplanationsUseCase(
+        FakeExplanationRepository(),
+        score_repo=score_repo,
+        season_repo=FakeSeasonRepository(),
+        fallback_writer=FakeWriter(),
+        default_rules_version_id=4,
+    )
+
+    await use_case.execute(
+        RankingExplanationRequestDTO(
+            season="2026",
+            competition_id=None,
+            rules_version_id=None,
+            scope="ranking",
+            limit=3,
+        )
+    )
+
+    assert score_repo.season_calls[0]["rules_version_id"] == 4
 
 
 def test_source_filter_contains_every_physical_scope_pair():

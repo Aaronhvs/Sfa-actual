@@ -31,10 +31,6 @@ router = APIRouter()
 @router.get("/ranking/explanations", response_model=RankingExplanationsResponseSchema)
 async def get_ranking_explanations(
     use_case: Annotated[GetRankingExplanationsUseCase, Depends(get_ranking_explanations_use_case)],
-    ver_repo: Annotated[
-        ScoringRulesVersionRepository,
-        Depends(get_scoring_rules_version_repository),
-    ],
     season: str = Query(...),
     competition_id: int | None = Query(default=None),
     rules_version_id: int | None = Query(default=None),
@@ -45,9 +41,6 @@ async def get_ranking_explanations(
     limit: int = Query(default=10, ge=1, le=10),
     use_total: bool = Query(default=True),
 ) -> RankingExplanationsResponseSchema:
-    if rules_version_id is None and scope_key is None:
-        active = await ver_repo.get_active_version()
-        rules_version_id = active.id if active else None
     request = RankingExplanationRequestDTO(
         season=season,
         competition_id=competition_id,
