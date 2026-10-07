@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, runtime_checkable
+from typing import Literal, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,31 @@ class TeamRankingPlayerDTO:
     scored_minutes: int
     individual_points: float | None
     data_cutoff: datetime | None = None
+    name: str = ""
+    photo_url: str | None = None
+
+
+@dataclass(frozen=True)
+class TeamRankingMatchDTO:
+    fixture_external_id: int
+    played_at: datetime
+    opponent_name: str
+    opponent_logo_url: str | None
+    is_home: bool
+    goals_for: int | None
+    goals_against: int | None
+    outcome: Literal["W", "D", "L"] | None
+    status: str
+
+
+@dataclass(frozen=True)
+class TeamRankingFeaturedPlayerDTO:
+    id: int
+    name: str
+    photo_url: str | None
+    individual_points: float
+    appearances: int
+    season: str
 
 
 @dataclass(frozen=True)
@@ -69,6 +94,8 @@ class RankedTeamDTO:
     squad_data_cutoff: datetime | None = None
     elo_data_cutoff: datetime | None = None
     availability: None = None
+    recent_results: tuple[TeamRankingMatchDTO, ...] = ()
+    featured_player: TeamRankingFeaturedPlayerDTO | None = None
 
 
 @runtime_checkable
@@ -79,3 +106,7 @@ class TeamRankingRepositoryProtocol(Protocol):
         self, season: str, prior_season: str, participant_kind: str,
         as_of: datetime, recent_matches: int,
     ) -> TeamRankingDataDTO: ...
+
+    async def get_recent_results(
+        self, team_ids: tuple[int, ...], season: str, participant_kind: str, as_of: datetime,
+    ) -> dict[int, tuple[TeamRankingMatchDTO, ...]]: ...

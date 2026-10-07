@@ -1,8 +1,30 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from sfa.api.v1.schemas.ranking import RankingPaginationSchema
+
+
+class TeamRankingMatchSchema(BaseModel):
+    fixture_external_id: int
+    played_at: datetime
+    opponent_name: str
+    opponent_logo_url: str | None
+    is_home: bool
+    goals_for: int | None
+    goals_against: int | None
+    outcome: Literal["W", "D", "L"] | None
+    status: str
+
+
+class TeamRankingFeaturedPlayerSchema(BaseModel):
+    id: int
+    name: str
+    photo_url: str | None
+    individual_points: float
+    appearances: int
+    season: str
 
 
 class RankedTeamSchema(BaseModel):
@@ -29,6 +51,8 @@ class RankedTeamSchema(BaseModel):
     squad_data_cutoff: datetime | None
     elo_data_cutoff: datetime | None = Field(description="Unknown: season summary has no reliable update timestamp")
     availability: None = Field(description="Unknown: no authoritative player availability data")
+    recent_results: list[TeamRankingMatchSchema] = Field(default_factory=list)
+    featured_player: TeamRankingFeaturedPlayerSchema | None = None
 
 
 class TeamRankingModelSchema(BaseModel):

@@ -1,3 +1,24 @@
+export interface TeamRecentResult {
+  fixture_external_id: number
+  played_at: string
+  opponent_name: string
+  opponent_logo_url: string | null
+  is_home: boolean
+  goals_for: number | null
+  goals_against: number | null
+  outcome: 'W' | 'D' | 'L' | null
+  status: string
+}
+
+export interface TeamFeaturedPlayer {
+  id: number
+  name: string
+  photo_url: string | null
+  individual_points: number
+  appearances: number
+  season: string
+}
+
 export interface RankedTeam {
   rank: number
   id: number
@@ -22,6 +43,8 @@ export interface RankedTeam {
   squad_data_cutoff: string | null
   elo_data_cutoff: string | null
   availability: null
+  recent_results: TeamRecentResult[]
+  featured_player: TeamFeaturedPlayer | null
 }
 
 export interface TeamRankingResponse {

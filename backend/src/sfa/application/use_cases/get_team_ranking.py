@@ -9,6 +9,7 @@ from typing import Protocol, runtime_checkable
 from sfa.domain.team_ranking_ports import (
     RankedTeamDTO,
     TeamRankingDataDTO,
+    TeamRankingFeaturedPlayerDTO,
     TeamRankingPlayerDTO,
     TeamRankingRepositoryProtocol,
 )
@@ -152,6 +153,9 @@ class GetTeamRankingUseCase(GetTeamRankingUseCaseProtocol):
         items = []
         for team in data.teams:
             current = appearances.get((team.id, season), [])
+            featured_candidates = [p for p in current if p.individual_points is not None
+                                   and p.scored_minutes > 0 and p.scored_appearances > 0]
+            featured = min(featured_candidates, key=lambda p: (-p.individual_points, p.player_id), default=None)
             previous = appearances.get((team.id, prior), [])
             has_current_scores = any(p.individual_points is not None and p.scored_minutes > 0 for p in current)
             players = current if has_current_scores else previous
@@ -189,6 +193,11 @@ class GetTeamRankingUseCase(GetTeamRankingUseCaseProtocol):
                 observed_appearances=observed, scored_appearances=covered,
                 coverage=covered / observed if observed else None,
                 squad_data_cutoff=max((p.data_cutoff for p in scored if p.data_cutoff is not None), default=None),
+                featured_player=TeamRankingFeaturedPlayerDTO(
+                    id=featured.player_id, name=featured.name, photo_url=featured.photo_url,
+                    individual_points=featured.individual_points, appearances=featured.scored_appearances,
+                    season=featured.season,
+                ) if featured is not None else None,
             )
             if competition_id is not None and competition_id not in team.competition_ids:
                 continue
@@ -205,6 +214,11 @@ class GetTeamRankingUseCase(GetTeamRankingUseCaseProtocol):
                     squad_score=round(item.squad_score, 4) if item.squad_score is not None else None)
             for index, item in enumerate(items) if (page - 1) * limit <= index < page * limit
         )
+        if ranking and season is not None:
+            recent_results = await self._repository.get_recent_results(
+                tuple(item.id for item in ranking), season, participant_kind, as_of,
+            )
+            ranking = tuple(replace(item, recent_results=recent_results.get(item.id, ())) for item in ranking)
         return GetTeamRankingResult(
             season=season or "", scope=f"season-{season}" if season else None, total=total,
             pagination=TeamRankingPagination(page, limit, total, pages, page < pages, page > 1 and pages > 0),

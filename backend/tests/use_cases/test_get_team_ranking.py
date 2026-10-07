@@ -13,6 +13,7 @@ from sfa.domain.team_ranking_ports import (
     TeamRankingDataDTO,
     TeamRankingEloDTO,
     TeamRankingInputDTO,
+    TeamRankingMatchDTO,
     TeamRankingPlayerDTO,
     TeamRankingRepositoryProtocol,
 )
@@ -25,6 +26,8 @@ class FakeTeamRankingRepository(TeamRankingRepositoryProtocol):
         self.data = data
         self.latest = latest
         self.calls = []
+        self.result_calls = []
+        self.results = {}
 
     async def latest_season(self, participant_kind):
         self.calls.append(("latest", participant_kind))
@@ -33,6 +36,10 @@ class FakeTeamRankingRepository(TeamRankingRepositoryProtocol):
     async def get_ranking_data(self, season, prior_season, participant_kind, as_of, recent_matches):
         self.calls.append((season, prior_season, participant_kind, as_of, recent_matches))
         return self.data
+
+    async def get_recent_results(self, team_ids, season, participant_kind, as_of):
+        self.result_calls.append((team_ids, season, participant_kind, as_of))
+        return {team_id: self.results.get(team_id, ()) for team_id in team_ids}
 
 
 def team(id, name=None, competition_ids=(3,)):
@@ -157,6 +164,9 @@ class TestGetTeamRankingUseCase:
         assert rows[2].squad_season == rows[2].elo_season == "2026"
         assert rows[2].elo_raw == 1900
         assert rows[1].observed_players == 1
+        assert rows[1].featured_player is None
+        assert rows[2].featured_player.individual_points == 100
+        assert rows[2].featured_player.season == "2026"
 
     @pytest.mark.anyio
     async def test_components_renormalize_and_missing_is_not_zero(self):
@@ -209,3 +219,57 @@ class TestGetTeamRankingUseCase:
         assert item.coverage == pytest.approx(2 / 15)
         assert item.observed_players == 2 and item.scored_players == 1
         assert item.squad_score == 50
+
+
+@pytest.mark.anyio
+async def test_featured_player_uses_team_total_not_rate_and_preserves_transfer_attribution():
+    inputs = TeamRankingDataDTO(
+        teams=(team(1), team(2)),
+        players=(replace(player(1, player_id=10, points=200, minutes=900, observed=10, scored=4),
+                         name="Transferred", photo_url="https://example.test/player.png"),
+                 player(1, player_id=20, points=150, minutes=90),
+                 player(2, player_id=10, points=30, minutes=90),
+                 player(2, player_id=30, points=40, minutes=900),
+                 player(1, player_id=99, season="2025", points=9999)),
+    )
+    result = await GetTeamRankingUseCase(FakeTeamRankingRepository(inputs)).execute(season="2026")
+    rows = {r.id: r for r in result.ranking}
+    featured = rows[1].featured_player
+    assert (featured.id, featured.individual_points, featured.appearances, featured.season) == (10, 200, 4, "2026")
+    assert featured.name == "Transferred" and featured.photo_url == "https://example.test/player.png"
+    assert rows[2].featured_player.id == 30  # player 10's other-team points do not transfer
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("points", [0, -20])
+async def test_featured_zero_negative_and_ties_are_valid_but_unscored_players_are_not(points):
+    inputs = TeamRankingDataDTO(
+        teams=(team(1), team(2)),
+        players=(player(1, player_id=20, points=points), player(1, player_id=10, points=points),
+                 player(1, player_id=3, points=9999, scored=0),
+                 player(2, points=None, minutes=0, scored=0), player(2, season="2025", points=9999)),
+    )
+    rows = {r.id: r for r in (await GetTeamRankingUseCase(
+        FakeTeamRankingRepository(inputs),
+    ).execute(season="2026")).ranking}
+    assert rows[1].featured_player.id == 10
+    assert rows[1].featured_player.individual_points == points
+    assert rows[2].featured_player is None
+    assert rows[2].squad_season == "2025"
+
+
+@pytest.mark.anyio
+async def test_form_batch_only_receives_filtered_paginated_teams_and_skips_empty_pages():
+    repo = FakeTeamRankingRepository(data())
+    match = TeamRankingMatchDTO(123, CUTOFF, "Opponent", None, True, 1, 0, "W", "FT")
+    repo.results = {2: (match,)}
+    uc = GetTeamRankingUseCase(repo)
+    result = await uc.execute(season="2026", page=2, limit=1)
+    assert result.ranking[0].recent_results == (match,)
+    assert repo.result_calls == [((2,), "2026", "club", result.model.as_of)]
+    filtered = await uc.execute(season="2026", name="Arsenal", competition_id=9)
+    assert filtered.ranking[0].recent_results == ()
+    assert repo.result_calls[-1][0] == (1,)
+    await uc.execute(season="2026", page=99)
+    await uc.execute(season="2026", name="missing")
+    assert len(repo.result_calls) == 2

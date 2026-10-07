@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import case, distinct, func, select, true, tuple_, union, union_all
+from sqlalchemy import case, distinct, false, func, select, true, tuple_, union, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -10,6 +10,7 @@ from sfa.domain.team_ranking_ports import (
     TeamRankingDataDTO,
     TeamRankingEloDTO,
     TeamRankingInputDTO,
+    TeamRankingMatchDTO,
     TeamRankingPlayerDTO,
     TeamRankingRepositoryProtocol,
 )
@@ -180,6 +181,7 @@ def _players_statement(appearances, rules_version_id):
     return (
         select(
             appearances.c.team_id, appearances.c.player_id, appearances.c.season, Player.position,
+            Player.name, Player.photo_url,
             func.count().label("observed_appearances"),
             func.sum(case((covered, 1), else_=0)).label("scored_appearances"),
             func.sum(case((covered, appearances.c.minutes), else_=0)).label("scored_minutes"),
@@ -189,7 +191,40 @@ def _players_statement(appearances, rules_version_id):
         .join(Player, Player.id == appearances.c.player_id)
         .outerjoin(scores, (scores.c.fixture_id == appearances.c.fixture_id)
                    & (scores.c.player_id == appearances.c.player_id) & (scores.c.season == appearances.c.season))
-        .group_by(appearances.c.team_id, appearances.c.player_id, appearances.c.season, Player.position)
+        .group_by(appearances.c.team_id, appearances.c.player_id, appearances.c.season,
+                  Player.position, Player.name, Player.photo_url)
+    )
+
+
+def _recent_results_statement(team_ids: tuple[int, ...], season: str, participant_kind: str, as_of: datetime):
+    def side(team_column, opponent_column, is_home, goals_for, goals_against):
+        return (
+            select(team_column.label("team_id"), Fixture.id.label("fixture_id"),
+                   Fixture.external_id.label("fixture_external_id"), Fixture.played_at, Fixture.status,
+                   opponent_column.label("opponent_id"), is_home.label("is_home"),
+                   goals_for.label("goals_for"), goals_against.label("goals_against"))
+            .join(Competition, Competition.id == Fixture.competition_id)
+            .where(team_column.in_(team_ids), Fixture.season == season,
+                   Competition.participant_kind == _database_participant_kind(participant_kind),
+                   Fixture.status.in_(("FT", "AET", "PEN")), Fixture.played_at <= as_of)
+        )
+
+    sides = union_all(
+        side(Fixture.home_team_id, Fixture.away_team_id, true(), Fixture.home_goals, Fixture.away_goals),
+        side(Fixture.away_team_id, Fixture.home_team_id, false(), Fixture.away_goals, Fixture.home_goals),
+    ).cte("recent_result_sides")
+    ordered = select(
+        sides,
+        func.row_number().over(
+            partition_by=sides.c.team_id,
+            order_by=(sides.c.played_at.desc(), sides.c.fixture_id.desc()),
+        ).label("recency"),
+    ).cte("ordered_results")
+    return (
+        select(ordered, Team.name.label("opponent_name"), Team.external_id.label("opponent_external_id"))
+        .join(Team, Team.id == ordered.c.opponent_id)
+        .where(ordered.c.recency <= 5)
+        .order_by(ordered.c.team_id, ordered.c.played_at, ordered.c.fixture_id)
     )
 
 
@@ -242,6 +277,35 @@ class TeamRankingRepository(TeamRankingRepositoryProtocol):
             observed_appearances=int(r["observed_appearances"]), scored_appearances=int(r["scored_appearances"]),
             scored_minutes=int(r["scored_minutes"]),
             individual_points=float(r["individual_points"]) if r["individual_points"] is not None else None,
-            data_cutoff=r["data_cutoff"],
+            data_cutoff=r["data_cutoff"], name=r["name"], photo_url=r["photo_url"],
         ) for r in rows)
         return TeamRankingDataDTO(teams, elos, players, rules_version_id)
+
+    async def get_recent_results(
+        self, team_ids: tuple[int, ...], season: str, participant_kind: str, as_of: datetime,
+    ) -> dict[int, tuple[TeamRankingMatchDTO, ...]]:
+        if not team_ids:
+            return {}
+        if len(team_ids) > 50:
+            raise ValueError("recent results require at most 50 page teams")
+        rows = (await self._session.execute(
+            _recent_results_statement(team_ids, season, participant_kind, as_of),
+        )).mappings().all()
+        results: dict[int, list[TeamRankingMatchDTO]] = {team_id: [] for team_id in team_ids}
+        for row in rows:
+            gf, ga = row["goals_for"], row["goals_against"]
+            outcome = None
+            if gf is not None and ga is not None:
+                if gf != ga:
+                    outcome = "W" if gf > ga else "L"
+                elif row["status"] != "PEN":
+                    outcome = "D"
+            external_id = row["opponent_external_id"]
+            results[row["team_id"]].append(TeamRankingMatchDTO(
+                fixture_external_id=row["fixture_external_id"], played_at=row["played_at"],
+                opponent_name=row["opponent_name"],
+                opponent_logo_url=f"https://media.api-sports.io/football/teams/{external_id}.png"
+                if external_id is not None else None,
+                is_home=row["is_home"], goals_for=gf, goals_against=ga, outcome=outcome, status=row["status"],
+            ))
+        return {team_id: tuple(matches) for team_id, matches in results.items()}
