@@ -36,3 +36,14 @@ Local review: http://127.0.0.1:5175/teams. Review-only server under output/playw
 serves the captured first twenty teams for season-2026; other APIs use the public
 API. No fixture data or mock middleware is shipped in production code. No deploy
 or commit performed for this design iteration.
+
+## Post-Publication Coverage Audit
+
+The Barcelona 120/129 counter counted nine goalkeeper appearances as missing
+scores, although current scoring explicitly has no GK position group. Read-only
+production audit of the current season's last-ten-match team windows confirmed
+16,213 outfield appearances with stats scores and zero missing, plus 611 goalkeeper
+appearances intentionally without SFA scores. No recalculation or fabricated zero
+scores needed. Remove the coverage counter and its partial-data UI heuristic;
+retain the raw API audit fields. Name the individual component as outfield-player
+performance and disclose the keeper limitation in methodology. Formula unchanged.

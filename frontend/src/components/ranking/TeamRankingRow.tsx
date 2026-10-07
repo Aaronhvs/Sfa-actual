@@ -43,7 +43,7 @@ export default function TeamRankingRow({ team, season, scope, expanded, onToggle
   const results = team.recent_results ?? []
   const player = team.featured_player
   const historical = (team.elo_season && team.elo_season !== season) || (team.squad_season && team.squad_season !== season)
-  const partial = team.elo_raw == null || team.squad_score == null || (team.coverage != null && team.coverage < 0.8)
+  const partial = team.elo_raw == null || team.squad_score == null
   const detailId = `team-details-${team.id}`
   return <Fragment>
     <tr className={`teams-row${expanded ? ' is-expanded' : ''}${team.rank <= 3 && team.score != null ? ' is-leading' : ''}`}>
@@ -79,8 +79,7 @@ export default function TeamRankingRow({ team, season, scope, expanded, onToggle
         <h2>Detrás de la puntuación</h2>
         <dl>
           <div><dt>Nivel competitivo <small>ELO</small></dt><dd>{teamScore(team.elo_raw)}<small>{team.elo_season ? seasonLabel(team.elo_season) : 'Sin datos'}{team.elo_source === 'manual_override' ? ' · Semilla manual' : ''}</small></dd></div>
-          <div><dt>Rendimiento de jugadores <small>SFA normalizado</small></dt><dd>{teamScore(team.squad_score)}{team.squad_score != null && <span>/100</span>}<small>{team.squad_season ? seasonLabel(team.squad_season) : 'Sin datos'}</small></dd></div>
-          <div><dt>Actuaciones puntuadas</dt><dd>{team.scored_appearances}<span> / {team.observed_appearances}</span><small>{team.coverage == null ? 'Sin muestra' : `${Math.round(team.coverage * 100)}% de las actuaciones registradas`}</small></dd></div>
+          <div><dt>Jugadores de campo <small>Rendimiento SFA normalizado</small></dt><dd>{teamScore(team.squad_score)}{team.squad_score != null && <span>/100</span>}<small>{team.squad_season ? seasonLabel(team.squad_season) : 'Sin datos'}</small></dd></div>
         </dl>
         <p>{Math.round(team.effective_elo_weight * 100)}% nivel competitivo · {Math.round(team.effective_squad_weight * 100)}% rendimiento individual</p>
         {team.squad_data_cutoff && <p>Actuaciones puntuadas hasta el {new Date(team.squad_data_cutoff).toLocaleDateString('es-ES')}.</p>}
