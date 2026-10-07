@@ -84,6 +84,11 @@ export default function RankingPage() {
   const [committedPodiumContext, setCommittedPodiumContext] = useState('')
   const [page, setPage] = useState(pageParam(searchParams.get('page')))
   const [pageDir, setPageDir] = useState<'next' | 'prev'>('next')
+  const [committedListKey, setCommittedListKey] = useState('')
+  const [committedPage, setCommittedPage] = useState(page)
+  const [committedDirection, setCommittedDirection] = useState(pageDir)
+  const [retryCount, setRetryCount] = useState(0)
+  const lastSearchRef = useRef(search)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasRankingResultRef = useRef(false)
   const committedPodiumContextRef = useRef('')
@@ -166,6 +171,8 @@ export default function RankingPage() {
   }, [season, position, bonusFilter, competition, debouncedSearch, page, setSearchParams])
 
   useEffect(() => {
+    if (search === lastSearchRef.current) return
+    lastSearchRef.current = search
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     searchTimerRef.current = setTimeout(() => {
       setPage(0)
@@ -248,6 +255,9 @@ export default function RankingPage() {
           setSelectedAnalysis(null)
         }
         setListPlayers(list)
+        setCommittedListKey(listRequestKey)
+        setCommittedPage(page)
+        setCommittedDirection(pageDir)
         setTotalPlayers(total)
         setInitialLoading(false)
         setIsContextRefreshing(false)
@@ -282,6 +292,7 @@ export default function RankingPage() {
     position,
     season,
     usesPodiumLayout,
+    retryCount,
   ])
 
   useEffect(() => {
@@ -345,17 +356,23 @@ export default function RankingPage() {
   const showHero = usesPodiumLayout && podiumPlayers.length > 0
   const top3 = showHero ? podiumPlayers : []
   const currentPagePlayers = listPlayers
+  const listBusy = isContextRefreshing || isListRefreshing
+    || (hasRankingResultRef.current && committedListKey !== listRequestKey && !refreshError)
+  const visiblePage = refreshError ? committedPage : page
+  const visibleOffset = usesPodiumLayout
+    ? PODIUM_SIZE + visiblePage * LIST_PAGE_SIZE
+    : visiblePage * LIST_PAGE_SIZE
   const visibleTotalPlayers = usesPodiumLayout
     ? Math.max(totalPlayers - PODIUM_SIZE, 0)
     : totalPlayers
   const totalPages = visibleTotalPlayers > 0 ? Math.ceil(visibleTotalPlayers / LIST_PAGE_SIZE) : 0
-  const hasNextPage = page + 1 < totalPages
-  const hasPrevPage = page > 0
+  const hasNextPage = visiblePage + 1 < totalPages
+  const hasPrevPage = visiblePage > 0
   const visibleRangeStart = totalPlayers > 0 && currentPagePlayers.length > 0
-    ? listOffset + 1
+    ? visibleOffset + 1
     : 0
   const visibleRangeEnd = totalPlayers > 0
-    ? Math.min(listOffset + currentPagePlayers.length, totalPlayers)
+    ? Math.min(visibleOffset + currentPagePlayers.length, totalPlayers)
     : 0
 
   const mainCompetitions = competitions
@@ -416,17 +433,17 @@ export default function RankingPage() {
   function goNext() {
     if (!hasNextPage) return
     setPageDir('next')
-    setPage((p) => p + 1)
+    setPage(visiblePage + 1)
   }
 
   function goPrev() {
     if (!hasPrevPage) return
     setPageDir('prev')
-    setPage((p) => p - 1)
+    setPage(visiblePage - 1)
   }
 
   function goToPage(nextPage: number) {
-    if (nextPage === page) return
+    if (nextPage === visiblePage) return
     setPageDir(nextPage > page ? 'next' : 'prev')
     setPage(nextPage)
   }
@@ -435,7 +452,7 @@ export default function RankingPage() {
     .filter((index) => (
       index === 0
       || index === totalPages - 1
-      || Math.abs(index - page) <= 1
+      || Math.abs(index - visiblePage) <= 1
     ))
 
   return (
@@ -571,7 +588,7 @@ export default function RankingPage() {
 
           <div
             className={`rp-table-section${isWcSeason ? ' rp-table-section--wc' : ''}`}
-            aria-busy={isContextRefreshing || isListRefreshing}
+            aria-busy={listBusy}
           >
             <div
               className={`rp-refresh-status${isContextRefreshing || isListRefreshing || refreshError ? ' is-visible' : ''}${refreshError ? ' is-error' : ''}`}
@@ -586,6 +603,11 @@ export default function RankingPage() {
                   : refreshError
                     ? 'No se pudo actualizar. Mostrando los ultimos datos.'
                     : ''}
+              {refreshError && (
+                <button className="rp-refresh-retry" onClick={() => setRetryCount((value) => value + 1)}>
+                  Reintentar
+                </button>
+              )}
             </div>
             <div className={`rp-ranking-head${isWcSeason ? ' rp-ranking-head--wc' : ''}`}>
               <div>
@@ -668,7 +690,7 @@ export default function RankingPage() {
               </div>
             )}
 
-            {currentPagePlayers.length === 0 ? (
+            {currentPagePlayers.length === 0 && !listBusy ? (
               <div className="empty-state">
                 {search
                   ? `Sin resultados para "${search}"`
@@ -687,10 +709,17 @@ export default function RankingPage() {
                   <span>G + A</span>
                   <span>Puntos SFA</span>
                 </div>
-                <div className="rp-ranking-list-viewport">
+                <div className={`rp-ranking-list-viewport${listBusy ? ' is-loading' : ''}`}>
+                  {listBusy && (
+                    <div className="rp-list-loader" role="status" aria-live="polite">
+                      <span className="rp-list-loader__spinner" aria-hidden="true" />
+                      <span>Cargando jugadores</span>
+                    </div>
+                  )}
                   <div
-                    key={`${page}-${pageDir}`}
-                    className={`ranking-cards-grid ranking-cards-grid--${pageDir === 'next' ? 'from-right' : 'from-left'}`}
+                    key={committedListKey}
+                    aria-hidden={listBusy || undefined}
+                    className={`ranking-cards-grid ranking-cards-grid--${committedDirection === 'next' ? 'from-right' : 'from-left'}`}
                   >
                     {currentPagePlayers.map((p, i) => (
                       <RankingCard
@@ -711,7 +740,7 @@ export default function RankingPage() {
                     <button
                       className="pagination-btn pagination-btn--prev"
                       onClick={goPrev}
-                      disabled={!hasPrevPage}
+                      disabled={!hasPrevPage || listBusy}
                       aria-label="Ir a la pagina anterior"
                     >
                       <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -729,10 +758,11 @@ export default function RankingPage() {
                             <span className="pagination-pages__slot" key={pageIndex}>
                               {needsGap && <span className="pagination-ellipsis">...</span>}
                               <button
-                                className={`pagination-page${pageIndex === page ? ' pagination-page--active' : ''}`}
+                                className={`pagination-page${pageIndex === visiblePage ? ' pagination-page--active' : ''}`}
+                                disabled={listBusy}
                                 onClick={() => goToPage(pageIndex)}
                                 aria-label={`Ir a la pagina ${pageIndex + 1}`}
-                                aria-current={pageIndex === page ? 'page' : undefined}
+                                aria-current={pageIndex === visiblePage ? 'page' : undefined}
                               >
                                 {pageIndex + 1}
                               </button>
@@ -741,7 +771,7 @@ export default function RankingPage() {
                         })}
                       </div>
                       <div className="pagination-progress" aria-hidden="true">
-                        <span style={{ transform: `scaleX(${(page + 1) / totalPages})` }} />
+                        <span style={{ transform: `scaleX(${(visiblePage + 1) / totalPages})` }} />
                       </div>
                       <span className="ranking-pagination__status">
                         {visibleRangeStart > 0
@@ -753,7 +783,7 @@ export default function RankingPage() {
                     <button
                       className="pagination-btn pagination-btn--next"
                       onClick={goNext}
-                      disabled={!hasNextPage}
+                      disabled={!hasNextPage || listBusy}
                       aria-label="Ir a la pagina siguiente"
                     >
                       <span>Siguiente</span>

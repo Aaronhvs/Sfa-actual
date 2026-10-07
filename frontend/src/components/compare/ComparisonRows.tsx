@@ -6,6 +6,7 @@ export interface CompareMetric {
   b: number | null
   format?: (value: number) => string
   lowerIsBetter?: boolean
+  description?: string
 }
 
 function defaultFormat(value: number) {
@@ -27,7 +28,7 @@ export function ComparisonRow({ metric }: { metric: CompareMetric }) {
 
   return (
     <div className="cmp-metric-row">
-      <span className="cmp-metric-row__label">{label}</span>
+      <span className="cmp-metric-row__label" title={metric.description}>{label}</span>
       <div className="cmp-metric-row__values">
         <span className={`cmp-metric-row__value cmp-metric-row__value--a${aWins ? ' cmp-metric-row__value--winner' : ''}`}>
           {a === null ? '-' : format(a)}
@@ -36,7 +37,7 @@ export function ComparisonRow({ metric }: { metric: CompareMetric }) {
           {b === null ? '-' : format(b)}
         </span>
       </div>
-      <span className="cmp-metric-row__track" aria-hidden="true">
+      <span className={`cmp-metric-row__track${!comparable || visualTotal === 0 ? ' is-neutral' : ''}`} aria-hidden="true">
         <span className="cmp-metric-row__fill-a" style={{ width: `${aShare}%` }} />
         <span className="cmp-metric-row__fill-b" style={{ width: `${bShare}%` }} />
       </span>

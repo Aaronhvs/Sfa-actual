@@ -6396,6 +6396,7 @@ img { display: block; }
 }
 
 .rp-refresh-status.is-error {
+  pointer-events: auto;
   color: var(--text);
   border-color: var(--border);
 }
@@ -6478,6 +6479,7 @@ img { display: block; }
 }
 
 .rp-ranking-list-viewport {
+  position: relative;
   margin-top: 10px;
   padding-top: 18px;
   overflow: hidden;
@@ -6486,7 +6488,41 @@ img { display: block; }
 }
 
 .rp-table-section[aria-busy='true'] .rp-ranking-list-viewport {
-  opacity: 0.68;
+  opacity: 1;
+}
+
+.rp-ranking-list-viewport.is-loading { min-height: 220px; }
+.rp-ranking-list-viewport.is-loading .ranking-cards-grid { visibility: hidden; animation: none; }
+.rp-list-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+.rp-list-loader__spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--border-sub);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: rp-list-spin 800ms linear infinite;
+}
+.rp-refresh-retry {
+  margin-left: 12px;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+@keyframes rp-list-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .rp-list-loader__spinner { animation: none; }
 }
 
 .ranking-cards-grid--from-right {

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
+import './ComparePage.css'
 import { fetchCompare, fetchSeasons } from '../api/client'
 import MomentumChart from '../components/compare/MomentumChart'
 import PlayerPicker from '../components/compare/PlayerPicker'
@@ -9,6 +11,7 @@ import type {
   ComparePlayerAnalytics,
   CompareResponse,
   PlayerDetail,
+  PlayerFixture,
   RankedPlayer,
   SeasonItem,
 } from '../types'
@@ -217,7 +220,7 @@ function deriveStats(detail: PlayerDetail, analytics: ComparePlayerAnalytics): D
 function PlayerSummary({ player, side }: { player: PlayerDetail; side: 'a' | 'b' }) {
   return (
     <article className={`cmp-player cmp-player--${side}`}>
-      <span className="cmp-player__rank">SFA #{player.global_rank}</span>
+      <span className="cmp-player__rank">{player.global_rank > 0 ? `SFA #${player.global_rank}` : 'SFA'}</span>
       <div className="cmp-player__visual">
         {player.photo_url
           ? <img src={player.photo_url} alt={player.name} className="cmp-player__photo" />
@@ -266,6 +269,7 @@ function metric(
 }
 
 function CompareResults({ data }: { data: CompareResponse }) {
+  const [activeTab, setActiveTab] = useState('impact')
   const a = useMemo(() => deriveStats(data.player_a, data.player_a_analytics), [data])
   const b = useMemo(() => deriveStats(data.player_b, data.player_b_analytics), [data])
 
@@ -311,9 +315,9 @@ function CompareResults({ data }: { data: CompareResponse }) {
     metric('Regateado por rival', a.dribblesPast, b.dribblesPast, fmtInteger, true),
   ]
   const context = [
-    metric('Apariciones contra rivales difíciles', a.difficultOpponentAppearances, b.difficultOpponentAppearances, fmtInteger),
-    metric('Apariciones en momentos clave o adversos', a.keyMomentAppearances, b.keyMomentAppearances, fmtInteger),
-    metric('Actuaciones élite', a.eliteFixtures, b.eliteFixtures, fmtInteger),
+    { ...metric('Partidos con acciones en desventaja', a.difficultOpponentAppearances, b.difficultOpponentAppearances, fmtInteger), description: 'Partidos con acciones puntuadas cuyo M1 es al menos 1,15. Mide dificultad relativa, no nivel absoluto del rival.' },
+    { ...metric('Partidos con acciones bajo presión', a.keyMomentAppearances, b.keyMomentAppearances, fmtInteger), description: 'Partidos con acciones puntuadas cuyo M3 es al menos 1,60. No implica por sí solo que decidieran el resultado.' },
+    metric('Partidos de 2.500+ puntos SFA', a.eliteFixtures, b.eliteFixtures, fmtInteger),
     metric('Gol más valioso', a.mostValuableGoal, b.mostValuableGoal, fmtPoints),
     metric('Mejor partido (puntos SFA)', a.bestMatch, b.bestMatch, fmtPoints),
     metric('Racha con G+A', a.contributionStreak, b.contributionStreak, (value) => `${fmtInteger(value)} PJ`),
@@ -329,28 +333,112 @@ function CompareResults({ data }: { data: CompareResponse }) {
     metric('Goles encajados', a.goalsConceded, b.goalsConceded, fmtInteger, true),
   ]
 
+  const tabs = [
+    { id: 'impact', label: 'Impacto SFA', title: 'Impacto y contexto', metrics: context },
+    { id: 'attack', label: 'Ataque', title: 'Ataque y definición', metrics: attack },
+    { id: 'creation', label: 'Creación', title: 'Pase y creación', metrics: [...passing, ...duels.slice(0, 4)] },
+    { id: 'defense', label: 'Defensa', title: 'Defensa y duelos', metrics: [...defense, ...duels.slice(4)] },
+    { id: 'discipline', label: 'Disciplina', title: 'Disciplina', metrics: discipline },
+    { id: 'season', label: 'Evolución', title: 'Ritmo de la temporada', metrics: general },
+    ...(a.saves > 0 || b.saves > 0 || a.goalsConceded > 0 || b.goalsConceded > 0
+      ? [{ id: 'goalkeeping', label: 'Portería', title: 'Portería', metrics: goalkeeping }]
+      : []),
+  ]
+  const active = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]
+  const highlights = [
+    metric('Bajo presión', a.keyMomentAppearances, b.keyMomentAppearances, fmtInteger),
+    metric('Mejor partido', a.bestMatch, b.bestMatch, fmtPoints),
+    metric('Gol más valioso', a.mostValuableGoal, b.mostValuableGoal, fmtPoints),
+  ]
+
+  function selectTab(id: string) {
+    setActiveTab(id)
+  }
+
   return (
     <div className="cmp-results">
       <ComparisonSummary data={data} />
-      <MomentumChart
-        fixturesA={data.player_a_analytics.fixtures}
-        fixturesB={data.player_b_analytics.fixtures}
-        nameA={data.player_a.name}
-        nameB={data.player_b.name}
-      />
-      <div className="cmp-stat-grid">
-        <StatSection title="Rendimiento general" metrics={general} />
-        <StatSection title="Ataque y definición" metrics={attack} />
-        <StatSection title="Pase y creación" metrics={passing} />
-        <StatSection title="Regate y duelos" metrics={duels} />
-        <StatSection title="Trabajo defensivo" metrics={defense} />
-        <StatSection title="Contexto SFA" metrics={context} className="cmp-stat-section--context" />
-        <StatSection title="Disciplina" metrics={discipline} />
-        {(a.saves > 0 || b.saves > 0 || a.goalsConceded > 0 || b.goalsConceded > 0) && (
-          <StatSection title="Portería" metrics={goalkeeping} />
+      <div className="cmp-sample-strip">
+        <span><i className="cmp-side-dot cmp-side-dot--a" />{a.matches} PJ <b>{fmtInteger(a.minutes)} min</b></span>
+        <span>{comparisonPeriodLabel(data.scope, data.season)}</span>
+        <span><i className="cmp-side-dot cmp-side-dot--b" />{b.matches} PJ <b>{fmtInteger(b.minutes)} min</b></span>
+      </div>
+      <div className="cmp-impact-strip">
+        {highlights.map((item) => (
+          <div className="cmp-impact-item" key={item.label}>
+            <span>{item.label}</span>
+            <div><strong className="cmp-side-value--a">{item.a == null ? '-' : item.format!(item.a)}</strong><span>/</span><strong className="cmp-side-value--b">{item.b == null ? '-' : item.format!(item.b)}</strong></div>
+          </div>
+        ))}
+      </div>
+      <div className="cmp-view-tabs" role="tablist" aria-label="Estadísticas comparadas">
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.id}
+            id={`cmp-tab-${tab.id}`}
+            role="tab"
+            type="button"
+            aria-selected={active.id === tab.id}
+            aria-controls="cmp-active-panel"
+            tabIndex={active.id === tab.id ? 0 : -1}
+            onClick={() => selectTab(tab.id)}
+            onKeyDown={(event) => {
+              let next: number | null = null
+              if (event.key === 'ArrowRight') next = (index + 1) % tabs.length
+              if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length
+              if (event.key === 'Home') next = 0
+              if (event.key === 'End') next = tabs.length - 1
+              if (next !== null) {
+                event.preventDefault()
+                selectTab(tabs[next].id)
+                document.getElementById(`cmp-tab-${tabs[next].id}`)?.focus()
+              }
+            }}
+          >{tab.label}</button>
+        ))}
+      </div>
+      <div className={`cmp-workbench${active.id === 'season' ? ' cmp-workbench--wide' : ''}`}>
+        <div className="cmp-active-panel" key={active.id} id="cmp-active-panel" role="tabpanel" aria-labelledby={`cmp-tab-${active.id}`} tabIndex={0}>
+          {active.id === 'season' ? (
+            <MomentumChart fixturesA={data.player_a_analytics.fixtures} fixturesB={data.player_b_analytics.fixtures} nameA={data.player_a.name} nameB={data.player_b.name} />
+          ) : (
+            <>
+              <div className="cmp-column-identities"><span>{data.player_a.name}</span><span>{data.player_b.name}</span></div>
+              <StatSection title={active.title} metrics={active.metrics} />
+            </>
+          )}
+        </div>
+        {active.id !== 'season' && (
+          <aside className="cmp-evidence" aria-label="Mejores actuaciones">
+            <h2>Actuaciones destacadas</h2>
+            <BestPerformances player={data.player_a} fixtures={data.player_a_analytics.fixtures} side="a" scope={data.scope} />
+            <BestPerformances player={data.player_b} fixtures={data.player_b_analytics.fixtures} side="b" scope={data.scope} />
+          </aside>
         )}
       </div>
     </div>
+  )
+}
+
+function BestPerformances({ player, fixtures, side, scope }: { player: PlayerDetail; fixtures: PlayerFixture[]; side: 'a' | 'b'; scope: string | null }) {
+  const best = [...fixtures].sort((left, right) => right.sfa_pts - left.sfa_pts).slice(0, 2)
+  return (
+    <section className={`cmp-best cmp-best--${side}`}>
+      <h3><i className={`cmp-side-dot cmp-side-dot--${side}`} />{player.name}</h3>
+      {best.length === 0 && <p>Sin actuaciones disponibles</p>}
+      {best.map((fixture) => (
+        <Link key={fixture.fixture_id} className="cmp-best__match" to={fixture.fixture_external_id
+          ? `${scope?.startsWith('world-cup-') ? '/mundial' : '/torneos'}/partido/${fixture.fixture_external_id}`
+          : `/player/${player.id}${scope ? `?scope=${encodeURIComponent(scope)}` : ''}`}>
+          <div className="cmp-best__teams">
+            <span>{fixture.home_team_logo && <img src={fixture.home_team_logo} alt="" loading="lazy" />}{fixture.home_team}</span>
+            <span>{fixture.away_team_logo && <img src={fixture.away_team_logo} alt="" loading="lazy" />}{fixture.away_team}</span>
+          </div>
+          <strong>{fmtInteger(fixture.sfa_pts)}<small>pts SFA</small></strong>
+          <span className="cmp-best__date">{new Date(fixture.played_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })} · {fixture.competition}</span>
+        </Link>
+      ))}
+    </section>
   )
 }
 

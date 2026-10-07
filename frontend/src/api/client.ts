@@ -2,6 +2,24 @@ import type { Competition, CompareResponse, PlayerCompetitionAchievement, Player
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
+export async function fetchTeamRanking(params: {
+  scope: string
+  competition_id?: number
+  name?: string
+  page: number
+  signal?: AbortSignal
+}): Promise<import('../types/teamRanking').TeamRankingResponse> {
+  const q = new URLSearchParams({ scope: params.scope, page: String(params.page), limit: '20' })
+  if (params.competition_id != null) q.set('competition_id', String(params.competition_id))
+  if (params.name) q.set('name', params.name)
+  const key = `team-ranking:${q}`
+  const cached = getCached<import('../types/teamRanking').TeamRankingResponse>(key)
+  if (cached) return cached
+  const data = await get<import('../types/teamRanking').TeamRankingResponse>(`/teams/ranking?${q}`, params.signal)
+  setCache(key, data)
+  return data
+}
+
 const TTL_MS = 60_000
 const _cache = new Map<string, { data: unknown; ts: number }>()
 

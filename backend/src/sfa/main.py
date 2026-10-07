@@ -17,6 +17,7 @@ from sfa.api.v1.ranking_explanations import router as ranking_explanations_route
 from sfa.api.v1.scoring_rules_router import router as scoring_rules_router
 from sfa.api.v1.seasons import router as seasons_router
 from sfa.api.v1.status import router as status_router
+from sfa.api.v1.teams import router as teams_router
 from sfa.api.v1.tournaments import router as tournaments_router
 from sfa.api.v1.wc_router import router as wc_router
 from sfa.core.config import get_settings
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 tags_metadata = [
+    {"name": "teams", "description": "Experimental descriptive team merit; never used for M1"},
     {"name": "ranking", "description": "Rankings de jugadores por temporada"},
     {"name": "seasons", "description": "Temporadas disponibles en el sistema"},
     {"name": "players", "description": "Detalle de jugadores, eventos y fixtures"},
@@ -88,6 +90,7 @@ app.add_middleware(
 
 app.include_router(health_router, prefix="/api/v1", tags=["health"])
 app.include_router(ranking_router, prefix="/api/v1", tags=["ranking"])
+app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
 app.include_router(ranking_explanations_router, prefix="/api/v1", tags=["ranking"])
 app.include_router(seasons_router, prefix="/api/v1", tags=["seasons"])
 app.include_router(players_router, prefix="/api/v1", tags=["players"])

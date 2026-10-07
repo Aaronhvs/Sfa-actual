@@ -25,6 +25,7 @@ from sfa.infrastructure.repositories import (
     SFAScoreRepository,
     StandingRepository,
     SystemRepository,
+    TeamRankingRepository,
     TeamStrengthRepository,
     TournamentRepository,
     WorldCupRepository,
@@ -154,6 +155,7 @@ from sfa.application.use_cases.get_ranking_explanations import GetRankingExplana
 from sfa.application.use_cases.get_seasons import GetSeasonsUseCase
 from sfa.application.use_cases.get_standings import GetStandingsUseCase
 from sfa.application.use_cases.get_status import GetStatusUseCase
+from sfa.application.use_cases.get_team_ranking import GetTeamRankingUseCase
 from sfa.application.use_cases.get_tournament_fixture_detail import (
     GetTournamentFixtureDetailUseCase,
 )
@@ -214,6 +216,18 @@ async def get_ranking_use_case(
         default_rules_version_id=active.id if active else None,
         season_repo=season_repo,
     )
+
+
+async def get_team_ranking_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TeamRankingRepository:
+    return TeamRankingRepository(db)
+
+
+async def get_team_ranking_use_case(
+    repository: Annotated[TeamRankingRepository, Depends(get_team_ranking_repository)],
+) -> GetTeamRankingUseCase:
+    return GetTeamRankingUseCase(repository)
 
 
 async def get_ranking_explanation_writer() -> DeterministicRankingExplanationWriter:

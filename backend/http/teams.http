@@ -1,0 +1,36 @@
+### Latest physical season, club population
+GET http://localhost:8000/api/v1/teams/ranking
+Accept: application/json
+
+### Canonical season scope (fallback seasons disclosed per component)
+GET http://localhost:8000/api/v1/teams/ranking?scope=season-2026&page=1&limit=10
+
+### Physical season and participant filtering
+GET http://localhost:8000/api/v1/teams/ranking?season=2026&participant_kind=national
+
+### Canonical national participant kind (equivalent to national alias)
+GET http://localhost:8000/api/v1/teams/ranking?season=2026&participant_kind=national_team
+
+### Competition participation filter and literal case-insensitive name
+GET http://localhost:8000/api/v1/teams/ranking?season=2026&competition_id=3&name=Real
+
+### Pagination
+GET http://localhost:8000/api/v1/teams/ranking?season=2026&page=2&limit=10
+
+### No observations (empty or unknown components, never invented data)
+GET http://localhost:8000/api/v1/teams/ranking?season=1990
+
+### Invalid mutually exclusive selectors: 422
+GET http://localhost:8000/api/v1/teams/ranking?season=2026&scope=season-2026
+
+### Unsupported award/tournament scope: 422
+GET http://localhost:8000/api/v1/teams/ranking?scope=world-cup-2026
+
+### Invalid season: 422
+GET http://localhost:8000/api/v1/teams/ranking?season=2026-29
+
+### Invalid limit: 422
+GET http://localhost:8000/api/v1/teams/ranking?limit=51
+
+### Invalid participant kind: 422
+GET http://localhost:8000/api/v1/teams/ranking?participant_kind=unknown
