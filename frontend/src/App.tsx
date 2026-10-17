@@ -5,6 +5,7 @@ import Footer from './components/layout/Footer'
 import SeoController from './components/shared/SeoController'
 
 const RankingPage = lazy(() => import('./pages/RankingPage'))
+const HomePage = lazy(() => import('./pages/HomePage'))
 const PlayerPage = lazy(() => import('./pages/PlayerPage'))
 const TeamsPage = lazy(() => import('./pages/TeamsPage'))
 const ComparePage = lazy(() => import('./pages/ComparePage'))
@@ -33,7 +34,7 @@ export default function App() {
       <main className="main-content">
         <Suspense fallback={<RouteFallback />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/ranking" replace />} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/ranking" element={<RankingPage />} />
             <Route path="/player/:id" element={<PlayerPage />} />
             <Route path="/teams" element={<TeamsPage />} />

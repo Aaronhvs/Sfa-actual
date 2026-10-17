@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 
 const LINKS = [
+  { to: '/', label: 'Inicio', wc: false, soon: false },
   { to: '/ranking', label: 'Ranking', wc: false, soon: false },
   { to: '/torneos', label: 'Torneos', wc: false, soon: false },
   { to: '/teams', label: 'Equipos', wc: false, soon: false },
@@ -72,7 +73,7 @@ export default function Navbar() {
   return (
     <>
       <nav className={`navbar${scrolled ? ' navbar--scrolled' : ''}`}>
-        <Link to="/ranking" className="navbar__logo-link navbar__logo-link--desktop" aria-label="SFA, ir al ranking">
+        <Link to="/" className="navbar__logo-link navbar__logo-link--desktop" aria-label="SFA, ir al inicio">
           <img
             src="/logo.png"
             alt="SFA"
@@ -85,6 +86,7 @@ export default function Navbar() {
               <NavLink
                 key={to}
                 to={to}
+                end={to === '/'}
                 className={({ isActive }) =>
                   `navbar__link${wc ? ' navbar__link--wc' : ''}${soon ? ' navbar__link--soon' : ''}${isActive ? ' navbar__link--active' : ''}`
                 }
@@ -110,7 +112,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <Link to="/ranking" className="navbar__mobile-logo-link" aria-label="SFA, ir al ranking">
+      <Link to="/" className="navbar__mobile-logo-link" aria-label="SFA, ir al inicio">
         <img
           src="/logo.png"
           alt="SFA"
@@ -136,6 +138,7 @@ export default function Navbar() {
             <NavLink
               key={to}
               to={to}
+              end={to === '/'}
               className={({ isActive }) =>
                 `navbar__drawer-link${wc ? ' navbar__drawer-link--wc' : ''}${soon ? ' navbar__drawer-link--soon' : ''}${isActive ? ' navbar__drawer-link--active' : ''}`
               }

@@ -163,6 +163,7 @@ export async function fetchTournament(
 export async function fetchTournamentDashboard(
   season?: string,
   date?: string,
+  signal?: AbortSignal,
 ): Promise<TournamentDashboardResponse> {
   const q = new URLSearchParams()
   if (season) q.set('season', season)
@@ -172,6 +173,7 @@ export async function fetchTournamentDashboard(
   if (cached) return cached
   const data = await get<TournamentDashboardResponse>(
     `/tournaments/dashboard${q.size ? `?${q}` : ''}`,
+    signal,
   )
   setCache(key, data)
   return data

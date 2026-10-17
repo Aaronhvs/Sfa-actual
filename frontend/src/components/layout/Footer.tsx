@@ -52,7 +52,7 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="site-footer__inner">
         <div className="site-footer__brand">
-          <Link to="/ranking" className="site-footer__logo-link" aria-label="SFA">
+          <Link to="/" className="site-footer__logo-link" aria-label="SFA, ir al inicio">
             <img src="/blanco.png" alt="SFA" className="site-footer__logo-img" />
           </Link>
           <p className="site-footer__tagline">Estadísticas, contexto e impacto real en el fútbol.</p>

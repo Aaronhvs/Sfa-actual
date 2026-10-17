@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
-const SITE_URL = 'https://statsfootballaward.com'
+const SITE_URL = 'https://statsfootballawards.com'
 const DEFAULT_TITLE = 'Stats Football Award (SFA) | Ranking de jugadores de fútbol'
 const DEFAULT_DESCRIPTION = 'Stats Football Award (SFA) es un ranking independiente de jugadores de fútbol que mide el impacto real de cada actuación según el rival, el momento y la competición.'
 
@@ -38,9 +38,9 @@ function getSeoData(pathname: string): SeoData {
 
   const pages: Record<string, SeoData> = {
     '/': {
-      title: DEFAULT_TITLE,
-      description: DEFAULT_DESCRIPTION,
-      canonicalPath: '/ranking',
+      title: 'Stats Football Award | El fútbol en contexto',
+      description: 'Descubre a los líderes del ranking SFA y conoce la metodología propia que pone el rendimiento de los futbolistas en contexto.',
+      canonicalPath: '/',
     },
     '/ranking': {
       title: DEFAULT_TITLE,
