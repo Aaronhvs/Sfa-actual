@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchRanking, fetchTournamentDashboard } from '../api/client'
-import type { RankedPlayer, SeasonItem, TournamentFixture, TournamentFixtureGroup } from '../types'
-import { formatLocalDateShort, formatLocalTime, localDateKey } from '../utils/localTime'
-import { isTournamentKnockout, LIVE_TOURNAMENT_STATUSES, tournamentCompetitionPriority, tournamentStageLabel, tournamentTeamLogo } from '../utils/tournaments'
-import { TeamCrest } from './shared/FootballVisuals'
+import type { RankedPlayer, SeasonItem, TournamentDashboardResponse, TournamentFixture, TournamentFixtureGroup } from '../types'
+import {
+  isFeaturedTournamentCompetition,
+  tournamentCompetitionPriority,
+  tournamentDateKey,
+  tournamentDateLabel,
+} from '../utils/tournaments'
+import { ArrowIcon, isFinal, isLive, ScoreRow } from './tournaments/MatchUI'
 import './HomeDiscoverSections.css'
 
 const POSITIONS = [
@@ -13,8 +17,10 @@ const POSITIONS = [
   { code: 'LAT', label: 'Lateral' }, { code: 'DC', label: 'Defensa central' },
 ]
 
-type PositionLeader = typeof POSITIONS[number] & { player: RankedPlayer | null; failed: boolean }
-type FeaturedFixture = { fixture: TournamentFixture; competition: TournamentFixtureGroup['competition']; reason: string; priority: number }
+const MAX_FIXTURES = 6
+
+type PositionLeader = typeof POSITIONS[number] & { player: RankedPlayer | null }
+type Pick = { fixture: TournamentFixture; competition: TournamentFixtureGroup['competition']; score: number }
 
 async function loadPositionLeader(scope: string, position: string, signal: AbortSignal) {
   // The API applies contextual position overrides after pagination. A one-row
@@ -32,47 +38,44 @@ async function loadPositionLeader(scope: string, position: string, signal: Abort
 }
 
 function normalize(value: string) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
-function selectFixtures(groups: TournamentFixtureGroup[], players: RankedPlayer[]): FeaturedFixture[] {
-  const now = Date.now()
+/** Live first, then teams of the SFA top 3, then the biggest competitions; finished games last. */
+function selectFixtures(groups: TournamentFixtureGroup[], players: RankedPlayer[]) {
   const teams = new Set(players.map((player) => normalize(player.team)))
-  const seen = new Set<number>()
-  const fixtures: FeaturedFixture[] = []
-  for (const { competition, fixtures: matches } of groups) {
-    for (const fixture of matches) {
-      if (seen.has(fixture.external_id)) continue
-      seen.add(fixture.external_id)
-      const live = LIVE_TOURNAMENT_STATUSES.has(fixture.status)
-      const upcoming = fixture.status === 'NS' && new Date(fixture.played_at).getTime() >= now
-      if (!live && !upcoming) continue
+  const picks: Pick[] = []
+  for (const { competition, fixtures } of groups) {
+    for (const fixture of fixtures) {
       const topTeam = teams.has(normalize(fixture.home_team.name)) || teams.has(normalize(fixture.away_team.name))
-      const knockout = isTournamentKnockout(fixture.stage)
-      fixtures.push({
-        fixture, competition,
-        reason: topTeam ? 'Equipo del top 3 SFA' : knockout ? 'Cruce de eliminatoria' : live ? 'En juego' : 'Próxima jornada',
-        priority: (topTeam ? 100 : 0) + (live ? 50 : 0) + (knockout ? 25 : 0),
-      })
+      if (!topTeam && !isFeaturedTournamentCompetition(competition)) continue
+      const score = (isLive(fixture) ? 1000 : 0)
+        + (topTeam ? 500 : 0)
+        + (isFinal(fixture) ? 0 : 200)
+        - tournamentCompetitionPriority(competition)
+      picks.push({ fixture, competition, score })
     }
   }
-  return fixtures.sort((a, b) => b.priority - a.priority
-    || new Date(a.fixture.played_at).getTime() - new Date(b.fixture.played_at).getTime()
-    || tournamentCompetitionPriority(a.competition) - tournamentCompetitionPriority(b.competition)
-    || a.fixture.external_id - b.fixture.external_id).slice(0, 3)
+  return picks
+    .sort((a, b) => b.score - a.score || a.fixture.played_at.localeCompare(b.fixture.played_at))
+    .slice(0, MAX_FIXTURES)
 }
 
-function Photo({ url, name, className }: { url: string | null; name: string; className: string }) {
+function Photo({ url, name }: { url: string | null; name: string }) {
   const [failed, setFailed] = useState(false)
-  return <span className={className}>{url && !failed
-    ? <img src={url} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
-    : <span aria-hidden="true">{name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>}</span>
+  return (
+    <span className="home-leaders__photo">
+      {url && !failed
+        ? <img src={url} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        : <span aria-hidden="true">{name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>}
+    </span>
+  )
 }
 
 export default function HomeDiscoverSections({ season, topPlayers }: { season: SeasonItem; topPlayers: RankedPlayer[] }) {
   const [leaders, setLeaders] = useState<PositionLeader[]>([])
   const [positionsLoading, setPositionsLoading] = useState(true)
-  const [groups, setGroups] = useState<TournamentFixtureGroup[]>([])
+  const [dashboard, setDashboard] = useState<TournamentDashboardResponse | null>(null)
   const [matchesLoading, setMatchesLoading] = useState(true)
   const [matchesError, setMatchesError] = useState(false)
   const [retry, setRetry] = useState(0)
@@ -80,117 +83,102 @@ export default function HomeDiscoverSections({ season, topPlayers }: { season: S
   useEffect(() => {
     const controller = new AbortController()
     setPositionsLoading(true)
-    void Promise.allSettled(POSITIONS.map(position => loadPositionLeader(season.key, position.code, controller.signal))).then((results) => {
-      if (controller.signal.aborted) return
-      setLeaders(results.map((result, index) => ({
-        ...POSITIONS[index],
-        player: result.status === 'fulfilled' ? result.value : null,
-        failed: result.status === 'rejected',
-      })))
-      setPositionsLoading(false)
-    })
+    void Promise.allSettled(POSITIONS.map((position) => loadPositionLeader(season.key, position.code, controller.signal)))
+      .then((results) => {
+        if (controller.signal.aborted) return
+        setLeaders(results.map((result, index) => ({
+          ...POSITIONS[index],
+          player: result.status === 'fulfilled' ? result.value : null,
+        })))
+        setPositionsLoading(false)
+      })
     return () => controller.abort()
-  }, [season.key, retry])
+  }, [season.key])
 
   useEffect(() => {
     const controller = new AbortController()
     setMatchesLoading(true)
     setMatchesError(false)
-    async function load() {
-      try {
-        const today = localDateKey(new Date().toISOString())
-        const dashboard = await fetchTournamentDashboard(season.season, today, controller.signal)
-        let available = dashboard.groups
-        // Also inspect the next scheduled day, without scanning the full season.
-        const distance = dashboard.next_date
-          ? new Date(`${dashboard.next_date}T12:00:00Z`).getTime() - new Date(`${today}T12:00:00Z`).getTime()
-          : 0
-        if (dashboard.next_date && distance > 0 && distance <= 14 * 86400000) {
-          try {
-            const next = await fetchTournamentDashboard(season.season, dashboard.next_date, controller.signal)
-            available = [...available, ...next.groups]
-          } catch {
-            // Current-day fixtures remain usable if the next day is unavailable.
-          }
-        }
-        if (!controller.signal.aborted) setGroups(available)
-      } catch {
-        if (!controller.signal.aborted) setMatchesError(true)
-      } finally {
-        if (!controller.signal.aborted) setMatchesLoading(false)
-      }
-    }
-    void load()
+    fetchTournamentDashboard(season.season, undefined, controller.signal)
+      .then((result) => { if (!controller.signal.aborted) setDashboard(result) })
+      .catch(() => { if (!controller.signal.aborted) setMatchesError(true) })
+      .finally(() => { if (!controller.signal.aborted) setMatchesLoading(false) })
     return () => controller.abort()
   }, [season.season, retry])
 
-  const fixtures = selectFixtures(groups, topPlayers)
+  const groups = dashboard?.groups ?? []
+  const picks = selectFixtures(groups, topPlayers)
+  const all = groups.flatMap((group) => group.fixtures)
+  const liveCount = all.filter(isLive).length
+  const selected = dashboard?.selected_date
+  const dayLabel = !selected ? 'Partidos'
+    : selected === tournamentDateKey(new Date()) ? 'Hoy en el fútbol'
+      : `Próxima fecha: ${tournamentDateLabel(selected, false)}`
   const rankingUrl = `/ranking?${new URLSearchParams({ scope: season.key })}`
-  const positionsFailed = leaders.some((leader) => leader.failed)
+  const found = leaders.filter((leader): leader is PositionLeader & { player: RankedPlayer } => leader.player != null)
 
   return (
-    <>
-      <section className="home-positions" aria-labelledby="home-positions-title" aria-busy={positionsLoading}>
-        <div className="home-positions__intro">
+    <div className="home-discover">
+      <section className="home-today" aria-labelledby="home-today-title" aria-busy={matchesLoading}>
+        <header className="home-section-head">
           <div>
-            <p className="home-eyebrow">Líderes por posición · {season.label}</p>
-            <h2 id="home-positions-title">Quién lidera en cada posición</h2>
-            <p>El primero de cada posición según los puntos SFA de la temporada.</p>
+            <p className="tp-eyebrow">En juego</p>
+            <h2 id="home-today-title">{dayLabel}</h2>
+            {!matchesLoading && all.length > 0 && (
+              <p className="home-section-head__meta">
+                {all.length} partidos{liveCount > 0 && <> · <b>{liveCount} en vivo</b></>}
+              </p>
+            )}
           </div>
-          <Link to={rankingUrl} className="home-positions__explore">Ver todas las posiciones <span aria-hidden="true">↗</span></Link>
-        </div>
-        <div className="home-positions__content">
-          {positionsLoading ? <div className="home-positions__loading" role="status"><span className="home-sr-only">Cargando líderes por posición</span>{POSITIONS.map(({ code }) => <div key={code} className="skeleton" />)}</div>
-            : <><ul className="home-position-list">{leaders.filter(({ player }) => player).map(({ code, label, player }) => player && (
-              <li key={code}>
-                <Link className="home-position-player" to={`${rankingUrl}&position=${code}`} aria-label={`Ver ranking: ${label}. ${player.name}, ${Math.round(player.sfa_pts).toLocaleString('es-ES')} puntos SFA`}>
-                  <span className="home-position-list__role">{label}</span>
-                  <Photo key={player.id} url={player.photo_url} name={player.name} className="home-position-player__photo" />
-                  <span className="home-position-player__identity"><strong>{player.name}</strong><span className="home-position-player__club"><TeamCrest key={player.team} url={player.team_logo_url} name={player.team} /><span>{player.team}</span></span></span>
-                  <span className="home-position-player__points">{Math.round(player.sfa_pts).toLocaleString('es-ES')}<small>puntos SFA</small></span>
-                  <span className="home-position-player__arrow" aria-hidden="true">↗</span>
-                </Link>
-              </li>
-            ))}</ul>
-            {!leaders.some(({ player }) => player) && <p className="home-positions__empty">No hay líderes disponibles para esta temporada. Puedes consultar la clasificación de cada posición.</p>}
-            {leaders.some(({ player }) => !player) && <div className="home-positions__unavailable">
-              <p>Sin líder disponible:</p>
-              <ul>{leaders.filter(({ player }) => !player).map(({ code, label, failed }) => <li key={code}>
-                <Link to={`${rankingUrl}&position=${code}`} aria-label={`${label}: ${failed ? 'No se pudo cargar' : 'Sin puntuaciones'}. Ver ranking`}>{label}{failed && <small>Error de carga</small>}</Link>
-              </li>)}</ul>
-            </div>}
-            </>}
-          {positionsFailed && <button className="home-discover-retry" onClick={() => setRetry((value) => value + 1)} type="button">Reintentar posiciones</button>}
-        </div>
+          <Link to="/torneos">Todos los partidos <ArrowIcon /></Link>
+        </header>
+
+        {matchesLoading ? (
+          <div className="home-skel home-skel--matches" role="status"><span className="sr-only">Cargando partidos</span></div>
+        ) : matchesError ? (
+          <div className="home-state" role="alert">
+            <strong>No pudimos consultar el calendario.</strong>
+            <button type="button" onClick={() => setRetry((value) => value + 1)}>Reintentar</button>
+          </div>
+        ) : picks.length === 0 ? (
+          <div className="home-state">
+            <strong>No hay partidos de las grandes competiciones en esta fecha.</strong>
+            <Link to="/torneos">Ver el calendario completo</Link>
+          </div>
+        ) : (
+          <div className="tp-group home-today__list">
+            {picks.map(({ fixture, competition }) => (
+              <ScoreRow fixture={fixture} competition={competition} season={dashboard?.season ?? season.season} key={fixture.id} />
+            ))}
+          </div>
+        )}
       </section>
 
-      <section className="home-fixtures" aria-labelledby="home-fixtures-title" aria-busy={matchesLoading}>
-        <div className="home-fixtures__intro">
-          <p className="home-eyebrow">En el calendario</p>
-          <h2 id="home-fixtures-title">Partidos<br />a seguir.</h2>
-          <p>Equipos del top 3, eliminatorias y encuentros en juego, entre hoy y la próxima fecha disponible.</p>
-          <Link to="/torneos" className="home-text-link">Ver todos los partidos <span aria-hidden="true">↗</span></Link>
-        </div>
-        <div className="home-fixtures__content">
-          {matchesLoading ? <div className="home-fixtures__loading" role="status"><span className="home-sr-only">Cargando partidos</span><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div>
-            : matchesError ? <div className="home-discover-state" role="alert"><p>No pudimos consultar el calendario.</p><button className="home-discover-retry" onClick={() => setRetry((value) => value + 1)} type="button">Reintentar partidos</button></div>
-              : fixtures.length === 0 ? <div className="home-discover-state"><p>No hay partidos programados o en juego en las fechas consultadas.</p><Link to="/torneos" className="sfa-action-link">Explorar el calendario completo ↗</Link></div>
-                : <ul className="home-fixture-list">{fixtures.map(({ fixture, competition, reason }) => {
-                  const live = LIVE_TOURNAMENT_STATUSES.has(fixture.status)
-                  return <li key={fixture.external_id}><Link className="home-fixture" to={`/torneos/partido/${fixture.external_id}?${new URLSearchParams({ season: season.season })}`}>
-                    <span className="home-fixture__competition">{competition.name}<span>{live ? 'En juego' : formatLocalDateShort(fixture.played_at)}</span></span>
-                    <span className="home-fixture__teams">
-                      <span><Photo url={tournamentTeamLogo(fixture.home_team)} name={fixture.home_team.name} className="home-fixture__crest" /><strong>{fixture.home_team.name}</strong></span>
-                      <span className="home-fixture__versus">vs</span>
-                      <span><Photo url={tournamentTeamLogo(fixture.away_team)} name={fixture.away_team.name} className="home-fixture__crest" /><strong>{fixture.away_team.name}</strong></span>
-                    </span>
-                    <span className="home-fixture__time">{live ? `${fixture.home_goals ?? '–'} : ${fixture.away_goals ?? '–'}` : formatLocalTime(fixture.played_at)}<small>{tournamentStageLabel(fixture.stage, fixture.matchday)}</small></span>
-                    <span className="home-fixture__reason">{reason}<span aria-hidden="true">↗</span></span>
-                  </Link></li>
-                })}</ul>}
-          {!matchesLoading && !matchesError && fixtures.length > 0 && <p className="home-fixtures__note">Horarios de Chile. Estado de los partidos al cargar la página.</p>}
-        </div>
-      </section>
-    </>
+      <aside className="home-leaders" aria-labelledby="home-leaders-title" aria-busy={positionsLoading}>
+        <h2 id="home-leaders-title">Líderes por posición</h2>
+        <p>El mejor de cada puesto por puntos SFA. Un central no compite contra un delantero.</p>
+        {positionsLoading ? (
+          <div className="home-skel home-skel--leaders" role="status"><span className="sr-only">Cargando líderes por posición</span></div>
+        ) : found.length === 0 ? (
+          <p className="home-leaders__empty">Todavía no hay líderes para esta temporada.</p>
+        ) : (
+          <ol>
+            {found.map(({ code, label, player }) => (
+              <li key={code}>
+                <Link to={`${rankingUrl}&position=${code}`} aria-label={`${label}: ${player.name}, ${Math.round(player.sfa_pts).toLocaleString('es-ES')} puntos SFA. Ver ranking de la posición`}>
+                  <Photo url={player.photo_url} name={player.name} />
+                  <span className="home-leaders__who">
+                    <small>{label}</small>
+                    <strong>{player.name}</strong>
+                  </span>
+                  <em>{Math.round(player.sfa_pts).toLocaleString('es-ES')}</em>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
+        <Link to={rankingUrl} className="home-leaders__cta">Ver todas las posiciones <ArrowIcon /></Link>
+      </aside>
+    </div>
   )
 }

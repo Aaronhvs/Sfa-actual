@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
-import { useCountUp } from '../../hooks/useCountUp'
 import type { RankedPlayer } from '../../types'
 import { worldCupTeamFlagUrl } from '../../utils/worldCupTeams'
+import PlayerPortrait from '../shared/PlayerPortrait'
+import { FootballIcon, TeamCrest } from '../shared/FootballVisuals'
 
 interface Props {
   player: RankedPlayer
@@ -12,135 +13,31 @@ interface Props {
   returnTo?: string
 }
 
-function formatPts(pts: number): string {
-  return Math.round(pts).toLocaleString('es-ES')
-}
+export default function RankingCard({ player, competitionName, scope, isWorldCup = false, returnTo }: Props) {
+  const params = new URLSearchParams()
+  if (scope) params.set('scope', scope)
+  if (returnTo) params.set('returnTo', returnTo)
+  const flag = isWorldCup ? worldCupTeamFlagUrl(player.team) : null
 
-function initials(name: string): string {
-  return name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase()
-}
-
-function B1Badge({ player }: { player: RankedPlayer }) {
-  if (!player.b1_bonus_label) return null
-
-  const tone = player.b1_bonus_label === 'Veterano' ? 'veteran' : 'prospect'
-  return (
-    <span className={`b1-player-badge b1-player-badge--${tone}`}>
-      <b>{player.b1_bonus_label}</b>
-    </span>
-  )
-}
-
-export default function RankingCard({
-  player,
-  index = 0,
-  competitionName,
-  scope,
-  isWorldCup = false,
-  returnTo,
-}: Props) {
-  const animatedRank = useCountUp(player.rank, 620)
-  const playerParams = new URLSearchParams()
-  if (scope) playerParams.set('scope', scope)
-  if (returnTo) playerParams.set('returnTo', returnTo)
-  const playerQuery = playerParams.toString()
-  const playerLink = `/player/${player.id}${playerQuery ? `?${playerQuery}` : ''}`
-  const displayedRank = String(isWorldCup ? player.rank : animatedRank).padStart(2, '0')
-  const flagUrl = isWorldCup ? worldCupTeamFlagUrl(player.team) : null
-
-  return (
-    <Link
-      to={playerLink}
-      className={`ranking-card${isWorldCup ? ' ranking-card--wc' : ''}`}
-      style={{ animationDelay: `${index * 45}ms` }}
-    >
-      <div className="rc-mobile-row">
-        <span className="rc-mobile-row__rank">{displayedRank}</span>
-        <div className="rc-mobile-row__photo">
-          {player.photo_url ? (
-            <img src={player.photo_url} alt="" loading="lazy" decoding="async" />
-          ) : (
-            <span>{initials(player.name)}</span>
-          )}
-        </div>
-        <div className="rc-mobile-row__identity">
-          <strong>{player.name}</strong>
-          <B1Badge player={player} />
-          <span>
-            {flagUrl ? (
-              <img src={flagUrl} alt={player.team} className="rc-mobile-row__flag" />
-            ) : (
-              player.team
-            )}
-            {!isWorldCup && competitionName ? ` · ${competitionName}` : ''}
-          </span>
-        </div>
-        <div className="rc-mobile-row__score">
-          <strong>{formatPts(player.sfa_pts)}</strong>
-          <span>PTS</span>
-          <div
-            className="rc-mobile-row__ga"
-            aria-label={`${player.goals} goles y ${player.assists} asistencias`}
-          >
-            <b>{player.goals}<i>G</i></b>
-            <b>{player.assists}<i>A</i></b>
-          </div>
-        </div>
-      </div>
-
-      {player.photo_url ? (
-        <img
-          src={player.photo_url}
-          alt=""
-          className="rc-photo"
-          loading="lazy"
-          decoding="async"
-        />
-      ) : (
-        <div className="rc-photo-placeholder">{initials(player.name)}</div>
-      )}
-
-      <div className="rc-rank-wm" aria-hidden="true">
-        {displayedRank}
-      </div>
-
-      <div className="rc-top-meta">
-        <span className="rc-pos-badge">{player.position}</span>
-        {player.team_logo_url && (
-          <img
-            src={player.team_logo_url}
-            alt=""
-            className="rc-team-logo"
-            loading="lazy"
-            decoding="async"
-            aria-hidden="true"
-          />
-        )}
-      </div>
-
-      <div className="rc-content">
-        <div className="rc-name-row">
-          <div className="rc-name" title={player.name}>{player.name}</div>
-          <B1Badge player={player} />
-        </div>
-        <div className="rc-divider" />
-        <div className="rc-stats">
-          <div className="rc-stat-main">
-            <div className="rc-stat-pts">{formatPts(player.sfa_pts)}</div>
-            <div className="rc-stat-lbl">PTS SFA</div>
-          </div>
-          <div className="rc-stats-secondary">
-            <div className="rc-stat-compact">
-              <div className="rc-stat-side-val">{player.goals}</div>
-              <div className="rc-stat-lbl">G</div>
-            </div>
-            <div className="rc-stat-compact">
-              <div className="rc-stat-side-val">{player.assists}</div>
-              <div className="rc-stat-lbl">A</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  )
+  return <Link className="sfa-player-poster" data-player-id={player.id} to={`/player/${player.id}?${params}`}>
+    <div className="sfa-player-poster__visual">
+      <span className="sfa-player-poster__angle" aria-hidden="true" />
+      <span className="sfa-player-poster__rank"><span className="sr-only">Puesto </span>{String(player.rank).padStart(2, '0')}</span>
+      <TeamCrest key={player.team} url={flag ?? player.team_logo_url} name={player.team} />
+      <span className="sfa-player-poster__position">{player.position}</span>
+      <PlayerPortrait player={player} className="sfa-player-poster__portrait" />
+      <strong className="sfa-player-poster__name">{player.name}</strong>
+      <span className="sfa-player-poster__club">{player.team}</span>
+    </div>
+    <div className="sfa-player-poster__score">
+      <span><span className="sfa-player-poster__monogram">SFA</span><small>Puntos</small></span>
+      <strong>{Math.round(player.sfa_pts).toLocaleString('es-ES')}</strong>
+    </div>
+    <div className="sfa-player-poster__stats">
+      <span><FootballIcon kind="goal" /><b>{player.goals}</b><small>Goles</small></span>
+      <span><FootballIcon kind="assist" /><b>{player.assists}</b><small>Asist.</small></span>
+      <span><FootballIcon kind="matches" /><b>{player.matches}</b><small>Partidos</small></span>
+    </div>
+    {(competitionName || player.b1_bonus_label) && <div className="sfa-player-poster__note">{competitionName && <span>{competitionName}</span>}{player.b1_bonus_label && <span>{player.b1_bonus_label}</span>}</div>}
+  </Link>
 }

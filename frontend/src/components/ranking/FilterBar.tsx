@@ -29,6 +29,7 @@ interface Props {
   competitions: Competition[]
   search: string
   onSearch: (search: string) => void
+  hideCompetition?: boolean
 }
 
 export default function FilterBar({
@@ -41,6 +42,7 @@ export default function FilterBar({
   competitions,
   search,
   onSearch,
+  hideCompetition = false,
 }: Props) {
   const competitionOptions: RankingFilterOption[] = [
     { value: '', label: 'Todas las competiciones' },
@@ -48,33 +50,7 @@ export default function FilterBar({
   ]
 
   return (
-    <div className="filter-bar" aria-label="Filtros del ranking">
-      <RankingFilterSelect
-        label="Posici&oacute;n"
-        ariaLabel="Filtrar por posici&oacute;n"
-        value={position}
-        options={POSITIONS}
-        onChange={onPosition}
-      />
-
-      <RankingFilterSelect
-        label="Perfil"
-        ariaLabel="Filtrar por promesa o veterano"
-        value={bonusFilter}
-        options={PROFILES}
-        onChange={onBonusFilter}
-      />
-
-      <RankingFilterSelect
-        label="Competici&oacute;n"
-        ariaLabel="Filtrar por competici&oacute;n"
-        value={competition === undefined ? '' : String(competition)}
-        options={competitionOptions}
-        onChange={(nextCompetition) => {
-          onCompetition(nextCompetition ? Number(nextCompetition) : undefined)
-        }}
-      />
-
+    <div className={`filter-bar${hideCompetition ? ' filter-bar--no-competition' : ''}`} aria-label="Filtros del ranking">
       <label className="filter-bar__search">
         <span className="sr-only">Buscar jugador o equipo</span>
         <svg className="filter-bar__search-icon" viewBox="0 0 16 16" fill="none" width="14" height="14" aria-hidden="true">
@@ -99,6 +75,33 @@ export default function FilterBar({
           </button>
         )}
       </label>
+      <RankingFilterSelect
+        label="Posici&oacute;n"
+        ariaLabel="Filtrar por posici&oacute;n"
+        value={position}
+        options={POSITIONS}
+        onChange={onPosition}
+      />
+
+      <RankingFilterSelect
+        label="Perfil"
+        ariaLabel="Filtrar por promesa o veterano"
+        value={bonusFilter}
+        options={PROFILES}
+        onChange={onBonusFilter}
+      />
+
+      {!hideCompetition && <RankingFilterSelect
+        label="Competici&oacute;n"
+        ariaLabel="Filtrar por competici&oacute;n"
+        value={competition === undefined ? '' : String(competition)}
+        options={competitionOptions}
+        onChange={(nextCompetition) => {
+          onCompetition(nextCompetition ? Number(nextCompetition) : undefined)
+        }}
+      />}
+
+
     </div>
   )
 }

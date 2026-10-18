@@ -103,3 +103,94 @@
  @keyframes sfa-gallery-reveal { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
 }
 @media (prefers-reduced-motion:reduce) { .sfa-gallery__portrait { translate:none !important; } }
+
+
+/* Shared podium (home + ranking): wrap the gallery in .sfa-podium.
+   Compacted so points sit closer to the fold. */
+.sfa-podium .sfa-gallery { max-width: none; padding: 0; gap: 20px; }
+
+.sfa-podium .sfa-gallery__detail a {
+  border-color: var(--tp-line-strong);
+  border-radius: 10px;
+  background: var(--tp-panel);
+  font: 600 0.8rem/1.3 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sfa-podium .sfa-gallery__score > span {
+  color: var(--text-faint);
+  font: 500 0.66rem/1.4 var(--font-body);
+  letter-spacing: 0.1em;
+}
+
+/* Podium backdrop: stadium night, a spotlight in the podium metal and the rank as watermark */
+.sfa-podium .sfa-gallery { counter-reset: podium; }
+.sfa-podium .sfa-gallery__panel { --glow: rgba(196, 204, 218, 0.2); --glow-edge: rgba(196, 204, 218, 0.35); counter-increment: podium; }
+.sfa-podium .sfa-gallery__panel:first-child { --glow: rgba(201, 168, 76, 0.3); --glow-edge: rgba(212, 175, 85, 0.6); }
+.sfa-podium .sfa-gallery__panel:nth-child(3) { --glow: rgba(196, 128, 82, 0.22); --glow-edge: rgba(196, 128, 82, 0.4); }
+
+.sfa-podium .sfa-gallery__backdrop {
+  background:
+    linear-gradient(to top, var(--glow) 0, transparent 38%),
+    radial-gradient(75% 55% at 50% 36%, var(--glow), transparent 72%),
+    linear-gradient(180deg, rgba(20, 20, 20, 0.2), rgba(20, 20, 20, 0.72) 80%),
+    url('/images/sfa-method-stadium.jpg') center 30% / cover,
+    #1c1c1c;
+}
+
+.sfa-podium .sfa-gallery__backdrop::after { display: none; }
+
+.sfa-podium .sfa-gallery__backdrop::before {
+  position: absolute;
+  right: 6%;
+  bottom: 4%;
+  font: 800 15rem/0.8 var(--font-display);
+  color: var(--glow-edge);
+  opacity: 0.18;
+  content: counter(podium);
+  pointer-events: none;
+}
+
+@media (min-width: 681px) {
+  .sfa-podium .sfa-gallery__panel { height: 672px; }
+  .sfa-podium .sfa-gallery__visual { height: 588px; }
+  .sfa-podium .sfa-gallery__backdrop { bottom: 198px; }
+  /* Cutouts are wide 3:2 files with lots of air: frame them head-to-thigh and
+     fade the legs into the panel instead of showing a small full-body sticker. */
+  .sfa-podium .sfa-gallery__portrait--artwork {
+    top: 82px;
+    left: 26px;
+    width: calc(100% - 36px);
+    height: 388px;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 90%);
+    mask-image: linear-gradient(to bottom, #000 58%, transparent 90%);
+  }
+
+  .sfa-podium .sfa-gallery__portrait--artwork img {
+    object-fit: cover;
+    object-position: 50% 0;
+    transform: scale(var(--artwork-zoom, 1.5));
+    transform-origin: 50% var(--artwork-origin-y, 4%);
+  }
+
+  .sfa-podium .sfa-gallery__panel:hover .sfa-gallery__portrait--artwork,
+  .sfa-podium .sfa-gallery__panel:focus-within .sfa-gallery__portrait--artwork { translate: 0 -4px; }
+  /* Players without a cutout: a larger headshot ringed in the podium metal */
+  .sfa-podium .sfa-gallery__portrait:not(.sfa-gallery__portrait--artwork) {
+    top: 150px;
+    width: 196px;
+    height: 196px;
+    box-shadow: 0 0 0 3px var(--glow-edge), 0 24px 48px rgba(0, 0, 0, 0.5);
+  }
+  .sfa-podium .sfa-gallery__top { top: 418px; }
+  .sfa-podium .sfa-gallery__score { top: 474px; }
+  .sfa-podium .sfa-gallery__stats { top: 544px; }
+  .sfa-podium .sfa-gallery__detail { top: 612px; }
+}
+
+@media (max-width: 680px) {
+  .sfa-podium .sfa-gallery__backdrop::before { font-size: 7rem; }
+  .sfa-podium .sfa-gallery__panel.is-expanded .sfa-gallery__backdrop::before { font-size: 13rem; }
+}

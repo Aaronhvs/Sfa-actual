@@ -1,25 +1,40 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { Competition, RankedPlayer, RankingPlayerExplanation, SeasonItem } from '../types'
-import { fetchRanking, fetchCompetitions, fetchRankingExplanations, fetchSeasons } from '../api/client'
-import FilterBar from '../components/ranking/FilterBar'
-import RankingCard from '../components/ranking/RankingCard'
-import RankingExplanationModal from '../components/ranking/RankingExplanationModal'
-import ShowcaseCard from '../components/ranking/ShowcaseCard'
-import TopRankingNarrativeCarousel from '../components/ranking/TopRankingNarrativeCarousel'
+import type { Competition, RankedPlayer, SeasonItem } from '../types'
+import { fetchRanking, fetchCompetitions, fetchSeasons } from '../api/client'
+import RankingFilterSelect, { type RankingFilterOption } from '../components/ranking/RankingFilterSelect'
+import { RankingRow, RankingTile } from '../components/ranking/RankingEntries'
+import HomeRankingGallery from '../components/HomeRankingGallery'
+import { ArrowIcon } from '../components/tournaments/MatchUI'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
-import WorldCupPageHeader from '../components/shared/WorldCupPageHeader'
 import WcLiveChip from '../components/shared/WcLiveChip'
 import { useCountUp } from '../hooks/useCountUp'
 import { isWorldCupSeason } from '../utils/season'
+import './RankingPage.css'
 
 const PODIUM_SIZE = 3
 const LIST_PAGE_SIZE = 10
 const WORLD_CUP_COMPETITION_ID = 350
 const SEARCH_DEBOUNCE_MS = 350
 const MAIN_COMPETITION_IDS = [10, 1, 3, 6, 7, 9]
-const WORLD_CUP_POSITION_OPTIONS = ['DEL', 'EXT', 'MCO', 'MC', 'LAT', 'DC']
-const BONUS_FILTER_OPTIONS = ['Promesa', 'Veterano', 'Goleador', 'Asistidor']
+
+const POSITIONS = [
+  { value: '', label: 'Todas' },
+  { value: 'DEL', label: 'Delanteros' },
+  { value: 'EXT', label: 'Extremos' },
+  { value: 'MCO', label: 'Mediapuntas' },
+  { value: 'MC', label: 'Centrocampistas' },
+  { value: 'LAT', label: 'Laterales' },
+  { value: 'DC', label: 'Centrales' },
+]
+
+const PROFILES: RankingFilterOption[] = [
+  { value: '', label: 'Todos los perfiles' },
+  { value: 'Promesa', label: 'Promesas' },
+  { value: 'Veterano', label: 'Veteranos' },
+  { value: 'Goleador', label: 'Goleadores' },
+  { value: 'Asistidor', label: 'Asistidores' },
+]
 
 function numberParam(value: string | null): number | undefined {
   if (!value) return undefined
@@ -43,6 +58,7 @@ function buildRankingParams({
   competition,
   search,
   page,
+  view = 'compact',
 }: {
   season: string
   position: string
@@ -50,6 +66,7 @@ function buildRankingParams({
   competition?: number
   search: string
   page: number
+  view?: string
 }) {
   const params = new URLSearchParams()
   if (season) params.set('scope', season)
@@ -58,12 +75,17 @@ function buildRankingParams({
   if (competition) params.set('competition_id', String(competition))
   if (search.trim()) params.set('name', search.trim())
   if (page > 0) params.set('page', String(page + 1))
+  if (view === 'gallery') params.set('view', 'gallery')
   return params
 }
 
 export default function RankingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [seasonItems, setSeasonItems] = useState<SeasonItem[]>([])
+  // 'gallery' is the legacy URL value for the photo cards; the list is the default view.
+  const [view, setView] = useState(searchParams.get('view') === 'gallery' ? 'gallery' : 'compact')
+  const [catalogError, setCatalogError] = useState(false)
+  const [catalogRetry, setCatalogRetry] = useState(0)
   const [season, setSeason] = useState<string>(searchParams.get('scope') ?? '')
   const [position, setPosition] = useState(searchParams.get('position') ?? '')
   const [bonusFilter, setBonusFilter] = useState(searchParams.get('bonus_label') ?? '')
@@ -73,8 +95,6 @@ export default function RankingPage() {
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('name') ?? '')
   const [podiumPlayers, setPodiumPlayers] = useState<RankedPlayer[]>([])
   const [listPlayers, setListPlayers] = useState<RankedPlayer[]>([])
-  const [rankingExplanations, setRankingExplanations] = useState<RankingPlayerExplanation[]>([])
-  const [selectedAnalysis, setSelectedAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [totalPlayers, setTotalPlayers] = useState(0)
   const [initialLoading, setInitialLoading] = useState(true)
   const [isContextRefreshing, setIsContextRefreshing] = useState(false)
@@ -93,11 +113,8 @@ export default function RankingPage() {
   const hasRankingResultRef = useRef(false)
   const committedPodiumContextRef = useRef('')
   const rankingRequestIdRef = useRef(0)
-  const explanationRequestIdRef = useRef(0)
   const isWcSeason = isWorldCupSeason(season, seasonItems)
-  const selectedSeasonItem = seasonItems.find((item) => item.key === season)
   const isAllTime = season === 'all'
-  const explanationScope = isAllTime ? 'all_time' : isWcSeason ? 'world_cup' : 'award_period'
   const usesPodiumLayout = !debouncedSearch
   const podiumContextKey = [
     season,
@@ -109,33 +126,29 @@ export default function RankingPage() {
     ? PODIUM_SIZE + (page * LIST_PAGE_SIZE)
     : page * LIST_PAGE_SIZE
   const listRequestKey = [podiumContextKey, debouncedSearch, page, listOffset].join('|')
-  const narrativePlayerIds = podiumPlayers.map((player) => player.id)
-  const narrativePlayerIdsKey = narrativePlayerIds.join(',')
 
   useEffect(() => {
-    fetchSeasons()
-      .then((data) => {
-        setSeasonItems(data.seasons)
-        const fromUrl = searchParams.get('scope')
+    let active = true
+    setCatalogError(false)
+    if (!season) setInitialLoading(true)
+    fetchSeasons().then(data => {
+      if (!active) return
+      if (!data.seasons.length) throw new Error('No hay temporadas disponibles')
+      setSeasonItems(data.seasons)
+      if (!searchParams.get('scope')) {
         const legacySeason = searchParams.get('season')
-        if (!fromUrl) {
-          const legacyItem = legacySeason
-            ? data.seasons.find((item) => (
-              item.season === legacySeason
-              && (legacySeason !== '2026' || item.kind === 'tournament')
-            ))
-            : undefined
-          const fallback = legacyItem?.key
-            ?? data.seasons.find((item) => item.is_latest)?.key
-            ?? data.seasons[0]?.key
-          if (fallback) {
-            setSeason(fallback)
-            setSearchParams({ scope: fallback }, { replace: true })
-          }
-        }
-      })
-      .catch(() => {})
-  }, [])
+        const legacyItem = data.seasons.find(item => item.season === legacySeason && (legacySeason !== '2026' || item.kind === 'tournament'))
+        const fallback = legacyItem?.key ?? data.seasons.find(item => item.is_latest)?.key ?? data.seasons[0].key
+        setSeason(fallback)
+        setSearchParams(params => { const next = new URLSearchParams(params); next.set('scope', fallback); next.delete('season'); return next }, { replace: true })
+      }
+    }).catch(() => {
+      if (!active) return
+      setCatalogError(true)
+      if (!season) setInitialLoading(false)
+    })
+    return () => { active = false }
+  }, [catalogRetry])
 
   useEffect(() => {
     if (isWcSeason || competitions.length > 0) return
@@ -167,8 +180,9 @@ export default function RankingPage() {
       competition,
       search: debouncedSearch,
       page,
+      view,
     }), { replace: true })
-  }, [season, position, bonusFilter, competition, debouncedSearch, page, setSearchParams])
+  }, [season, position, bonusFilter, competition, debouncedSearch, page, view, setSearchParams])
 
   useEffect(() => {
     if (search === lastSearchRef.current) return
@@ -246,13 +260,10 @@ export default function RankingPage() {
         if (controller.signal.aborted || requestId !== rankingRequestIdRef.current) return
         hasRankingResultRef.current = true
         if (podium !== null) {
-          explanationRequestIdRef.current += 1
           const committedContext = usesPodiumLayout ? podiumContextKey : ''
           committedPodiumContextRef.current = committedContext
           setCommittedPodiumContext(committedContext)
           setPodiumPlayers(podium)
-          setRankingExplanations([])
-          setSelectedAnalysis(null)
         }
         setListPlayers(list)
         setCommittedListKey(listRequestKey)
@@ -295,64 +306,6 @@ export default function RankingPage() {
     retryCount,
   ])
 
-  useEffect(() => {
-    const shouldLoadNarratives = usesPodiumLayout
-      && (isAllTime || selectedSeasonItem != null)
-      && podiumPlayers.length === PODIUM_SIZE
-      && committedPodiumContext === podiumContextKey
-    if (!shouldLoadNarratives) {
-      explanationRequestIdRef.current += 1
-      setRankingExplanations([])
-      return
-    }
-    const controller = new AbortController()
-    const requestId = ++explanationRequestIdRef.current
-    const expectedPlayerIds = [...narrativePlayerIds]
-    setRankingExplanations([])
-    fetchRankingExplanations({
-      season: isAllTime ? 'all' : selectedSeasonItem!.season,
-      competition_id: isWcSeason ? WORLD_CUP_COMPETITION_ID : competition,
-      scope: explanationScope,
-      scope_key: isAllTime ? 'all' : selectedSeasonItem!.key,
-      position: position || undefined,
-      bonus_label: bonusFilter || undefined,
-      limit: PODIUM_SIZE,
-      use_total: true,
-      signal: controller.signal,
-    })
-      .then((data) => {
-        if (controller.signal.aborted || requestId !== explanationRequestIdRef.current) return
-        const byPlayerId = new Map(data.explanations.map((item) => [item.player_id, item]))
-        const alignedExplanations = expectedPlayerIds
-          .map((playerId) => byPlayerId.get(playerId))
-          .filter((item): item is RankingPlayerExplanation => item != null)
-        if (alignedExplanations.length === expectedPlayerIds.length) {
-          setRankingExplanations(alignedExplanations)
-        }
-      })
-      .catch((requestError: unknown) => {
-        if (!isAbortError(requestError) && requestId === explanationRequestIdRef.current) {
-          setRankingExplanations([])
-        }
-      })
-    return () => {
-      controller.abort()
-    }
-  }, [
-    bonusFilter,
-    committedPodiumContext,
-    competition,
-    explanationScope,
-    isAllTime,
-    isWcSeason,
-    narrativePlayerIdsKey,
-    podiumContextKey,
-    position,
-    season,
-    selectedSeasonItem,
-    usesPodiumLayout,
-  ])
-
   const showHero = usesPodiumLayout && podiumPlayers.length > 0
   const top3 = showHero ? podiumPlayers : []
   const currentPagePlayers = listPlayers
@@ -378,10 +331,14 @@ export default function RankingPage() {
   const mainCompetitions = competitions
     .filter((c) => MAIN_COMPETITION_IDS.includes(c.id))
     .sort((a, b) => MAIN_COMPETITION_IDS.indexOf(a.id) - MAIN_COMPETITION_IDS.indexOf(b.id))
+  const competitionOptions: RankingFilterOption[] = [
+    { value: '', label: 'Todas las competiciones' },
+    ...mainCompetitions.map((item) => ({ value: String(item.id), label: item.name })),
+  ]
 
   const activeComp = competitions.find((c) => c.id === competition)
-  const contextParts = [activeComp?.name, position || null, bonusFilter || null].filter(Boolean)
-  const contextLabel = contextParts.length > 0 ? contextParts.join(' - ') : null
+  const seasonLabel = seasonItems.find((item) => item.key === season)?.label ?? (isAllTime ? 'Total histórico' : '')
+  const hasFilters = Boolean(position || bonusFilter || competition || search)
   const rankingReturnTo = `/ranking?${buildRankingParams({
     season,
     position,
@@ -389,7 +346,9 @@ export default function RankingPage() {
     competition,
     search: debouncedSearch,
     page,
+    view,
   }).toString()}`
+  const playerHref = (id: number) => `/player/${id}?${new URLSearchParams({ scope: season, returnTo: rankingReturnTo })}`
 
   const animatedTotal = useCountUp(totalPlayers)
   function resetListPage() {
@@ -412,23 +371,14 @@ export default function RankingPage() {
     setCompetition(nextCompetition)
   }
 
-  const seasonPicker = seasonItems.length > 0 ? (
-    <div className="rp-season-picker">
-      <div className="rp-season-picker__label">
-        <span className="rp-season-picker__hint">Temporada del ranking</span>
-        <small>Elige que tabla estas viendo</small>
-      </div>
-      <SeasonDropdown
-        items={seasonItems}
-        value={season}
-        onChange={(nextSeason) => {
-          resetListPage()
-          setSeason(nextSeason)
-        }}
-        includeAll={true}
-      />
-    </div>
-  ) : null
+  function resetFilters() {
+    resetListPage()
+    setPosition('')
+    setBonusFilter('')
+    setCompetition(undefined)
+    setSearch('')
+    setDebouncedSearch('')
+  }
 
   function goNext() {
     if (!hasNextPage) return
@@ -455,357 +405,194 @@ export default function RankingPage() {
       || Math.abs(index - visiblePage) <= 1
     ))
 
+  const listTitle = debouncedSearch
+    ? `Resultados para “${debouncedSearch}”`
+    : 'Clasificación completa'
+
   return (
-    <div className="ranking-page">
-      {isWcSeason ? (
-        <WorldCupPageHeader />
-      ) : (
-        <WorldCupPageHeader
-          variant="standard"
-          eyebrow={season === 'all'
-            ? 'Stats Football Award - Historial'
-            : 'Stats Football Award - Clasificacion SFA'}
-          title="No todos los goles valen igual"
-          subtitle="Ranking de impacto SFA: el contexto cambia cada punto."
-          showLogo={true}
-        />
-      )}
-
-      <section
-        className={`rp-control-deck${isWcSeason ? ' rp-control-deck--wc' : ''}`}
-        aria-label={isWcSeason ? 'Controles del ranking mundial' : 'Controles del ranking'}
-      >
-        <WcLiveChip />
-        {seasonPicker}
-        <Link to="/metodologia" className="rp-control-deck__method">
-          <span>
-            <strong>Entiende los puntos</strong>
-            <small>Por que un gol vale mas que otro</small>
-          </span>
-          <i aria-hidden="true">Ver guia</i>
-        </Link>
-      </section>
-
-      <section
-        className={`rp-intro${isWcSeason ? ' rp-intro--wc' : ''}`}
-        aria-labelledby="rp-intro-title"
-      >
-        <div className="rp-intro__copy">
-          <span className="rp-intro__eyebrow">
-            {isWcSeason ? 'Edicion especial Mundial: lee el ranking en 10 segundos' : 'Que mide SFA'}
-          </span>
-          <h2 id="rp-intro-title">
-            {isWcSeason
-              ? 'SFA no pregunta cuantos hizo. Pregunta cuando pesaron.'
-              : 'No contamos solo acciones: medimos cuanto cambiaron el partido.'}
-          </h2>
-        </div>
-        <div className="rp-intro__formula" aria-label="Formula simple del ranking SFA">
-          <span>Gol</span>
-          <i>+</i>
-          <span>Rival</span>
-          <i>+</i>
-          <span>Momento</span>
-          <i>+</i>
-          <span>Fase</span>
-          <i>=</i>
-          <strong>Puntos SFA</strong>
-        </div>
-        <div className="rp-intro__proof">
-          <p>
-            Un gol al 0-0 en eliminatoria vale mas que uno con el partido resuelto.
+    <main className={`rk-page${isWcSeason ? ' rk-page--wc' : ''}`}>
+      <header className="rk-head">
+        <div>
+          <p className="tp-eyebrow">
+            {seasonLabel ? `Temporada ${seasonLabel}` : 'Ranking'}
+            {totalPlayers > 0 && ` · ${animatedTotal.toLocaleString('es-ES')} jugadores puntuados`}
           </p>
-          <p>
-            Tambien pesan asistencias, defensa, pases y apariciones en partidos grandes.
-          </p>
+          <h1>{isWcSeason ? 'Ranking del Mundial' : 'Ranking SFA'}</h1>
         </div>
-        <Link to="/metodologia" className="rp-intro__link">
-          Como funciona SFA
-          <span aria-hidden="true">-&gt;</span>
-        </Link>
-      </section>
+        <Link to="/metodologia" className="rk-head__link">Cómo se calculan los puntos <ArrowIcon /></Link>
+      </header>
 
-      {isWcSeason && (
-        <div className="rp-world-cup-match-preview">
-          <WcLiveChip />
+      <section className="rk-toolbar" aria-label="Filtros del ranking">
+        <div className="rk-toolbar__row">
+          {seasonItems.length > 0 && (
+            <SeasonDropdown
+              items={seasonItems}
+              value={season}
+              onChange={(nextSeason) => {
+                resetListPage()
+                setSeason(nextSeason)
+              }}
+              includeAll={true}
+            />
+          )}
+          <label className="rk-search">
+            <span className="sr-only">Buscar jugador o equipo</span>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <circle cx="6.5" cy="6.5" r="5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <input type="search" placeholder="Buscar jugador o equipo" value={search} onChange={(event) => setSearch(event.target.value)} />
+            {search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda">×</button>}
+          </label>
+          <RankingFilterSelect label="Perfil" ariaLabel="Filtrar por perfil" value={bonusFilter} options={PROFILES} onChange={changeBonusFilter} />
+          {!isWcSeason && (
+            <RankingFilterSelect
+              label="Competición"
+              ariaLabel="Filtrar por competición"
+              value={competition === undefined ? '' : String(competition)}
+              options={competitionOptions}
+              onChange={(next) => changeCompetition(next ? Number(next) : undefined)}
+            />
+          )}
         </div>
-      )}
-
-      {initialLoading && (
-        <>
-          <div className="players-showcase">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="skeleton skeleton-showcase-card" />
+        <div className="rk-toolbar__row rk-toolbar__row--positions">
+          <span className="rk-positions__label" aria-hidden="true">Posición</span>
+          <div className="tp-segment rk-positions" role="group" aria-label="Filtrar por posición">
+            {POSITIONS.map(({ value, label }) => (
+              <button type="button" key={value || 'all'} className={position === value ? 'is-active' : undefined} aria-pressed={position === value} onClick={() => changePosition(value)}>
+                {label}
+              </button>
             ))}
           </div>
-          <div className="rp-table-section">
-            <div className="ranking-cards-grid">
-              {Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
-                <div key={i} className="skeleton rc-skeleton" />
-              ))}
-            </div>
-          </div>
-        </>
+          {hasFilters && <button type="button" className="rk-reset" onClick={resetFilters}>Restablecer filtros</button>}
+        </div>
+        {(listBusy || refreshError) && (
+          <p className="rk-status" role="status">
+            {refreshError ? 'No se pudieron aplicar los filtros. Se conservan los resultados anteriores.' : 'Actualizando resultados…'}
+            {refreshError && <button type="button" onClick={() => setRetryCount((value) => value + 1)}>Reintentar</button>}
+          </p>
+        )}
+      </section>
+
+      {catalogError && (
+        <div className="rk-state" role="alert">
+          <strong>No pudimos cargar las temporadas.</strong>
+          <button type="button" onClick={() => setCatalogRetry((value) => value + 1)}>Reintentar</button>
+        </div>
+      )}
+      {isWcSeason && <div className="rk-wc"><WcLiveChip /></div>}
+
+      {initialLoading && (
+        <div className="rk-skeleton" role="status">
+          <span className="sr-only">Cargando ranking</span>
+          <div className="rk-skel rk-skel--podium" />
+          <div className="rk-skel rk-skel--list" />
+        </div>
       )}
 
       {!initialLoading && error && (
-        <div className="empty-state">
-          {isWcSeason ? `Mundial 2026 - ${error}` : error}
+        <div className="rk-state" role="alert">
+          <strong>No pudimos cargar el ranking.</strong>
+          <button type="button" onClick={() => setRetryCount((value) => value + 1)}>Reintentar</button>
         </div>
       )}
 
-      {!initialLoading && !error && (
+      {season && !initialLoading && !error && (
         <>
-          {showHero && rankingExplanations.length > 0 && (
-            <TopRankingNarrativeCarousel
-              players={top3}
-              explanations={rankingExplanations}
-              onOpenAnalysis={setSelectedAnalysis}
-            />
-          )}
           {showHero && (
-            <section
-              className={`rp-podium${isWcSeason ? ' rp-podium--wc' : ''}`}
-              aria-label="Podio del ranking"
-              aria-busy={isContextRefreshing}
-            >
-              <div className="players-showcase">
-                {top3.map((p, index) => (
-                  <ShowcaseCard
-                    key={p.id}
-                    player={p}
-                    detail={null}
-                    isFirst={index === 0}
-                    podiumPlace={index + 1}
-                    scope={season}
-                    isWorldCup={isWcSeason}
-                    returnTo={rankingReturnTo}
-                  />
-                ))}
-              </div>
+            <section className="rk-podium sfa-podium" aria-label="Podio del ranking" aria-busy={isContextRefreshing}>
+              <HomeRankingGallery key={committedPodiumContext} players={top3} playerUrl={playerHref} />
             </section>
           )}
 
-          <div
-            className={`rp-table-section${isWcSeason ? ' rp-table-section--wc' : ''}`}
-            aria-busy={listBusy}
-          >
-            <div
-              className={`rp-refresh-status${isContextRefreshing || isListRefreshing || refreshError ? ' is-visible' : ''}${refreshError ? ' is-error' : ''}`}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {isContextRefreshing
-                ? 'Actualizando ranking...'
-                : isListRefreshing
-                  ? 'Actualizando jugadores...'
-                  : refreshError
-                    ? 'No se pudo actualizar. Mostrando los ultimos datos.'
-                    : ''}
-              {refreshError && (
-                <button className="rp-refresh-retry" onClick={() => setRetryCount((value) => value + 1)}>
-                  Reintentar
-                </button>
-              )}
-            </div>
-            <div className={`rp-ranking-head${isWcSeason ? ' rp-ranking-head--wc' : ''}`}>
+          <section className="rk-list" aria-labelledby="rk-list-title" aria-busy={listBusy}>
+            <header className="rk-list__head">
               <div>
-                <span>{isWcSeason ? 'Edicion Mundial' : 'Clasificacion completa'}</span>
-                <h2>Todos los jugadores</h2>
+                <h2 id="rk-list-title">{listTitle}</h2>
+                <p>
+                  {visibleRangeStart > 0 ? `${visibleRangeStart}–${visibleRangeEnd} de ${totalPlayers.toLocaleString('es-ES')} jugadores` : 'Sin jugadores'}
+                  {activeComp && ` · ${activeComp.name}`}
+                </p>
               </div>
-              {isWcSeason && (
-                <div className="wc-ranking-tools">
-                  <label className="wc-position-filter">
-                    <span>Posicion</span>
-                    <strong aria-hidden="true">{position || 'Todas'}</strong>
-                    <select
-                      value={position}
-                      onChange={(event) => changePosition(event.target.value)}
-                      aria-label="Filtrar ranking mundial por posicion"
-                    >
-                      <option value="">Todas</option>
-                      {WORLD_CUP_POSITION_OPTIONS.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="wc-position-filter">
-                    <span>Perfil</span>
-                    <strong aria-hidden="true">{bonusFilter || 'Todos'}</strong>
-                    <select
-                      value={bonusFilter}
-                      onChange={(event) => changeBonusFilter(event.target.value)}
-                      aria-label="Filtrar ranking mundial por promesa o veterano"
-                    >
-                      <option value="">Todos</option>
-                      {BONUS_FILTER_OPTIONS.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="wc-ranking-search">
-                    <svg viewBox="0 0 20 20" aria-hidden="true">
-                      <circle cx="8.5" cy="8.5" r="5.5" />
-                      <path d="m13 13 4 4" />
-                    </svg>
-                    <input
-                      type="search"
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Buscar jugador o seleccion"
-                      aria-label="Buscar en el ranking del Mundial"
-                    />
-                    {search && (
-                      <button
-                        type="button"
-                        onClick={() => setSearch('')}
-                        aria-label="Limpiar busqueda"
-                      >
-                        x
-                      </button>
-                    )}
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {!isWcSeason && (
-              <FilterBar
-                position={position}
-                onPosition={changePosition}
-                bonusFilter={bonusFilter}
-                onBonusFilter={changeBonusFilter}
-                competition={competition}
-                onCompetition={changeCompetition}
-                competitions={mainCompetitions}
-                search={search}
-                onSearch={setSearch}
-              />
-            )}
-
-            {contextLabel && (
-              <div className="rp-context-label">
-                {contextLabel}
+              <div className="tp-segment" role="group" aria-label="Formato de la clasificación">
+                <button type="button" className={view === 'compact' ? 'is-active' : undefined} aria-pressed={view === 'compact'} onClick={() => setView('compact')}>Lista</button>
+                <button type="button" className={view === 'gallery' ? 'is-active' : undefined} aria-pressed={view === 'gallery'} onClick={() => setView('gallery')}>Fichas</button>
               </div>
-            )}
+            </header>
 
             {currentPagePlayers.length === 0 && !listBusy ? (
-              <div className="empty-state">
-                {search
-                  ? `Sin resultados para "${search}"`
-                  : isWcSeason
-                    ? 'Mundial 2026 - Sin jugadores para los filtros seleccionados.'
-                    : 'Sin jugadores para los filtros seleccionados.'}
+              <div className="rk-state">
+                <strong>
+                  {search
+                    ? `Sin resultados para “${search}”`
+                    : showHero ? 'Los primeros puestos reúnen todos los resultados de estos filtros.' : 'Sin jugadores para los filtros seleccionados.'}
+                </strong>
+                {hasFilters && <button type="button" onClick={resetFilters}>Restablecer filtros</button>}
               </div>
             ) : (
               <>
-                <div className="ranking-table-head" aria-hidden="true">
-                  <span>Pos.</span>
-                  <span />
-                  <span>Jugador</span>
-                  <span>Rol</span>
-                  <span>PJ</span>
-                  <span>G + A</span>
-                  <span>Puntos SFA</span>
-                </div>
-                <div className={`rp-ranking-list-viewport${listBusy ? ' is-loading' : ''}`}>
-                  {listBusy && (
-                    <div className="rp-list-loader" role="status" aria-live="polite">
-                      <span className="rp-list-loader__spinner" aria-hidden="true" />
-                      <span>Cargando jugadores</span>
+                <div className={`rk-list__body${listBusy ? ' is-loading' : ''}`}>
+                  {view === 'gallery' ? (
+                    <div key={committedListKey} aria-hidden={listBusy || undefined} className={`rk-tiles is-${committedDirection}`}>
+                      {currentPagePlayers.map((player) => (
+                        <RankingTile key={player.id} player={player} href={playerHref(player.id)} isWorldCup={isWcSeason} />
+                      ))}
+                    </div>
+                  ) : (
+                    // Two half-page columns on desktop (4–8 | 9–13); they stack into one list on narrow screens.
+                    <div key={committedListKey} aria-hidden={listBusy || undefined} className={`rk-columns is-${committedDirection}`}>
+                      {[currentPagePlayers.slice(0, Math.ceil(currentPagePlayers.length / 2)), currentPagePlayers.slice(Math.ceil(currentPagePlayers.length / 2))]
+                        .filter((column) => column.length > 0)
+                        .map((column, index) => (
+                          <div className="tp-group rk-rows" key={index}>
+                            <div className="rk-rows__head" aria-hidden="true">
+                              <span>#</span><span>Jugador</span><span>G</span><span>A</span><span>PJ</span><span>Pts SFA</span>
+                            </div>
+                            {column.map((player) => (
+                              <RankingRow key={player.id} player={player} href={playerHref(player.id)} isWorldCup={isWcSeason} />
+                            ))}
+                          </div>
+                        ))}
                     </div>
                   )}
-                  <div
-                    key={committedListKey}
-                    aria-hidden={listBusy || undefined}
-                    className={`ranking-cards-grid ranking-cards-grid--${committedDirection === 'next' ? 'from-right' : 'from-left'}`}
-                  >
-                    {currentPagePlayers.map((p, i) => (
-                      <RankingCard
-                        key={p.id}
-                        player={p}
-                        index={i}
-                        competitionName={activeComp?.name}
-                        scope={season}
-                        isWorldCup={isWcSeason}
-                        returnTo={rankingReturnTo}
-                      />
-                    ))}
-                  </div>
                 </div>
 
                 {totalPages > 1 && (
-                  <nav className="ranking-pagination" aria-label="Paginas del ranking">
-                    <button
-                      className="pagination-btn pagination-btn--prev"
-                      onClick={goPrev}
-                      disabled={!hasPrevPage || listBusy}
-                      aria-label="Ir a la pagina anterior"
-                    >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="m10 3-5 5 5 5" />
-                      </svg>
-                      <span>Anterior</span>
+                  <nav className="rk-pager" aria-label="Páginas del ranking">
+                    <button type="button" className="rk-pager__step" onClick={goPrev} disabled={!hasPrevPage || listBusy} aria-label="Página anterior">
+                      <ArrowIcon direction="left" />
                     </button>
-
-                    <div className="ranking-pagination__center">
-                      <div className="pagination-pages">
-                        {visiblePages.map((pageIndex, index) => {
-                          const previousVisible = visiblePages[index - 1]
-                          const needsGap = previousVisible != null && pageIndex - previousVisible > 1
-                          return (
-                            <span className="pagination-pages__slot" key={pageIndex}>
-                              {needsGap && <span className="pagination-ellipsis">...</span>}
-                              <button
-                                className={`pagination-page${pageIndex === visiblePage ? ' pagination-page--active' : ''}`}
-                                disabled={listBusy}
-                                onClick={() => goToPage(pageIndex)}
-                                aria-label={`Ir a la pagina ${pageIndex + 1}`}
-                                aria-current={pageIndex === visiblePage ? 'page' : undefined}
-                              >
-                                {pageIndex + 1}
-                              </button>
-                            </span>
-                          )
-                        })}
-                      </div>
-                      <div className="pagination-progress" aria-hidden="true">
-                        <span style={{ transform: `scaleX(${(visiblePage + 1) / totalPages})` }} />
-                      </div>
-                      <span className="ranking-pagination__status">
-                        {visibleRangeStart > 0
-                          ? `${visibleRangeStart}-${visibleRangeEnd} de ${totalPlayers} jugadores`
-                          : '0 jugadores'}
-                      </span>
-                    </div>
-
-                    <button
-                      className="pagination-btn pagination-btn--next"
-                      onClick={goNext}
-                      disabled={!hasNextPage || listBusy}
-                      aria-label="Ir a la pagina siguiente"
-                    >
-                      <span>Siguiente</span>
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="m6 3 5 5-5 5" />
-                      </svg>
+                    <ol>
+                      {visiblePages.map((pageIndex, index) => {
+                        const previousVisible = visiblePages[index - 1]
+                        const needsGap = previousVisible != null && pageIndex - previousVisible > 1
+                        return (
+                          <li key={pageIndex}>
+                            {needsGap && <span className="rk-pager__gap" aria-hidden="true">…</span>}
+                            <button
+                              type="button"
+                              className={pageIndex === visiblePage ? 'is-active' : undefined}
+                              disabled={listBusy}
+                              onClick={() => goToPage(pageIndex)}
+                              aria-label={`Página ${pageIndex + 1}`}
+                              aria-current={pageIndex === visiblePage ? 'page' : undefined}
+                            >
+                              {pageIndex + 1}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ol>
+                    <button type="button" className="rk-pager__step" onClick={goNext} disabled={!hasNextPage || listBusy} aria-label="Página siguiente">
+                      <ArrowIcon />
                     </button>
                   </nav>
                 )}
-                <div className="rp-ranking-total" aria-label="Jugadores contabilizados">
-                  <span>{totalPlayers > 0 ? animatedTotal.toLocaleString('es-ES') : '--'}</span>
-                  <small>Jugadores contabilizados</small>
-                </div>
               </>
             )}
-          </div>
-          <RankingExplanationModal
-            explanation={selectedAnalysis}
-            onClose={() => setSelectedAnalysis(null)}
-          />
+          </section>
         </>
       )}
-    </div>
+    </main>
   )
 }

@@ -1,23 +1,31 @@
 import { Link } from 'react-router-dom'
 import { FootballIcon } from './shared/FootballVisuals'
+import { ArrowIcon } from './tournaments/MatchUI'
 import './HomeMethod.css'
 
-export default function HomeMethod({ rankingUrl }: { rankingUrl: string }) {
-  return <section className="sfa-method" aria-labelledby="sfa-method-title">
-    <div className="sfa-method__intro">
-      <p className="home-eyebrow">El criterio SFA</p>
-      <h2 id="sfa-method-title">La misma acción.<br />Otro contexto.<br />Otro valor.</h2>
-      <p>Un gol no ocurre en el vacío. SFA pondera el rendimiento según el <strong>rival</strong>, el <strong>momento del partido</strong> y la <strong>competición.</strong></p>
-      <div className="sfa-method__actions">
-        <Link to={rankingUrl} className="home-button">Ver ranking completo <span aria-hidden="true">↗</span></Link>
-        <Link to="/metodologia" className="sfa-action-link">Explorar la metodología <span aria-hidden="true">↗</span></Link>
-      </div>
-    </div>
-    <div className="sfa-method__criteria">
-      <div><FootballIcon kind="rival" /><span><h3>Contra quién</h3><p>El nivel del rival forma parte de la evaluación.</p></span></div>
-      <div><FootballIcon kind="moment" /><span><h3>En qué momento</h3><p>El minuto y el marcador sitúan el impacto de la acción.</p></span></div>
-      <div><FootballIcon kind="competition" /><span><h3>En qué escenario</h3><p>El torneo y su fase intervienen en la ponderación.</p></span></div>
-      <p className="sfa-method__note">Criterios propios. Consulta las reglas y sus ponderaciones.</p>
-    </div>
-  </section>
+const CRITERIA = [
+  { icon: 'rival', title: 'Contra quién', text: 'Marcar al líder vale más que marcar al colista.' },
+  { icon: 'moment', title: 'En qué momento', text: 'Un gol en el 89 con empate pesa más que el cuarto de una goleada.' },
+  { icon: 'competition', title: 'En qué escenario', text: 'Una semifinal de Champions no es una jornada de liga.' },
+] as const
+
+export default function HomeMethod() {
+  return (
+    <section className="home-method" aria-labelledby="home-method-title">
+      <header>
+        <p className="tp-eyebrow">El criterio SFA</p>
+        <h2 id="home-method-title">Tres preguntas detrás de cada punto</h2>
+      </header>
+      <ul>
+        {CRITERIA.map(({ icon, title, text }) => (
+          <li key={title}>
+            <span className="home-method__icon"><FootballIcon kind={icon} /></span>
+            <strong>{title}</strong>
+            <span>{text}</span>
+          </li>
+        ))}
+      </ul>
+      <Link to="/metodologia" className="home-method__link">Leer la metodología <ArrowIcon /></Link>
+    </section>
+  )
 }

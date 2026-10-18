@@ -168,14 +168,14 @@ export default function TournamentLeaders({ season, competitionId, contextLabel 
   return (
     <section
       className="trn-leaders"
-      aria-label={`Lideres de ${contextLabel}`}
+      aria-label={`Líderes de ${contextLabel}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={handleBlur}
     >
       <header className="trn-leaders__header">
-        <div><span>Rendimiento individual</span><h2>Lideres de {contextLabel}</h2></div>
+        <div><span>Rendimiento individual</span><h2>Líderes de {contextLabel}</h2></div>
         <small>Top 3</small>
       </header>
 
@@ -193,11 +193,11 @@ export default function TournamentLeaders({ season, competitionId, contextLabel 
 
           <article className="trn-leader-column trn-leader-column--position">
             <header>
-              <span>Top por posicion</span>
+              <span>Top por posición</span>
               <div className="trn-leader-column__nav">
-                <button type="button" onClick={() => movePosition(-1)} disabled={data.positions.length < 2} aria-label="Posicion anterior">&#8592;</button>
-                <small>{activePosition?.label ?? 'Sin posicion'}</small>
-                <button type="button" onClick={() => movePosition(1)} disabled={data.positions.length < 2} aria-label="Posicion siguiente">&#8594;</button>
+                <button type="button" onClick={() => movePosition(-1)} disabled={data.positions.length < 2} aria-label="Posición anterior">&#8592;</button>
+                <small>{activePosition?.label ?? 'Sin posición'}</small>
+                <button type="button" onClick={() => movePosition(1)} disabled={data.positions.length < 2} aria-label="Posición siguiente">&#8594;</button>
               </div>
             </header>
             <div className="trn-leader-position" key={activePosition?.value ?? 'empty'}>
