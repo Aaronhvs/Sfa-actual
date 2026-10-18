@@ -9,7 +9,7 @@ const PLAYER_ARTWORK: Record<number, string> = {
 }
 
 export default function PlayerPortrait({ player, className, eager = false, allowArtwork = false }: {
-  player: RankedPlayer
+  player: Pick<RankedPlayer, 'id' | 'name' | 'photo_url'>
   className: string
   eager?: boolean
   allowArtwork?: boolean

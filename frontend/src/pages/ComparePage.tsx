@@ -1,38 +1,32 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import './ComparePage.css'
-import { fetchCompare, fetchSeasons } from '../api/client'
-import MomentumChart from '../components/compare/MomentumChart'
+import { fetchCompare, fetchPlayerAchievements, fetchPlayerIndividualHonors, fetchRanking, fetchSeasons } from '../api/client'
 import PlayerPicker from '../components/compare/PlayerPicker'
-import { StatSection } from '../components/compare/ComparisonRows'
-import type { CompareMetric } from '../components/compare/ComparisonRows'
+import {
+  BestPanel,
+  DetailPanel,
+  DuelHero,
+  fmt,
+  ImpactPanel,
+  SourcesAbsolute,
+  StyleDuel,
+  WhyPanel,
+  type Extras,
+  TrendPanel,
+  sideStyle,
+  type Metric,
+} from '../components/compare/CompareView'
+import { ArrowIcon } from '../components/tournaments/MatchUI'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
 import type {
   ComparePlayerAnalytics,
   CompareResponse,
   PlayerDetail,
-  PlayerFixture,
   RankedPlayer,
   SeasonItem,
 } from '../types'
 import { seasonItemValue } from '../utils/season'
-import { teamBrandColor } from '../utils/teamBrandColor'
-
-function fmtInteger(value: number) {
-  return Math.round(value).toLocaleString('es-ES')
-}
-
-function fmtDecimal(value: number) {
-  return value.toLocaleString('es-ES', { maximumFractionDigits: 2 })
-}
-
-function fmtPercent(value: number) {
-  return `${value.toLocaleString('es-ES', { maximumFractionDigits: 1 })}%`
-}
-
-function fmtPoints(value: number) {
-  return `${fmtInteger(value)} pts`
-}
 
 function ratio(numerator: number, denominator: number) {
   return denominator > 0 ? numerator / denominator * 100 : null
@@ -40,10 +34,6 @@ function ratio(numerator: number, denominator: number) {
 
 function per90(value: number, minutes: number) {
   return minutes > 0 ? value / minutes * 90 : null
-}
-
-function initials(name: string) {
-  return name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase()
 }
 
 function comparisonPeriodLabel(scope: string | null, season: string) {
@@ -58,6 +48,8 @@ function comparisonPeriodLabel(scope: string | null, season: string) {
 }
 
 interface DerivedStats {
+  sfaGoals: number
+  sfaAssists: number
   matches: number
   minutes: number
   goals: number
@@ -171,7 +163,10 @@ function deriveStats(detail: PlayerDetail, analytics: ComparePlayerAnalytics): D
     + (breakdown.fouls_committed?.pts ?? 0),
   )
 
+  const bd = detail.breakdown ?? {}
   return {
+    sfaGoals: (bd.goal?.count ?? 0) + (bd.goal_penalty?.count ?? 0),
+    sfaAssists: (bd.assist?.count ?? 0) + (bd.corner_assist?.count ?? 0),
     matches,
     minutes,
     goals,
@@ -217,330 +212,252 @@ function deriveStats(detail: PlayerDetail, analytics: ComparePlayerAnalytics): D
   }
 }
 
-function PlayerSummary({ player, side }: { player: PlayerDetail; side: 'a' | 'b' }) {
-  return (
-    <article className={`cmp-player cmp-player--${side}`}>
-      <span className="cmp-player__rank">{player.global_rank > 0 ? `SFA #${player.global_rank}` : 'SFA'}</span>
-      <div className="cmp-player__visual">
-        {player.photo_url
-          ? <img src={player.photo_url} alt={player.name} className="cmp-player__photo" />
-          : <div className="cmp-player__photo-placeholder" aria-hidden="true">{initials(player.name)}</div>
-        }
-      </div>
-      <div className="cmp-player__identity">
-        <h2>{player.name}</h2>
-        <span>{player.team} · {player.position}</span>
-      </div>
-      <strong className="cmp-player__score">{fmtInteger(player.sfa_pts)}</strong>
-      <small>SFA pts</small>
-    </article>
-  )
+function buildGroups(a: DerivedStats, b: DerivedStats) {
+  const m = (label: string, x: number | null, y: number | null, format: (value: number) => string, lowerIsBetter = false, hint?: string): Metric => ({ label, a: x, b: y, format, lowerIsBetter, hint })
+  const groups = [
+    { id: 'attack', label: 'Ataque', metrics: [
+      m('Goles puntuados por SFA', a.sfaGoals, b.sfaGoals, fmt.int),
+      m('Asistencias puntuadas por SFA', a.sfaAssists, b.sfaAssists, fmt.int),
+      m('Goles totales (fuente)', a.goals, b.goals, fmt.int, false, 'Incluye partidos o competiciones que SFA no puntúa'),
+      m("Goles + asistencias por 90'", a.contributionsPer90, b.contributionsPer90, fmt.two),
+      m('Remates', a.shotsTotal, b.shotsTotal, fmt.int),
+      m('Remates a puerta', a.shotsOn, b.shotsOn, fmt.int),
+      m('Conversión de gol', a.conversion, b.conversion, fmt.pct),
+      m('Penales provocados', a.penaltyWon, b.penaltyWon, fmt.int),
+      m('Dobletes de gol', a.goalBraces, b.goalBraces, fmt.int),
+      m('Gol y asistencia en un partido', a.goalAndAssistMatches, b.goalAndAssistMatches, fmt.int),
+    ] },
+    { id: 'creation', label: 'Creación', metrics: [
+      m('Pases clave', a.keyPasses, b.keyPasses, fmt.int),
+      m('Precisión de pase', a.passAccuracy, b.passAccuracy, fmt.pct),
+      m('Pases', a.passesTotal, b.passesTotal, fmt.int),
+      m('Regates ganados', a.dribblesWon, b.dribblesWon, fmt.int),
+      m('Éxito en regate', a.dribbleSuccess, b.dribbleSuccess, fmt.pct),
+      m("Regates por 90'", a.dribblesPer90, b.dribblesPer90, fmt.two),
+      m('Faltas recibidas', a.foulsDrawn, b.foulsDrawn, fmt.int),
+    ] },
+    { id: 'defense', label: 'Defensa', metrics: [
+      m('Duelos ganados', a.duelsWon, b.duelsWon, fmt.int),
+      m('Éxito en duelos', a.duelSuccess, b.duelSuccess, fmt.pct),
+      m('Entradas ganadas', a.tacklesWon, b.tacklesWon, fmt.int),
+      m('Intercepciones', a.interceptions, b.interceptions, fmt.int),
+      m('Bloqueos', a.blocks, b.blocks, fmt.int),
+      m("Acciones defensivas por 90'", a.defensiveActionsPer90, b.defensiveActionsPer90, fmt.two),
+      m('Regateado por el rival', a.dribblesPast, b.dribblesPast, fmt.int, true),
+    ] },
+    { id: 'discipline', label: 'Disciplina', metrics: [
+      m('Faltas cometidas', a.foulsCommitted, b.foulsCommitted, fmt.int, true),
+      m('Tarjetas amarillas', a.yellowCards, b.yellowCards, fmt.int, true),
+      m('Tarjetas rojas', a.redCards, b.redCards, fmt.int, true),
+      m('Puntos perdidos', a.disciplinePtsLost, b.disciplinePtsLost, fmt.pts, true),
+    ] },
+  ]
+  if (a.saves > 0 || b.saves > 0 || a.goalsConceded > 0 || b.goalsConceded > 0) {
+    groups.push({ id: 'gk', label: 'Portería', metrics: [m('Paradas', a.saves, b.saves, fmt.int), m('Goles encajados', a.goalsConceded, b.goalsConceded, fmt.int, true)] })
+  }
+  return groups
 }
 
-function ComparisonSummary({ data }: { data: CompareResponse }) {
-  const total = data.player_a.sfa_pts + data.player_b.sfa_pts
-  const aShare = total > 0 ? data.player_a.sfa_pts / total * 100 : 50
-  return (
-    <section className="cmp-summary" aria-label="Resumen del enfrentamiento">
-      <PlayerSummary player={data.player_a} side="a" />
-      <div className="cmp-summary__center">
-        <span className="cmp-summary__vs">VS</span>
-        <div className="cmp-summary__score-track" aria-hidden="true">
-          <span className="cmp-summary__score-a" style={{ transform: `scaleX(${aShare / 100})` }} />
-          <span className="cmp-summary__score-b" style={{ transform: `scaleX(${(100 - aShare) / 100})` }} />
-        </div>
-        <span className="cmp-summary__scope">
-          {comparisonPeriodLabel(data.scope, data.season)}
-        </span>
-      </div>
-      <PlayerSummary player={data.player_b} side="b" />
-    </section>
-  )
-}
+const NO_EXTRAS: Extras = { titles: 0, honors: 0 }
 
-function metric(
-  label: string,
-  a: number | null,
-  b: number | null,
-  format?: (value: number) => string,
-  lowerIsBetter = false,
-): CompareMetric {
-  return { label, a, b, format, lowerIsBetter }
+/** Titles/phases and individual awards also feed the SFA total; the compare endpoint does not include them. */
+function useExtras(playerId: number, scope: string | null) {
+  const [extras, setExtras] = useState<Extras | null>(null)
+  useEffect(() => {
+    let active = true
+    setExtras(null)
+    Promise.all([
+      fetchPlayerAchievements(playerId, undefined, scope ?? undefined).catch(() => []),
+      fetchPlayerIndividualHonors(playerId, undefined, scope ?? undefined).catch(() => []),
+    ]).then(([achievements, honors]) => {
+      if (!active) return
+      setExtras({
+        titles: achievements.reduce((sum, item) => sum + item.bonus_pts, 0),
+        honors: honors.reduce((sum, item) => sum + item.bonus_pts, 0),
+      })
+    })
+    return () => { active = false }
+  }, [playerId, scope])
+  return extras
 }
 
 function CompareResults({ data }: { data: CompareResponse }) {
-  const [activeTab, setActiveTab] = useState('impact')
   const a = useMemo(() => deriveStats(data.player_a, data.player_a_analytics), [data])
   const b = useMemo(() => deriveStats(data.player_b, data.player_b_analytics), [data])
-
-  const general = [
-    metric('Puntos SFA', data.player_a.sfa_pts, data.player_b.sfa_pts, fmtPoints),
-    metric('Partidos', a.matches, b.matches, fmtInteger),
-    metric('Minutos', a.minutes, b.minutes, fmtInteger),
-  ]
-  const attack = [
-    metric('Goles', a.goals, b.goals, fmtInteger),
-    metric('Asistencias', a.assists, b.assists, fmtInteger),
-    metric('Promedio de gol o asistencia por 90\'', a.contributionsPer90, b.contributionsPer90, fmtDecimal),
-    metric('Hat-tricks', a.hatTricks, b.hatTricks, fmtInteger),
-    metric('Dobletes de gol', a.goalBraces, b.goalBraces, fmtInteger),
-    metric('Dobletes de asistencias', a.assistBraces, b.assistBraces, fmtInteger),
-    metric('Gol y asistencia en un partido', a.goalAndAssistMatches, b.goalAndAssistMatches, fmtInteger),
-    metric('Remates', a.shotsTotal, b.shotsTotal, fmtInteger),
-    metric('Remates a puerta', a.shotsOn, b.shotsOn, fmtInteger),
-    metric('Conversión de gol', a.conversion, b.conversion, fmtPercent),
-    metric('Penaltis provocados', a.penaltyWon, b.penaltyWon, fmtInteger),
-  ]
-  const passing = [
-    metric('Pases intentados', a.passesTotal, b.passesTotal, fmtInteger),
-    metric('Precisión de pase', a.passAccuracy, b.passAccuracy, fmtPercent),
-    metric('Pases clave (ocasiones de gol creadas)', a.keyPasses, b.keyPasses, fmtInteger),
-  ]
-  const duels = [
-    metric('Regates ganados', a.dribblesWon, b.dribblesWon, fmtInteger),
-    metric('Regates intentados', a.dribblesAttempted, b.dribblesAttempted, fmtInteger),
-    metric('Éxito en regate', a.dribbleSuccess, b.dribbleSuccess, fmtPercent),
-    metric('Regates ganados por 90\'', a.dribblesPer90, b.dribblesPer90, fmtDecimal),
-    metric('Duelos ganados', a.duelsWon, b.duelsWon, fmtInteger),
-    metric('Duelos totales', a.duelsTotal, b.duelsTotal, fmtInteger),
-    metric('Éxito en duelos', a.duelSuccess, b.duelSuccess, fmtPercent),
-    metric('Duelos ganados por 90\'', a.duelsPer90, b.duelsPer90, fmtDecimal),
-    metric('Faltas recibidas', a.foulsDrawn, b.foulsDrawn, fmtInteger),
-  ]
-  const defense = [
-    metric('Entradas ganadas', a.tacklesWon, b.tacklesWon, fmtInteger),
-    metric('Intercepciones', a.interceptions, b.interceptions, fmtInteger),
-    metric('Bloqueos', a.blocks, b.blocks, fmtInteger),
-    metric('Acciones defensivas por 90\'', a.defensiveActionsPer90, b.defensiveActionsPer90, fmtDecimal),
-    metric('Regateado por rival', a.dribblesPast, b.dribblesPast, fmtInteger, true),
-  ]
-  const context = [
-    { ...metric('Partidos con acciones en desventaja', a.difficultOpponentAppearances, b.difficultOpponentAppearances, fmtInteger), description: 'Partidos con acciones puntuadas cuyo M1 es al menos 1,15. Mide dificultad relativa, no nivel absoluto del rival.' },
-    { ...metric('Partidos con acciones bajo presión', a.keyMomentAppearances, b.keyMomentAppearances, fmtInteger), description: 'Partidos con acciones puntuadas cuyo M3 es al menos 1,60. No implica por sí solo que decidieran el resultado.' },
-    metric('Partidos de 2.500+ puntos SFA', a.eliteFixtures, b.eliteFixtures, fmtInteger),
-    metric('Gol más valioso', a.mostValuableGoal, b.mostValuableGoal, fmtPoints),
-    metric('Mejor partido (puntos SFA)', a.bestMatch, b.bestMatch, fmtPoints),
-    metric('Racha con G+A', a.contributionStreak, b.contributionStreak, (value) => `${fmtInteger(value)} PJ`),
-  ]
-  const discipline = [
-    metric('Faltas cometidas', a.foulsCommitted, b.foulsCommitted, fmtInteger, true),
-    metric('Tarjetas amarillas', a.yellowCards, b.yellowCards, fmtInteger, true),
-    metric('Tarjetas rojas', a.redCards, b.redCards, fmtInteger, true),
-    metric('Puntos perdidos', a.disciplinePtsLost, b.disciplinePtsLost, fmtPoints, true),
-  ]
-  const goalkeeping = [
-    metric('Paradas', a.saves, b.saves, fmtInteger),
-    metric('Goles encajados', a.goalsConceded, b.goalsConceded, fmtInteger, true),
-  ]
-
-  const tabs = [
-    { id: 'impact', label: 'Impacto SFA', title: 'Impacto y contexto', metrics: context },
-    { id: 'attack', label: 'Ataque', title: 'Ataque y definición', metrics: attack },
-    { id: 'creation', label: 'Creación', title: 'Pase y creación', metrics: [...passing, ...duels.slice(0, 4)] },
-    { id: 'defense', label: 'Defensa', title: 'Defensa y duelos', metrics: [...defense, ...duels.slice(4)] },
-    { id: 'discipline', label: 'Disciplina', title: 'Disciplina', metrics: discipline },
-    { id: 'season', label: 'Evolución', title: 'Ritmo de la temporada', metrics: general },
-    ...(a.saves > 0 || b.saves > 0 || a.goalsConceded > 0 || b.goalsConceded > 0
-      ? [{ id: 'goalkeeping', label: 'Portería', title: 'Portería', metrics: goalkeeping }]
-      : []),
-  ]
-  const active = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]
-  const highlights = [
-    metric('Bajo presión', a.keyMomentAppearances, b.keyMomentAppearances, fmtInteger),
-    metric('Mejor partido', a.bestMatch, b.bestMatch, fmtPoints),
-    metric('Gol más valioso', a.mostValuableGoal, b.mostValuableGoal, fmtPoints),
-  ]
-
-  function selectTab(id: string) {
-    setActiveTab(id)
-  }
-
+  const groups = useMemo(() => buildGroups(a, b), [a, b])
+  const extrasA = useExtras(data.player_a.id, data.scope)
+  const extrasB = useExtras(data.player_b.id, data.scope)
+  const ready = extrasA != null && extrasB != null
   return (
-    <div className="cmp-results">
-      <ComparisonSummary data={data} />
-      <div className="cmp-sample-strip">
-        <span><i className="cmp-side-dot cmp-side-dot--a" />{a.matches} PJ <b>{fmtInteger(a.minutes)} min</b></span>
-        <span>{comparisonPeriodLabel(data.scope, data.season)}</span>
-        <span><i className="cmp-side-dot cmp-side-dot--b" />{b.matches} PJ <b>{fmtInteger(b.minutes)} min</b></span>
+    <div className="cv-results">
+      <DuelHero data={data} periodLabel={comparisonPeriodLabel(data.scope, data.season)} minutesA={a.minutes} minutesB={b.minutes} />
+      {ready
+        ? <WhyPanel data={data} extrasA={extrasA ?? NO_EXTRAS} extrasB={extrasB ?? NO_EXTRAS} minutesA={a.minutes} minutesB={b.minutes} />
+        : <div className="cv-skel cv-skel--why" role="status"><span className="sr-only">Calculando la diferencia</span></div>}
+      <StyleDuel data={data} />
+      <ImpactPanel data={data} minutesA={a.minutes} minutesB={b.minutes} />
+      <div className="cv-grid-2">
+        {ready && <SourcesAbsolute data={data} extrasA={extrasA ?? NO_EXTRAS} extrasB={extrasB ?? NO_EXTRAS} />}
+        <BestPanel data={data} />
       </div>
-      <div className="cmp-impact-strip">
-        {highlights.map((item) => (
-          <div className="cmp-impact-item" key={item.label}>
-            <span>{item.label}</span>
-            <div><strong className="cmp-side-value--a">{item.a == null ? '-' : item.format!(item.a)}</strong><span>/</span><strong className="cmp-side-value--b">{item.b == null ? '-' : item.format!(item.b)}</strong></div>
-          </div>
-        ))}
-      </div>
-      <div className="cmp-view-tabs" role="tablist" aria-label="Estadísticas comparadas">
-        {tabs.map((tab, index) => (
-          <button
-            key={tab.id}
-            id={`cmp-tab-${tab.id}`}
-            role="tab"
-            type="button"
-            aria-selected={active.id === tab.id}
-            aria-controls="cmp-active-panel"
-            tabIndex={active.id === tab.id ? 0 : -1}
-            onClick={() => selectTab(tab.id)}
-            onKeyDown={(event) => {
-              let next: number | null = null
-              if (event.key === 'ArrowRight') next = (index + 1) % tabs.length
-              if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length
-              if (event.key === 'Home') next = 0
-              if (event.key === 'End') next = tabs.length - 1
-              if (next !== null) {
-                event.preventDefault()
-                selectTab(tabs[next].id)
-                document.getElementById(`cmp-tab-${tabs[next].id}`)?.focus()
-              }
-            }}
-          >{tab.label}</button>
-        ))}
-      </div>
-      <div className={`cmp-workbench${active.id === 'season' ? ' cmp-workbench--wide' : ''}`}>
-        <div className="cmp-active-panel" key={active.id} id="cmp-active-panel" role="tabpanel" aria-labelledby={`cmp-tab-${active.id}`} tabIndex={0}>
-          {active.id === 'season' ? (
-            <MomentumChart fixturesA={data.player_a_analytics.fixtures} fixturesB={data.player_b_analytics.fixtures} nameA={data.player_a.name} nameB={data.player_b.name} />
-          ) : (
-            <>
-              <div className="cmp-column-identities"><span>{data.player_a.name}</span><span>{data.player_b.name}</span></div>
-              <StatSection title={active.title} metrics={active.metrics} />
-            </>
-          )}
-        </div>
-        {active.id !== 'season' && (
-          <aside className="cmp-evidence" aria-label="Mejores actuaciones">
-            <h2>Actuaciones destacadas</h2>
-            <BestPerformances player={data.player_a} fixtures={data.player_a_analytics.fixtures} side="a" scope={data.scope} />
-            <BestPerformances player={data.player_b} fixtures={data.player_b_analytics.fixtures} side="b" scope={data.scope} />
-          </aside>
-        )}
-      </div>
+      <TrendPanel data={data} />
+      <DetailPanel groups={groups} nameA={data.player_a.name} nameB={data.player_b.name} />
     </div>
   )
 }
 
-function BestPerformances({ player, fixtures, side, scope }: { player: PlayerDetail; fixtures: PlayerFixture[]; side: 'a' | 'b'; scope: string | null }) {
-  const best = [...fixtures].sort((left, right) => right.sfa_pts - left.sfa_pts).slice(0, 2)
+/** The picker only needs identity fields; a PlayerDetail from the API covers them. */
+function asPicked(player: PlayerDetail): RankedPlayer {
+  return { ...(player as unknown as RankedPlayer), rank: player.global_rank, goals: player.total_goals, assists: player.total_assists }
+}
+
+function Suggestions({ scope, onPick }: { scope: string; onPick: (a: RankedPlayer, b: RankedPlayer) => void }) {
+  const [top, setTop] = useState<RankedPlayer[]>([])
+  useEffect(() => {
+    if (!scope) return undefined
+    let active = true
+    fetchRanking({ scope, limit: 4 }).then((result) => { if (active) setTop(result.ranking) }).catch(() => undefined)
+    return () => { active = false }
+  }, [scope])
+  const pairs: Array<[number, number]> = [[0, 1], [0, 2], [1, 2], [2, 3]]
+  const duels = pairs.flatMap(([i, j]) => (top[i] && top[j] ? [[top[i], top[j]] as const] : []))
+  if (duels.length === 0) return null
   return (
-    <section className={`cmp-best cmp-best--${side}`}>
-      <h3><i className={`cmp-side-dot cmp-side-dot--${side}`} />{player.name}</h3>
-      {best.length === 0 && <p>Sin actuaciones disponibles</p>}
-      {best.map((fixture) => (
-        <Link key={fixture.fixture_id} className="cmp-best__match" to={fixture.fixture_external_id
-          ? `${scope?.startsWith('world-cup-') ? '/mundial' : '/torneos'}/partido/${fixture.fixture_external_id}`
-          : `/player/${player.id}${scope ? `?scope=${encodeURIComponent(scope)}` : ''}`}>
-          <div className="cmp-best__teams">
-            <span>{fixture.home_team_logo && <img src={fixture.home_team_logo} alt="" loading="lazy" />}{fixture.home_team}</span>
-            <span>{fixture.away_team_logo && <img src={fixture.away_team_logo} alt="" loading="lazy" />}{fixture.away_team}</span>
-          </div>
-          <strong>{fmtInteger(fixture.sfa_pts)}<small>pts SFA</small></strong>
-          <span className="cmp-best__date">{new Date(fixture.played_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })} · {fixture.competition}</span>
-        </Link>
-      ))}
-    </section>
+    <div className="cv-suggest">
+      <span className="pf-eyebrow">Duelos del momento</span>
+      <ul>
+        {duels.map(([x, y]) => (
+          <li key={`${x.id}-${y.id}`}>
+            <button type="button" onClick={() => onPick(x, y)}>
+              <span className="cv-suggest__faces">
+                <span>{x.photo_url && <img src={x.photo_url} alt="" />}</span>
+                <span>{y.photo_url && <img src={y.photo_url} alt="" />}</span>
+              </span>
+              <span className="cv-suggest__names"><strong>{x.name}</strong><small>vs</small><strong>{y.name}</strong></span>
+              <ArrowIcon />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
 export default function ComparePage() {
+  const [params, setParams] = useSearchParams()
   const [seasons, setSeasons] = useState<SeasonItem[]>([])
-  const [scope, setScope] = useState('')
+  const [scope, setScope] = useState(params.get('scope') ?? '')
   const [selectedA, setSelectedA] = useState<RankedPlayer | null>(null)
   const [selectedB, setSelectedB] = useState<RankedPlayer | null>(null)
   const [data, setData] = useState<CompareResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const urlA = Number(params.get('a')) || null
+  const urlB = Number(params.get('b')) || null
 
   useEffect(() => {
     fetchSeasons()
       .then(({ seasons: items }) => {
         setSeasons(items)
-        const latest = items.find((item) => item.is_latest) ?? items[0]
-        if (latest) setScope(seasonItemValue(latest))
+        if (!scope) {
+          const latest = items.find((item) => item.is_latest) ?? items[0]
+          if (latest) setScope(seasonItemValue(latest))
+        }
       })
       .catch(() => setError('No se pudieron cargar las temporadas.'))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    if (!selectedA || !selectedB || !scope) {
-      setData(null)
-      return
-    }
+  const idA = selectedA?.id ?? urlA
+  const idB = selectedB?.id ?? urlB
 
+  useEffect(() => {
+    if (!idA || !idB || !scope) {
+      setData(null)
+      return undefined
+    }
     let active = true
     setLoading(true)
     setError(null)
-    fetchCompare(selectedA.id, selectedB.id, scope)
-      .then((result) => { if (active) setData(result) })
+    fetchCompare(idA, idB, scope)
+      .then((result) => {
+        if (!active) return
+        setData(result)
+        // Players restored from a shared link fill the pickers once the comparison arrives.
+        setSelectedA((current) => current ?? asPicked(result.player_a))
+        setSelectedB((current) => current ?? asPicked(result.player_b))
+      })
       .catch(() => { if (active) setError('No se pudo completar la comparación.') })
       .finally(() => { if (active) setLoading(false) })
-
     return () => { active = false }
-  }, [scope, selectedA?.id, selectedB?.id])
+  }, [scope, idA, idB])
 
-  const selectedCount = Number(Boolean(selectedA)) + Number(Boolean(selectedB))
-  const compareColors = {
-    '--compare-a-team': teamBrandColor(
-      data?.player_a.team ?? selectedA?.team,
-      '#c87870',
-    ),
-    '--compare-b-team': teamBrandColor(
-      data?.player_b.team ?? selectedB?.team,
-      '#579b93',
-    ),
-  } as CSSProperties
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (scope) next.set('scope', scope)
+    if (idA) next.set('a', String(idA))
+    if (idB) next.set('b', String(idB))
+    setParams(next, { replace: true })
+  }, [scope, idA, idB, setParams])
+
+  const clear = (side: 'a' | 'b') => {
+    setData(null)
+    if (side === 'a') setSelectedA(null)
+    else setSelectedB(null)
+    const next = new URLSearchParams(params)
+    next.delete(side)
+    setParams(next, { replace: true })
+  }
+
+  const swap = () => {
+    setSelectedA(selectedB)
+    setSelectedB(selectedA)
+    if (data) setData({ ...data, player_a: data.player_b, player_b: data.player_a, player_a_analytics: data.player_b_analytics, player_b_analytics: data.player_a_analytics })
+  }
+
+  const selectedCount = Number(Boolean(idA)) + Number(Boolean(idB))
 
   return (
-    <main className="compare-page" style={compareColors}>
-      <header className="cmp-page-header">
+    <main className="cv-page" style={sideStyle()}>
+      <header className="cv-head">
         <div>
-          <span className="cmp-page-header__eyebrow">Head to head SFA</span>
-          <h1>Comparar jugadores</h1>
+          <p className="tp-eyebrow">Cara a cara SFA</p>
+          <h1>Comparador</h1>
+          <p className="cv-head__lead">Quién tiene más impacto y, sobre todo, en qué contexto lo consigue.</p>
         </div>
-        {seasons.length > 0 && (
-          <SeasonDropdown items={seasons} value={scope} onChange={setScope} includeAll={false} />
-        )}
+        {seasons.length > 0 && <SeasonDropdown items={seasons} value={scope} onChange={setScope} includeAll={false} />}
       </header>
 
-      <section className="cmp-selection" aria-label="Seleccionar jugadores">
-        <PlayerPicker
-          label="Jugador A"
-          selected={selectedA}
-          onSelect={(player) => setSelectedA(player)}
-          onClear={() => setSelectedA(null)}
-          excludeId={selectedB?.id}
-          scope={scope}
-        />
-        <span className="cmp-selection__versus" aria-hidden="true">VS</span>
-        <PlayerPicker
-          label="Jugador B"
-          selected={selectedB}
-          onSelect={(player) => setSelectedB(player)}
-          onClear={() => setSelectedB(null)}
-          excludeId={selectedA?.id}
-          scope={scope}
-        />
+      <section className="cv-pick" aria-label="Seleccionar jugadores">
+        <div className="cv-pick__slot is-a">
+          <PlayerPicker label="Jugador A" selected={selectedA} onSelect={setSelectedA} onClear={() => clear('a')} excludeId={idB ?? undefined} scope={scope} />
+        </div>
+        <button type="button" className="cv-pick__swap" onClick={swap} disabled={!selectedA && !selectedB} aria-label="Intercambiar jugadores" title="Intercambiar">
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M4 7h11l-3-3M16 13H5l3 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+        <div className="cv-pick__slot is-b">
+          <PlayerPicker label="Jugador B" selected={selectedB} onSelect={setSelectedB} onClear={() => clear('b')} excludeId={idA ?? undefined} scope={scope} />
+        </div>
       </section>
 
       {loading && (
-        <div className="cmp-loading" aria-label="Cargando comparación">
-          <div className="skeleton cmp-loading__summary" />
-          <div className="skeleton cmp-loading__chart" />
-          <div className="cmp-loading__rows">
-            {Array.from({ length: 8 }).map((_, index) => <div className="skeleton" key={index} />)}
-          </div>
+        <div className="cv-loading" role="status">
+          <span className="sr-only">Cargando comparación</span>
+          <div className="cv-skel cv-skel--hero" />
+          <div className="cv-skel cv-skel--body" />
         </div>
       )}
 
-      {!loading && error && <div className="cmp-state cmp-state--error" role="alert">{error}</div>}
+      {!loading && error && <div className="cv-state" role="alert">{error}</div>}
 
       {!loading && !error && data && <CompareResults data={data} />}
 
       {!loading && !error && !data && (
-        <section className="cmp-state cmp-state--empty">
-          <div className="cmp-state__versus" aria-hidden="true">{selectedCount === 1 ? '1/2' : 'VS'}</div>
-          <h2>{selectedCount === 1 ? 'Selecciona el segundo jugador' : 'Elige dos jugadores'}</h2>
-          <p>La comparación se construye con el periodo seleccionado.</p>
+        <section className="cv-empty">
+          <span className="cv-empty__vs" aria-hidden="true">{selectedCount === 1 ? '1/2' : 'VS'}</span>
+          <h2>{selectedCount === 1 ? 'Elige el segundo jugador' : 'Elige dos jugadores'}</h2>
+          <p>Compara su impacto SFA, cuánto vale cada acción y en qué contexto la consiguen.</p>
+          {selectedCount === 0 && <Suggestions scope={scope} onPick={(x, y) => { setSelectedA(x); setSelectedB(y) }} />}
         </section>
       )}
     </main>

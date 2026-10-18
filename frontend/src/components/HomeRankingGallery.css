@@ -194,3 +194,129 @@
   .sfa-podium .sfa-gallery__backdrop::before { font-size: 7rem; }
   .sfa-podium .sfa-gallery__panel.is-expanded .sfa-gallery__backdrop::before { font-size: 13rem; }
 }
+
+/* Mobile, collapsed podium row: small round photo + clean, non-overlapping layout */
+@media (max-width: 680px) {
+  .sfa-podium .sfa-gallery { gap: 12px; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) { height: 150px; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__visual,
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__toggle { height: 150px; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__backdrop { inset: 6px 0 0; clip-path: polygon(0 8%, 100% 0, 100% 100%, 0 100%); border-radius: 0 0 14px 14px; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__backdrop::before { right: 4%; bottom: -6%; font-size: 6rem; }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__portrait {
+    display: grid;
+    top: 34px;
+    left: 16px;
+    width: 68px;
+    height: 68px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: #ece8df;
+    box-shadow: 0 0 0 2px var(--glow-edge), 0 10px 20px rgba(0, 0, 0, 0.45);
+    transform: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 0;
+    transform: none;
+  }
+
+  /* Cutouts are full-body: zoom onto the face inside the circle */
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__portrait--artwork { background: #2a2a2a; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__portrait--artwork img { transform: scale(3.4); transform-origin: 50% 5%; }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__top {
+    top: 88px;
+    left: 12px;
+    z-index: 2;
+  }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__rank {
+    padding: 3px 7px;
+    border-radius: 8px;
+    background: #141414;
+    font-size: 16px;
+    box-shadow: 0 0 0 1px var(--glow-edge);
+  }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__name {
+    top: 26px;
+    left: 100px;
+    right: 52px;
+    overflow: hidden;
+    transform: none;
+    font-size: 20px;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__team { top: 20px; right: 14px; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__team .sfa-team-crest { width: 26px; height: 26px; }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__score {
+    top: 52px;
+    left: 100px;
+    right: auto;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 30px;
+  }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__score > span { margin: 0; font-size: 9px; }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__stats {
+    top: 98px;
+    left: 100px;
+    right: 52px;
+    display: flex;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 0;
+    border: 0;
+  }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__stats > span { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__stats strong { font-size: 17px; }
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__stats > span > span { font-size: 10px; }
+
+  .sfa-podium .sfa-gallery__panel:not(.is-expanded) .sfa-gallery__expand { top: auto; bottom: 16px; right: 14px; }
+}
+
+.sfa-gallery__cardlink { display: none; }
+
+@media (max-width: 680px) {
+  .sfa-podium .sfa-gallery__toggle,
+  .sfa-podium .sfa-gallery__expand { display: none; }
+
+  .sfa-podium .sfa-gallery__cardlink {
+    position: absolute;
+    z-index: 3;
+    inset: 6px 0 0;
+    display: block;
+    border-radius: 0 0 14px 14px;
+    color: var(--text);
+  }
+
+  .sfa-podium .sfa-gallery__cardlink svg {
+    position: absolute;
+    right: 14px;
+    bottom: 16px;
+    box-sizing: content-box;
+    padding: 8px;
+    border: 1px solid #ffffff38;
+    border-radius: 50%;
+    background: rgba(10, 10, 10, 0.4);
+    transition: transform 180ms var(--tp-ease);
+  }
+
+  .sfa-podium .sfa-gallery__cardlink:active svg { transform: translateX(3px); }
+  .sfa-podium .sfa-gallery__cardlink:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+}

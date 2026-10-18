@@ -1,64 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { fetchTournamentFixtureDetail } from '../api/client'
-import TournamentMatchHeader from '../components/tournaments/match/TournamentMatchHeader'
-import TournamentMatchLineups from '../components/tournaments/match/TournamentMatchLineups'
-import TournamentMatchMomentum from '../components/tournaments/match/TournamentMatchMomentum'
-import TournamentMatchPerformance from '../components/tournaments/match/TournamentMatchPerformance'
-import TournamentMatchStatistics from '../components/tournaments/match/TournamentMatchStatistics'
-import TournamentMatchTimeline from '../components/tournaments/match/TournamentMatchTimeline'
+import { fetchSeasons, fetchTeamRanking, fetchTournamentFixtureDetail } from '../api/client'
+import { MatchEvents, MatchHero, MatchLineups, MatchMomentum, MatchStats, type TeamLevels } from '../components/tournaments/match/MatchView'
+import PlayerMatchSheet from '../components/tournaments/match/PlayerMatchSheet'
+import { buildMatchModel, type MatchPlayer } from '../components/tournaments/match/matchModel'
+import { ArrowIcon } from '../components/tournaments/MatchUI'
 import type { TournamentMatchDetail } from '../types'
-
-type MatchTab = 'summary' | 'statistics' | 'timeline' | 'lineups' | 'performance'
-
-const TABS: Array<[MatchTab, string]> = [
-  ['summary', 'Resumen'],
-  ['statistics', 'Estadísticas'],
-  ['timeline', 'Cronología'],
-  ['lineups', 'Alineaciones'],
-  ['performance', 'Rendimiento SFA'],
-]
-
-function MatchInfo({ detail }: { detail: TournamentMatchDetail }) {
-  const formations = detail.lineups.map((lineup) => ({ name: lineup.team.name, formation: lineup.formation }))
-  const leaders = detail.lineups
-    .flatMap((lineup) => [...lineup.start_xi, ...lineup.substitutes].map((player) => ({ ...player, team: lineup.team.name })))
-    .filter((player) => player.sfa_points != null)
-    .sort((a, b) => (b.sfa_points ?? 0) - (a.sfa_points ?? 0))
-    .slice(0, 3)
-  return (
-    <aside className="trm-rail" aria-label="Información del partido">
-      <section>
-        <header><span>Partido</span><h2>Información</h2></header>
-        <dl>
-          <div><dt>Estadio</dt><dd>{detail.venue.name ?? 'Por confirmar'}</dd></div>
-          <div><dt>Ciudad</dt><dd>{detail.venue.city ?? 'Por confirmar'}</dd></div>
-          <div><dt>Árbitro</dt><dd>{detail.referee ?? 'Por confirmar'}</dd></div>
-        </dl>
-      </section>
-      {formations.length > 0 && (
-        <section>
-          <header><span>Planteamiento</span><h2>Formaciones</h2></header>
-          <dl>{formations.map((item) => <div key={item.name}><dt>{item.name}</dt><dd>{item.formation ?? 'Pendiente'}</dd></div>)}</dl>
-        </section>
-      )}
-      <section>
-        <header><span>Rendimiento actual</span><h2>Líderes SFA</h2></header>
-        {leaders.length > 0 ? (
-          <ol className="trm-rail__leaders">
-            {leaders.map((player, index) => (
-              <li key={`${player.external_id ?? player.name}-${index}`}>
-                <span>{index + 1}</span>
-                <div><strong>{player.name}</strong><small>{player.team}</small></div>
-                <b>{Math.round(player.sfa_points ?? 0).toLocaleString('es-ES')} pts</b>
-              </li>
-            ))}
-          </ol>
-        ) : <p className="trm-rail__pending">Puntos pendientes de cálculo.</p>}
-      </section>
-    </aside>
-  )
-}
+import { tournamentCompetitionLogoByName, tournamentStageLabel } from '../utils/tournaments'
+import './TournamentMatchPage.css'
 
 export default function TournamentMatchPage() {
   const navigate = useNavigate()
@@ -67,15 +16,9 @@ export default function TournamentMatchPage() {
   const season = searchParams.get('season') ?? '2026'
   const numericFixtureId = Number(fixtureId)
   const [detail, setDetail] = useState<TournamentMatchDetail | null>(null)
-  const [tab, setTab] = useState<MatchTab>('summary')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const polling = useRef(false)
-
-  useEffect(() => {
-    document.body.classList.add('mode-tournament')
-    return () => document.body.classList.remove('mode-tournament')
-  }, [])
 
   useEffect(() => {
     let active = true
@@ -127,6 +70,43 @@ export default function TournamentMatchPage() {
   }, [detail?.fixture.is_live, numericFixtureId, season])
 
   const lineupTeams = useMemo(() => new Set(detail?.lineups.map((lineup) => lineup.team.external_id) ?? []), [detail])
+  const model = useMemo(() => (detail ? buildMatchModel(detail) : null), [detail])
+  const [selected, setSelected] = useState<MatchPlayer | null>(null)
+  const [levels, setLevels] = useState<TeamLevels>({ home: null, away: null })
+  const homeTeam = detail?.fixture.home_team
+  const awayTeam = detail?.fixture.away_team
+
+  // Each side's competitive level (the same input as the rival multiplier, M1).
+  useEffect(() => {
+    if (!homeTeam || !awayTeam) return undefined
+    let active = true
+    setLevels({ home: null, away: null })
+    const levelOf = async (teamScope: string, name: string, externalId: number | null) => {
+      const result = await fetchTeamRanking({ scope: teamScope, name, page: 1 })
+      const team = result.ranking.find((item) => externalId != null && item.team_logo_url?.endsWith(`/teams/${externalId}.png`))
+        ?? result.ranking.find((item) => item.name === name)
+      return team?.elo_score ?? null
+    }
+    fetchSeasons()
+      .then((catalog) => {
+        const teamScope = catalog.seasons.find((item) => item.kind === 'award_period' && item.season === season)?.key
+        if (!teamScope) return
+        return Promise.all([
+          levelOf(teamScope, homeTeam.name, homeTeam.external_id).catch(() => null),
+          levelOf(teamScope, awayTeam.name, awayTeam.external_id).catch(() => null),
+        ]).then(([home, away]) => { if (active) setLevels({ home, away }) })
+      })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [homeTeam, awayTeam, season])
+  // Everyone who stepped on the pitch, home then away, starters before substitutes.
+  const sheetPlayers = useMemo(() => (model
+    ? (['home', 'away'] as const).flatMap((side) => [
+        ...model.players.filter((player) => player.side === side && player.starter),
+        ...model.players.filter((player) => player.side === side && !player.starter && player.marks.on != null),
+      ])
+    : []), [model])
+  const sheetRank = useMemo(() => new Map(model?.ranked.map((player, index) => [player, index + 1]) ?? []), [model])
   const scope = `season-${season}`
 
   function goBack() {
@@ -136,62 +116,59 @@ export default function TournamentMatchPage() {
   }
 
   if (loading) {
-    return <main className="trm-page"><div className="trm-skeleton"><i /><i /><i /></div></main>
+    return (
+      <main className="mt-page" aria-busy="true">
+        <span className="sr-only" role="status">Cargando partido</span>
+        <div className="mt-skel mt-skel--hero" />
+        <div className="mt-skel mt-skel--pitch" />
+      </main>
+    )
   }
 
-  if (error || !detail) {
+  if (error || !detail || !model) {
     return (
-      <main className="trm-page">
-        <button type="button" className="trm-back" onClick={goBack}><span aria-hidden="true">←</span> Volver a Torneos</button>
-        <div className="trm-empty trm-empty--error">{error ?? 'Partido no encontrado.'}</div>
+      <main className="mt-page">
+        <button type="button" className="mt-back" onClick={goBack}><ArrowIcon direction="left" /> Todos los partidos</button>
+        <div className="mt-empty" role="alert">{error ?? 'Partido no encontrado.'}</div>
       </main>
     )
   }
 
   const { fixture } = detail
-  const homeExternalId = fixture.home_team.external_id
+  const competitionLogo = tournamentCompetitionLogoByName(fixture.competition_name)
 
   return (
-    <main className="trm-page">
-      <div className="trm-actions">
-        <button type="button" className="trm-back" onClick={goBack}><span aria-hidden="true">←</span> Volver a Torneos</button>
-        {fixture.competition_id != null && <Link to={`/torneos/${fixture.competition_id}?season=${season}`}>Ver torneo <span aria-hidden="true">→</span></Link>}
-      </div>
-
-      <TournamentMatchHeader fixture={fixture} />
-
-      <nav className="trm-tabs" role="tablist" aria-label="Detalle del partido">
-        {TABS.map(([id, label]) => (
-          <button
-            type="button"
-            role="tab"
-            id={`trm-tab-${id}`}
-            aria-selected={tab === id}
-            aria-controls={`trm-panel-${id}`}
-            className={tab === id ? 'is-active' : ''}
-            onClick={() => setTab(id)}
-            key={id}
-          >{label}</button>
-        ))}
+    <main className="mt-page">
+      <nav className="mt-crumbs" aria-label="Ruta">
+        <button type="button" className="mt-back" onClick={goBack}><ArrowIcon direction="left" /> Todos los partidos</button>
+        <span aria-hidden="true">/</span>
+        {fixture.competition_id != null ? (
+          <Link to={`/torneos/${fixture.competition_id}?season=${season}`} className="mt-crumbs__comp">
+            {competitionLogo && <span className="tp-tile"><img src={competitionLogo} alt="" /></span>}
+            {fixture.competition_name ?? 'Competición'}
+          </Link>
+        ) : <span className="mt-crumbs__comp">{fixture.competition_name ?? 'Competición'}</span>}
+        <span className="mt-crumbs__stage">· {tournamentStageLabel(fixture.stage, fixture.matchday)}</span>
       </nav>
 
-      <div id={`trm-panel-${tab}`} role="tabpanel" aria-labelledby={`trm-tab-${tab}`} className="trm-content">
-        {tab === 'summary' && (
-          <div className="trm-summary">
-            <div className="trm-summary__main">
-              <TournamentMatchMomentum buckets={detail.sfa_momentum} homeName={fixture.home_team.name} awayName={fixture.away_team.name} />
-              <TournamentMatchTimeline events={detail.events} homeTeamExternalId={homeExternalId} />
-            </div>
-            <MatchInfo detail={detail} />
-          </div>
-        )}
-        {tab === 'statistics' && <TournamentMatchStatistics statistics={detail.statistics} />}
-        {tab === 'timeline' && <TournamentMatchTimeline events={detail.events} homeTeamExternalId={homeExternalId} />}
-        {tab === 'lineups' && <TournamentMatchLineups lineups={detail.lineups} scope={scope} />}
-        {tab === 'performance' && <TournamentMatchPerformance lineups={detail.lineups} scope={scope} />}
+      <MatchHero detail={detail} model={model} scope={scope} onSelect={setSelected} levels={levels} />
+      <MatchLineups detail={detail} model={model} scope={scope} onSelect={setSelected} />
+      {detail.lineups.length > 0 && lineupTeams.size < 2 && <p className="mt-note">La alineación de uno de los equipos todavía no fue publicada.</p>}
+      <MatchMomentum detail={detail} model={model} />
+      <div className="mt-split">
+        <MatchEvents detail={detail} model={model} scope={scope} />
+        <MatchStats statistics={detail.statistics} homeTeam={fixture.home_team} awayTeam={fixture.away_team} />
       </div>
 
-      {detail.lineups.length > 0 && lineupTeams.size < 2 && <p className="trm-partial-note">La alineación de uno de los equipos todavía no fue publicada.</p>}
+      <PlayerMatchSheet
+        player={selected}
+        players={sheetPlayers}
+        rank={sheetRank}
+        matchExternalId={fixture.external_id}
+        scope={scope}
+        onNavigate={setSelected}
+        onClose={() => setSelected(null)}
+      />
     </main>
   )
 }

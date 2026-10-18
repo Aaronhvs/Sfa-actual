@@ -9,7 +9,7 @@ export default function HomeRankingGallery({ players, playerUrl }: {
   players: RankedPlayer[]
   playerUrl: (id: number) => string
 }) {
-  const [active, setActive] = useState<number | null>(0)
+  const [active, setActive] = useState<number | null>(null)
   const listRef = useRef<HTMLOListElement>(null)
   const before = useRef<DOMRect[]>([])
 
@@ -71,6 +71,10 @@ export default function HomeRankingGallery({ players, playerUrl }: {
             aria-controls={`sfa-gallery-detail-${player.id}`} onClick={(event) => expand(index, event.detail !== 0)}>
             <span className="sfa-gallery__expand" aria-hidden="true">{index === active ? '−' : '+'}</span>
           </button>
+          {/* Phones: the whole card opens the profile (the expand toggle added nothing new). */}
+          <Link to={playerUrl(player.id)} className="sfa-gallery__cardlink" aria-label={`Ver el perfil de ${player.name}`}>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 8h9.5M8.5 3.5 13 8l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </Link>
           <div className="sfa-gallery__detail" id={`sfa-gallery-detail-${player.id}`}>
             <Link to={playerUrl(player.id)} aria-label={`Ver actuaciones de ${player.name}`}>
               <span>Ver actuaciones</span>

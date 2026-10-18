@@ -7,7 +7,7 @@ import SeoController from './components/shared/SeoController'
 const RankingPage = lazy(() => import('./pages/RankingPage'))
 const HomePage = lazy(() => import('./pages/HomePage'))
 const PlayerPage = lazy(() => import('./pages/PlayerPage'))
-const TeamsPage = lazy(() => import('./pages/TeamsPage'))
+const TeamPage = lazy(() => import('./pages/TeamPage'))
 const ComparePage = lazy(() => import('./pages/ComparePage'))
 const MetodologiaPage = lazy(() => import('./pages/MetodologiaPage'))
 const TournamentsPage = lazy(() => import('./pages/TournamentsPage'))
@@ -44,7 +44,8 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/ranking" element={<RankingPage />} />
             <Route path="/player/:id" element={<PlayerPage />} />
-            <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/teams" element={<Navigate to="/ranking" replace />} />
+            <Route path="/equipo/:externalId" element={<TeamPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/metodologia" element={<MetodologiaPage />} />
             <Route path="/torneos" element={<TournamentsPage />} />

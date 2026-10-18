@@ -37,6 +37,12 @@ const API_FOOTBALL_COMPETITION_IDS: Array<[string, number]> = [
   ['supercoppa italiana', 547],
   ['coupe de france', 66],
   ['trophee des champions', 526],
+  ['mundial', 1],
+  ['world cup', 1],
+  ['copa del mundo', 1],
+  ['eurocopa', 4],
+  ['copa america', 9],
+  ['libertadores', 13],
 ]
 
 function normalizedCompetitionName(name: string) {

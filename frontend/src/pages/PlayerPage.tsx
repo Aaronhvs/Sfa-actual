@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingPlayerExplanation, SeasonItem } from '../types'
-import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerExplanation, fetchPlayerFixtures, fetchPlayerIndividualHonors, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
-import PlayerHeader from '../components/player/PlayerHeader'
-import PlayerNarrativeAnalysis from '../components/player/PlayerNarrativeAnalysis'
-import StatBar from '../components/player/StatBar'
+import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, SeasonItem } from '../types'
+import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerFixtures, fetchPlayerIndividualHonors, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
 import { isWorldCupSeason } from '../utils/season'
-
-import PointsBreakdown from '../components/player/PointsBreakdown'
-import FixtureList from '../components/player/FixtureList'
-import PerformanceChart from '../components/player/PerformanceChart'
-import CompetitionJourney from '../components/player/CompetitionJourney'
-import IndividualHonors from '../components/player/IndividualHonors'
+import HighlightsView from '../components/player/HighlightsView'
+import {
+  ProfileCompetitions,
+  ProfileContext,
+  ProfileFixtures,
+  ProfileHero,
+  ProfileHonors,
+  ProfileKpis,
+  ProfileMatchBars,
+  ProfilePointsSources,
+  ProfileStyle,
+} from '../components/player/ProfileView'
+import { ArrowIcon } from '../components/tournaments/MatchUI'
+import './PlayerPage.css'
 
 function safeRankingReturnTo(value: string | null): string | null {
   if (!value || value.startsWith('//')) return null
@@ -45,14 +50,11 @@ export default function PlayerPage() {
   const [seasonStats, setSeasonStats] = useState<PlayerSeasonStats | null>(null)
   const [achievements, setAchievements] = useState<PlayerCompetitionAchievement[]>([])
   const [individualHonors, setIndividualHonors] = useState<PlayerIndividualHonor[]>([])
-  const [analysis, setAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [loading, setLoading] = useState(true)
   const [seasonChanging, setSeasonChanging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const initialSeasonRef = useRef('')
   const isWcSeason = isWorldCupSeason(season, seasonItems)
-  const explanationScope = isWcSeason ? 'world_cup' : 'award_period'
-  const explanationCompetitionId = isWcSeason ? 350 : undefined
   const selectedSeasonItem = seasonItems.find((item) => item.key === season)
   const playerSeasonItems: SeasonItem[] = seasonItems.filter((item) => (
     (player?.available_scopes ?? []).includes(item.key)
@@ -101,36 +103,18 @@ export default function PlayerPage() {
           statsRequest,
           fetchPlayerAchievements(playerId, requestSeason, requestScope),
           fetchPlayerIndividualHonors(playerId, requestSeason, requestScope),
-          fetchPlayerExplanation({
-            player_id: playerId,
-            season: p.season,
-            competition_id: p.scope?.startsWith('world-cup-') ? 350 : undefined,
-            scope: p.scope?.startsWith('world-cup-') ? 'world_cup' : 'award_period',
-          }),
         ])
       })
-      .then(([ev, fx, stats, playerAchievements, playerHonors, playerAnalysis]) => {
+      .then(([ev, fx, stats, playerAchievements, playerHonors]) => {
         setEvents(ev)
         setFixtures(fx)
         setSeasonStats(stats)
         setAchievements(playerAchievements)
         setIndividualHonors(playerHonors)
-        setAnalysis(playerAnalysis)
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
       .finally(() => setLoading(false))
   }, [id, seasonFromUrl, scopeFromUrl])
-
-  useEffect(() => {
-    if (isWcSeason) {
-      document.body.classList.add('mode-tournament')
-    } else {
-      document.body.classList.remove('mode-tournament')
-    }
-    return () => {
-      document.body.classList.remove('mode-tournament')
-    }
-  }, [isWcSeason])
 
   // Reload when season changes (after initial load)
   useEffect(() => {
@@ -154,21 +138,14 @@ export default function PlayerPage() {
       statsRequest,
       fetchPlayerAchievements(playerId, requestSeason, requestScope),
       fetchPlayerIndividualHonors(playerId, requestSeason, requestScope),
-      fetchPlayerExplanation({
-        player_id: playerId,
-        season: selectedSeasonItem?.season ?? player.season,
-        competition_id: explanationCompetitionId,
-        scope: explanationScope,
-      }),
     ])
-      .then(([p, ev, fx, stats, playerAchievements, playerHonors, playerAnalysis]) => {
+      .then(([p, ev, fx, stats, playerAchievements, playerHonors]) => {
         setPlayer(p)
         setEvents(ev)
         setFixtures(fx)
         setSeasonStats(stats)
         setAchievements(playerAchievements)
         setIndividualHonors(playerHonors)
-        setAnalysis(playerAnalysis)
       })
       .catch((e) => setError(e.message ?? 'Error al cargar el jugador'))
       .finally(() => setSeasonChanging(false))
@@ -177,82 +154,75 @@ export default function PlayerPage() {
 
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="skeleton-player-header">
-          <div className="skeleton skeleton-circle" style={{ width: 100, height: 100 }} />
-          <div className="skeleton-player-header__info">
-            <div className="skeleton skeleton-ph" style={{ width: '30%', height: 10 }} />
-            <div className="skeleton skeleton-ph" style={{ width: '65%', height: 28 }} />
-            <div className="skeleton skeleton-ph" style={{ width: '45%', height: 12 }} />
-            <div className="skeleton skeleton-ph" style={{ width: 100, height: 32, borderRadius: 4 }} />
-          </div>
-        </div>
-        <div className="skeleton-stat-bar">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="skeleton-stat-bar__item">
-              <div className="skeleton skeleton-ph" style={{ width: 40, height: 28 }} />
-              <div className="skeleton skeleton-ph" style={{ width: 56, height: 8 }} />
-            </div>
-          ))}
-        </div>
-      </div>
+      <main className="pf-page" aria-busy="true">
+        <span className="sr-only" role="status">Cargando jugador</span>
+        <div className="pf-skel pf-skel--hero" />
+        <div className="pf-skel pf-skel--row" />
+        <div className="pf-skel pf-skel--bars" />
+      </main>
     )
   }
 
   if (error || !player) {
     return (
-      <div className="page-container">
-        <button type="button" className="back-link" onClick={goBackToRanking}>
-          <span aria-hidden="true">←</span>
-          Volver al ranking
-        </button>
-        <div className="empty-state">{error ?? 'Jugador no encontrado.'}</div>
-      </div>
+      <main className="pf-page">
+        <button type="button" className="pf-back" onClick={goBackToRanking}><ArrowIcon direction="left" /> Volver al ranking</button>
+        <div className="pf-empty" role="alert">{error ?? 'Jugador no encontrado.'}</div>
+      </main>
     )
   }
 
-  return (
-    <div className={`page-container${isWcSeason ? ' player-page--wc' : ''}`}>
-      <button type="button" className="back-link" onClick={goBackToRanking}>
-        <span aria-hidden="true">←</span>
-        Volver al ranking
-      </button>
-
-      <PlayerHeader player={player} isWorldCup={isWcSeason} />
-
-      {playerSeasonItems.length > 1 && (
-        <div className="pp-season-bar">
-          <span className="pp-season-bar__label">Temporada</span>
-          <SeasonDropdown
-            items={playerSeasonItems}
-            value={season}
-            onChange={(value) => {
-              setSeason(value)
-              navigate(`/player/${id}?${value === 'all' ? 'season=all' : `scope=${value}`}`, { replace: true })
-            }}
-            includeAll={true}
-          />
-        </div>
-      )}
-      <div
-        className={`pp-season-content${seasonChanging ? ' pp-season-content--changing' : ''}`}
-        aria-busy={seasonChanging}
-      >
-        <StatBar player={player} fixtures={fixtures} seasonStats={seasonStats} />
-
-        <PlayerNarrativeAnalysis explanation={analysis} />
-
-        <CompetitionJourney achievements={achievements} historical={season === 'all'} />
-
-        <IndividualHonors honors={individualHonors} historical={season === 'all'} />
-
-        <PerformanceChart fixtures={fixtures} playerTeam={player.team} />
-
-        <p className="section-title mt-32">Historial de partidos</p>
-        <FixtureList fixtures={fixtures} events={events} />
-
-        <PointsBreakdown player={player} events={events} fixtures={fixtures} seasonStats={seasonStats} />
-      </div>
+  const seasonLabel = season === 'all'
+    ? 'Total histórico'
+    : `Temporada ${selectedSeasonItem?.label ?? player.season}`
+  const matchSeason = selectedSeasonItem?.season ?? player.season
+  const seasonPicker = playerSeasonItems.length > 1 ? (
+    <div className="pf-season">
+      <SeasonDropdown
+        items={playerSeasonItems}
+        value={season}
+        onChange={(value) => {
+          setSeason(value)
+          navigate(`/player/${id}?${value === 'all' ? 'season=all' : `scope=${value}`}`, { replace: true })
+        }}
+        includeAll={true}
+      />
     </div>
+  ) : null
+
+  return (
+    <main className={`pf-page${isWcSeason ? ' pf-page--wc' : ''}`}>
+      <nav className="pf-crumbs" aria-label="Ruta">
+        <button type="button" className="pf-back" onClick={goBackToRanking}><ArrowIcon direction="left" /> Volver al ranking</button>
+      </nav>
+
+      <ProfileHero player={player} fixtures={fixtures} stats={seasonStats} seasonLabel={seasonLabel} seasonPicker={seasonPicker} />
+
+      <div className={`pf-content${seasonChanging ? ' is-changing' : ''}`} aria-busy={seasonChanging}>
+        <ProfileKpis player={player} stats={seasonStats} fixtures={fixtures} />
+
+        <ProfileMatchBars fixtures={fixtures} team={player.team} season={matchSeason} />
+        <ProfileHonors achievements={achievements} honors={individualHonors} />
+
+        {fixtures.length > 0 && (
+          <section className="pf-highlights" aria-labelledby="pf-hl-title">
+            <header className="pf-section-head"><h2 id="pf-hl-title">Lo más destacado</h2><p>Sus partidos y acciones que más pesan en el ranking</p></header>
+            <HighlightsView fixtures={fixtures} events={events} />
+          </section>
+        )}
+
+        <ProfileStyle playerId={player.id} scope={season} available={player.available_scopes} stats={seasonStats} matches={player.matches} />
+
+        <ProfileContext events={events} fixtures={fixtures} team={player.team} />
+
+        <div className="pf-split">
+          <ProfilePointsSources player={player} />
+          <ProfileCompetitions fixtures={fixtures} />
+        </div>
+
+        <ProfileFixtures fixtures={fixtures} team={player.team} season={matchSeason} />
+
+      </div>
+    </main>
   )
 }
