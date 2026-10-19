@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { fetchTournament, fetchTournaments } from '../api/client'
-import TournamentFixtureRow from '../components/tournaments/TournamentFixtureRow'
 import TournamentKnockoutBracket from '../components/tournaments/TournamentKnockoutBracket'
 import TournamentLeaders from '../components/tournaments/TournamentLeaders'
+import { ArrowIcon, Crest, ScoreRow } from '../components/tournaments/MatchUI'
 import type {
   TournamentDetailResponse,
   TournamentFixture,
@@ -17,8 +17,9 @@ import {
   tournamentDateKey,
   tournamentDateLabel,
   tournamentSeasonLabel,
-  tournamentTeamLogo,
 } from '../utils/tournaments'
+import { teamHref } from '../utils/teams'
+import './TournamentDetailPage.css'
 
 type DetailView = 'overview' | 'standings' | 'matches' | 'bracket'
 type MatchMode = 'date' | 'matchday' | 'team'
@@ -35,13 +36,6 @@ interface TableRow {
   goalsAgainst: number
   points: number
   form: FormResult[]
-}
-
-function TeamMark({ team }: { team: TournamentTeam }) {
-  const logo = tournamentTeamLogo(team)
-  return logo
-    ? <img src={logo} alt="" loading="lazy" decoding="async" />
-    : <span aria-hidden="true">{team.name.slice(0, 2).toUpperCase()}</span>
 }
 
 function deriveTable(detail: TournamentDetailResponse, venue: StandingVenue): TableRow[] {
@@ -109,41 +103,57 @@ function deriveTable(detail: TournamentDetailResponse, venue: StandingVenue): Ta
   ))
 }
 
-function StandingsTable({ detail }: { detail: TournamentDetailResponse }) {
+function StandingsTable({ detail, compact = false }: { detail: TournamentDetailResponse; compact?: boolean }) {
   const [venue, setVenue] = useState<StandingVenue>('all')
   const rows = useMemo(() => deriveTable(detail, venue), [detail, venue])
   if (rows.length === 0) {
-    return <div className="trn-state trn-state--inline">La tabla todavia no esta disponible.</div>
+    return <div className="cd-empty">La tabla todavía no está disponible.</div>
   }
   return (
-    <div className="trn-standings">
-      <div className="trn-table-filters" role="group" aria-label="Clasificacion por localia">
-        {([['all', 'Todos'], ['home', 'Local'], ['away', 'Visitante']] as const).map(([value, label]) => (
-          <button type="button" className={venue === value ? 'is-active' : ''} onClick={() => setVenue(value)} key={value}>{label}</button>
-        ))}
+    <div className={`cd-table${compact ? ' is-compact' : ''}`}>
+      <div className="cd-table__tools">
+        <div className="tp-segment" role="group" aria-label="Clasificación por localía">
+          {([['all', 'Todos'], ['home', 'Local'], ['away', 'Visitante']] as const).map(([value, label]) => (
+            <button type="button" className={venue === value ? 'is-active' : undefined} aria-pressed={venue === value} onClick={() => setVenue(value)} key={value}>{label}</button>
+          ))}
+        </div>
       </div>
-      <div className="trn-table-wrap">
-        <table className="trn-table">
-          <thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Goles</th><th>DG</th><th>Pts</th><th>Forma</th></tr></thead>
+      <div className="cd-table__scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">#</th><th scope="col" className="is-team">Equipo</th><th scope="col">PJ</th><th scope="col" className="is-narrow-hide">G</th><th scope="col" className="is-narrow-hide">E</th><th scope="col" className="is-narrow-hide">P</th>
+              <th scope="col" className="is-wide">Goles</th><th scope="col">DG</th><th scope="col">Pts</th><th scope="col" className="is-wide">Últimos 5</th>
+            </tr>
+          </thead>
           <tbody>
-            {rows.map((row, index) => (
-              <tr key={row.standing.team.id}>
-                <td>{venue === 'all' ? row.standing.position : index + 1}</td>
-                <th scope="row"><TeamMark team={row.standing.team} /><span>{row.standing.team.name}</span></th>
-                <td>{row.played}</td>
-                <td>{row.won}</td>
-                <td>{row.drawn}</td>
-                <td>{row.lost}</td>
-                <td>{row.goalsFor}-{row.goalsAgainst}</td>
-                <td>{row.goalsFor - row.goalsAgainst > 0 ? '+' : ''}{row.goalsFor - row.goalsAgainst}</td>
-                <td><strong>{row.points}</strong></td>
-                <td>
-                  <span className="trn-form" aria-label={`Ultimos resultados: ${row.form.slice(-5).join(', ') || 'sin partidos'}`}>
-                    {row.form.slice(-5).map((result, formIndex) => <i className={`is-${result.toLowerCase()}`} key={`${result}-${formIndex}`}>{result}</i>)}
-                  </span>
-                </td>
-              </tr>
-            ))}
+            {rows.map((row, index) => {
+              const position = venue === 'all' ? row.standing.position : index + 1
+              const href = teamHref(row.standing.team.name, row.standing.team.external_id)
+              const dg = row.goalsFor - row.goalsAgainst
+              return (
+                <tr key={row.standing.team.id} className={position === 1 ? 'is-leader' : undefined}>
+                  <td className="cd-pos">{position}</td>
+                  <th scope="row" className="is-team">
+                    {href
+                      ? <Link to={href}><Crest team={row.standing.team} /><span>{row.standing.team.name}</span></Link>
+                      : <span className="cd-team"><Crest team={row.standing.team} /><span>{row.standing.team.name}</span></span>}
+                  </th>
+                  <td>{row.played}</td>
+                  <td className="is-narrow-hide">{row.won}</td>
+                  <td className="is-narrow-hide">{row.drawn}</td>
+                  <td className="is-narrow-hide">{row.lost}</td>
+                  <td className="is-wide">{row.goalsFor}–{row.goalsAgainst}</td>
+                  <td className={dg > 0 ? 'is-pos' : dg < 0 ? 'is-neg' : undefined}>{dg > 0 ? '+' : ''}{dg}</td>
+                  <td className="cd-pts">{row.points}</td>
+                  <td className="is-wide">
+                    <span className="cd-form" aria-label={`Últimos resultados: ${row.form.slice(-5).join(', ') || 'sin partidos'}`}>
+                      {row.form.slice(-5).map((result, formIndex) => <i className={`is-${result.toLowerCase()}`} key={`${result}-${formIndex}`}>{result}</i>)}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -164,24 +174,22 @@ function nearestDate(values: string[]) {
   return values.find((value) => value >= today) ?? values[values.length - 1] ?? ''
 }
 
-function FixtureDateGroups({ fixtures }: { fixtures: TournamentFixture[] }) {
+function FixtureDateGroups({ fixtures, season }: { fixtures: TournamentFixture[]; season: string }) {
   const groups = groupFixturesByDate(fixtures)
-  if (groups.size === 0) {
-    return <div className="trn-state trn-state--inline">No hay partidos para este filtro.</div>
-  }
+  if (groups.size === 0) return <div className="cd-empty">No hay partidos para este filtro.</div>
   return (
-    <div className="trn-detail-matches">
+    <div className="cd-days">
       {[...groups.entries()].map(([date, items]) => (
-        <section key={date}>
-          <h3>{tournamentDateLabel(date)}</h3>
-          <div>{items.map((fixture) => <TournamentFixtureRow fixture={fixture} key={fixture.id} />)}</div>
+        <section className="tp-group cd-day" key={date}>
+          <header><h3>{tournamentDateLabel(date)}</h3><span>{items.length} {items.length === 1 ? 'partido' : 'partidos'}</span></header>
+          <div>{items.map((fixture) => <ScoreRow fixture={fixture} season={season} key={fixture.id} />)}</div>
         </section>
       ))}
     </div>
   )
 }
 
-function MatchExplorer({ fixtures }: { fixtures: TournamentFixture[] }) {
+function MatchExplorer({ fixtures, season }: { fixtures: TournamentFixture[]; season: string }) {
   const dates = useMemo(() => [...new Set(fixtures.map((fixture) => tournamentDateKey(fixture.played_at)))].sort(), [fixtures])
   const matchdays = useMemo(() => [...new Set(fixtures.map((fixture) => fixture.matchday).filter((value): value is number => value != null))].sort((a, b) => a - b), [fixtures])
   const teams = useMemo(() => {
@@ -194,7 +202,10 @@ function MatchExplorer({ fixtures }: { fixtures: TournamentFixture[] }) {
   }, [fixtures])
   const [mode, setMode] = useState<MatchMode>('date')
   const [date, setDate] = useState(() => nearestDate(dates))
-  const [matchday, setMatchday] = useState(matchdays[0] ?? 0)
+  const [matchday, setMatchday] = useState(() => {
+    const upcoming = fixtures.find((fixture) => !FINAL_TOURNAMENT_STATUSES.has(fixture.status) && fixture.matchday != null)
+    return upcoming?.matchday ?? matchdays[matchdays.length - 1] ?? 0
+  })
   const [teamId, setTeamId] = useState(teams[0]?.id ?? 0)
 
   useEffect(() => { if (!dates.includes(date)) setDate(nearestDate(dates)) }, [date, dates])
@@ -207,44 +218,70 @@ function MatchExplorer({ fixtures }: { fixtures: TournamentFixture[] }) {
     return fixture.home_team.id === teamId || fixture.away_team.id === teamId
   })
   const dateIndex = dates.indexOf(date)
+  const matchdayIndex = matchdays.indexOf(matchday)
 
   return (
-    <section className="trn-explorer">
-      <div className="trn-explorer__modes" role="group" aria-label="Modo de filtrado">
-        {([['date', 'Por fecha'], ['matchday', 'Por jornada'], ['team', 'Por equipo']] as const).map(([value, label]) => (
-          <button type="button" className={mode === value ? 'is-active' : ''} onClick={() => setMode(value)} key={value}>{label}</button>
-        ))}
+    <section className="cd-explorer">
+      <div className="cd-explorer__bar">
+        <div className="tp-segment" role="group" aria-label="Modo de filtrado">
+          {([['date', 'Por fecha'], ['matchday', 'Por jornada'], ['team', 'Por equipo']] as const).map(([value, label]) => (
+            <button type="button" className={mode === value ? 'is-active' : undefined} aria-pressed={mode === value} onClick={() => setMode(value)} key={value}>{label}</button>
+          ))}
+        </div>
+        <div className="cd-stepper">
+          {mode === 'date' && (
+            <>
+              <button type="button" onClick={() => setDate(dates[dateIndex - 1])} disabled={dateIndex <= 0} aria-label="Fecha anterior"><ArrowIcon direction="left" /></button>
+              <strong>{date ? tournamentDateLabel(date, false) : 'Sin fecha'}</strong>
+              <button type="button" onClick={() => setDate(dates[dateIndex + 1])} disabled={dateIndex < 0 || dateIndex >= dates.length - 1} aria-label="Fecha siguiente"><ArrowIcon /></button>
+            </>
+          )}
+          {mode === 'matchday' && (
+            <>
+              <button type="button" onClick={() => setMatchday(matchdays[matchdayIndex - 1])} disabled={matchdayIndex <= 0} aria-label="Jornada anterior"><ArrowIcon direction="left" /></button>
+              <strong>Jornada {matchday}</strong>
+              <button type="button" onClick={() => setMatchday(matchdays[matchdayIndex + 1])} disabled={matchdayIndex < 0 || matchdayIndex >= matchdays.length - 1} aria-label="Jornada siguiente"><ArrowIcon /></button>
+            </>
+          )}
+          {mode === 'team' && (
+            <select value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} aria-label="Equipo">
+              {teams.map((team) => <option value={team.id} key={team.id}>{team.name}</option>)}
+            </select>
+          )}
+        </div>
       </div>
-      <div className="trn-explorer__control">
-        {mode === 'date' && (
-          <>
-            <button type="button" onClick={() => setDate(dates[dateIndex - 1])} disabled={dateIndex <= 0} aria-label="Fecha anterior">&#8592;</button>
-            <strong>{date ? tournamentDateLabel(date, false) : 'Sin fecha'}</strong>
-            <button type="button" onClick={() => setDate(dates[dateIndex + 1])} disabled={dateIndex < 0 || dateIndex >= dates.length - 1} aria-label="Fecha siguiente">&#8594;</button>
-          </>
-        )}
-        {mode === 'matchday' && (
-          <select value={matchday} onChange={(event) => setMatchday(Number(event.target.value))} aria-label="Jornada">
-            {matchdays.map((value) => <option value={value} key={value}>Jornada {value}</option>)}
-          </select>
-        )}
-        {mode === 'team' && (
-          <select value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} aria-label="Equipo">
-            {teams.map((team) => <option value={team.id} key={team.id}>{team.name}</option>)}
-          </select>
-        )}
-      </div>
-      <FixtureDateGroups fixtures={filtered} />
+      <FixtureDateGroups fixtures={filtered} season={season} />
     </section>
   )
 }
 
 function Overview({ detail }: { detail: TournamentDetailResponse }) {
-  const upcoming = detail.fixtures.filter((fixture) => !FINAL_TOURNAMENT_STATUSES.has(fixture.status)).slice(0, 8)
+  const upcoming = detail.fixtures
+    .filter((fixture) => !FINAL_TOURNAMENT_STATUSES.has(fixture.status))
+    .sort((a, b) => a.played_at.localeCompare(b.played_at))
+    .slice(0, 8)
+  const recent = detail.fixtures
+    .filter((fixture) => FINAL_TOURNAMENT_STATUSES.has(fixture.status))
+    .sort((a, b) => b.played_at.localeCompare(a.played_at))
+    .slice(0, 5)
   return (
-    <div className="trn-overview-grid">
-      <section><header><span>Clasificacion</span><h2>Tabla actual</h2></header><StandingsTable detail={detail} /></section>
-      <section><header><span>Calendario</span><h2>Proximos partidos</h2></header><FixtureDateGroups fixtures={upcoming} /></section>
+    <div className="cd-overview">
+      <section className="pf-panel" aria-labelledby="cd-table-title">
+        <header className="pf-panel__head"><div><h2 id="cd-table-title">Clasificación</h2><p>Pulsa un equipo para ver su página</p></div></header>
+        <StandingsTable detail={detail} compact />
+      </section>
+      <div className="cd-side">
+        <section aria-labelledby="cd-next-title">
+          <h2 id="cd-next-title" className="tp-eyebrow">Próximos partidos</h2>
+          <FixtureDateGroups fixtures={upcoming} season={detail.competition.season} />
+        </section>
+        {recent.length > 0 && (
+          <section aria-labelledby="cd-last-title">
+            <h2 id="cd-last-title" className="tp-eyebrow">Últimos resultados</h2>
+            <div className="tp-group">{recent.map((fixture) => <ScoreRow fixture={fixture} season={detail.competition.season} key={fixture.id} />)}</div>
+          </section>
+        )}
+      </div>
     </div>
   )
 }
@@ -261,7 +298,7 @@ export default function TournamentDetailPage() {
   useEffect(() => {
     const id = Number(competitionId)
     if (!Number.isFinite(id)) {
-      setError('Competicion invalida.')
+      setError('Competición no válida.')
       setLoading(false)
       return
     }
@@ -272,39 +309,77 @@ export default function TournamentDetailPage() {
     seasonPromise
       .then((season) => fetchTournament(id, season))
       .then(setDetail)
-      .catch(() => setError('No se pudo cargar esta competicion.'))
+      .catch(() => setError('No se pudo cargar esta competición.'))
       .finally(() => setLoading(false))
   }, [competitionId, requestedSeason])
 
-  if (loading) return <div className="trn-state" role="status">Cargando competicion</div>
-  if (error || !detail) return <div className="trn-state trn-state--error" role="alert">{error ?? 'Competicion no disponible.'}</div>
+  if (loading) {
+    return (
+      <main className="cd-page" aria-busy="true">
+        <span className="sr-only" role="status">Cargando competición</span>
+        <div className="cd-skel cd-skel--hero" />
+        <div className="cd-skel cd-skel--body" />
+      </main>
+    )
+  }
+  if (error || !detail) {
+    return (
+      <main className="cd-page">
+        <Link className="pf-back" to="/torneos"><ArrowIcon direction="left" /> Todos los torneos</Link>
+        <div className="cd-empty" role="alert">{error ?? 'Competición no disponible.'}</div>
+      </main>
+    )
+  }
+
+  const { competition, fixtures } = detail
+  const played = fixtures.filter((fixture) => FINAL_TOURNAMENT_STATUSES.has(fixture.status)).length
+  const goals = fixtures.reduce((sum, fixture) => sum + (FINAL_TOURNAMENT_STATUSES.has(fixture.status) ? (fixture.home_goals ?? 0) + (fixture.away_goals ?? 0) : 0), 0)
+  const leader = [...detail.standings].sort((a, b) => a.position - b.position)[0]
+  const nextMatchday = fixtures.find((fixture) => !FINAL_TOURNAMENT_STATUSES.has(fixture.status) && fixture.matchday != null)?.matchday
+  const hasKnockout = fixtures.some((fixture) => isTournamentKnockout(fixture.stage))
+  const logo = tournamentCompetitionLogo(competition)
+  const tabs = ([['overview', 'Resumen'], ['standings', 'Tabla'], ['matches', 'Partidos'], ['bracket', 'Cruces']] as const)
+    .filter(([value]) => value !== 'bracket' || hasKnockout)
 
   return (
-    <main className="trn-detail-page">
-      <Link className="trn-back" to="/torneos">&#8592; Todos los torneos</Link>
-      <header className="trn-detail-header">
-        <div className="trn-detail-header__identity">
-          <img src={tournamentCompetitionLogo(detail.competition)} alt="" />
-          <div><span>{detail.competition.country}</span><h1>{detail.competition.name}</h1></div>
-        </div>
-        <strong>Temporada {tournamentSeasonLabel(detail.competition.season)}</strong>
-      </header>
-      <nav className="trn-detail-tabs" aria-label="Secciones de la competicion">
-        {([['overview', 'Resumen'], ['standings', 'Tabla'], ['matches', 'Partidos'], ['bracket', 'Cruces']] as const).map(([value, label]) => (
-          <button type="button" className={view === value ? 'is-active' : ''} aria-current={view === value ? 'page' : undefined} onClick={() => setView(value)} key={value}>{label}</button>
-        ))}
+    <main className="cd-page">
+      <nav className="cd-crumbs" aria-label="Ruta">
+        <Link className="pf-back" to="/torneos"><ArrowIcon direction="left" /> Todos los torneos</Link>
       </nav>
-      <div className="trn-detail-content">
-        {view === 'overview' && <Overview detail={detail} />}
-        {view === 'standings' && <StandingsTable detail={detail} />}
-        {view === 'matches' && <MatchExplorer fixtures={detail.fixtures} />}
-        {view === 'bracket' && <TournamentKnockoutBracket fixtures={detail.fixtures} champion={detail.champion} />}
+
+      <header className="cd-hero">
+        {logo && <img className="cd-hero__wash" src={logo} alt="" aria-hidden="true" />}
+        <span className="cd-hero__logo">{logo ? <img src={logo} alt="" /> : competition.name.slice(0, 2).toUpperCase()}</span>
+        <div className="cd-hero__copy">
+          <p className="tp-eyebrow">{competition.country} · Temporada {tournamentSeasonLabel(competition.season)}</p>
+          <h1>{competition.name}</h1>
+          <ul className="cd-hero__facts">
+            {leader && <li><span>Líder</span><b>{leader.team.name}</b><small>{leader.points} pts</small></li>}
+            <li><span>Jugados</span><b>{played}</b><small>de {fixtures.length} partidos</small></li>
+            {nextMatchday != null && <li><span>Próxima</span><b>Jornada {nextMatchday}</b></li>}
+            <li><span>Goles</span><b>{goals}</b><small>{played ? `${(goals / played).toLocaleString('es-ES', { maximumFractionDigits: 1 })} por partido` : ''}</small></li>
+          </ul>
+        </div>
+      </header>
+
+      <div className="cd-tabs">
+        <div className="tp-segment" role="group" aria-label="Secciones de la competición">
+          {tabs.map(([value, label]) => (
+            <button type="button" className={view === value ? 'is-active' : undefined} aria-pressed={view === value} onClick={() => setView(value)} key={value}>{label}</button>
+          ))}
+        </div>
       </div>
-      <TournamentLeaders
-        season={detail.competition.season}
-        competitionId={detail.competition.id}
-        contextLabel={detail.competition.name}
-      />
+
+      <div className="cd-content">
+        {view === 'overview' && <Overview detail={detail} />}
+        {view === 'standings' && <section className="pf-panel"><StandingsTable detail={detail} /></section>}
+        {view === 'matches' && <MatchExplorer fixtures={fixtures} season={competition.season} />}
+        {view === 'bracket' && <div className="cd-bracket"><TournamentKnockoutBracket fixtures={fixtures} champion={detail.champion} /></div>}
+      </div>
+
+      <div className="tp-leaders cd-leaders">
+        <TournamentLeaders season={competition.season} competitionId={competition.id} contextLabel={competition.name} />
+      </div>
     </main>
   )
 }

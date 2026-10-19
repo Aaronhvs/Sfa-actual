@@ -1,0 +1,281 @@
+/* Competition page: same vocabulary as /torneos, club and player pages. */
+@import './PlayerPage.css';
+@import './TournamentsPage.css';
+
+.cd-page {
+  display: grid;
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 96px;
+  gap: 16px;
+  color: var(--text);
+}
+
+.cd-page > * { min-width: 0; }
+
+/* Hero */
+.cd-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  min-height: 210px;
+  padding: 26px 28px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--tp-line);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(20, 20, 20, 0.4), rgba(20, 20, 20, 0.92) 85%),
+    url('/images/sfa-method-stadium.jpg') center 30% / cover,
+    #171717;
+}
+
+.cd-hero__wash {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  right: -40px;
+  width: 300px;
+  height: 300px;
+  object-fit: contain;
+  opacity: 0.08;
+  transform: translateY(-50%);
+}
+
+.cd-hero__logo {
+  display: grid;
+  width: 104px;
+  height: 104px;
+  flex: none;
+  place-items: center;
+  border-radius: 22px;
+  background: #ece8df;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
+  font: 800 1.6rem/1 var(--font-display);
+  color: #222;
+}
+
+.cd-hero__logo img { width: 70px; height: 70px; object-fit: contain; filter: none !important; }
+.cd-hero__copy { min-width: 0; }
+.cd-hero__copy .tp-eyebrow { margin-bottom: 10px; }
+.cd-hero h1 { margin: 0; font: 800 clamp(2.4rem, 5vw, 3.6rem)/0.9 var(--font-display); text-transform: uppercase; }
+
+.cd-hero__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cd-hero__facts li {
+  display: grid;
+  gap: 3px;
+  min-width: 110px;
+  padding: 9px 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: rgba(10, 10, 10, 0.55);
+}
+
+.cd-hero__facts span { font: 700 0.58rem/1 var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+.cd-hero__facts b { font: 800 1.05rem/1.1 var(--font-display); text-transform: uppercase; }
+.cd-hero__facts li:first-child b { color: var(--gold-light); }
+.cd-hero__facts small { font: 500 0.66rem/1.2 var(--font-body); color: var(--text-faint); }
+
+.cd-tabs { display: flex; }
+
+/* Overview */
+.cd-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.cd-overview > * { min-width: 0; }
+.cd-side { display: grid; gap: 16px; }
+.cd-side .tp-eyebrow { margin: 4px 0 10px; }
+
+/* Standings */
+.cd-table { padding-bottom: 6px; }
+.cd-table__tools { display: flex; padding: 0 20px 12px; }
+.cd-page .pf-panel > .cd-table:only-child .cd-table__tools { padding-top: 18px; }
+.cd-table__scroll { overflow-x: auto; }
+.cd-table table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+
+.cd-table th,
+.cd-table td {
+  height: 46px;
+  padding: 0 8px;
+  border-top: 1px solid var(--tp-line);
+  font: 600 0.82rem/1 var(--font-body);
+  text-align: center;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.cd-table thead th {
+  height: 36px;
+  border-top: 0;
+  font: 700 0.58rem/1 var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.cd-table th:first-child,
+.cd-table td:first-child { padding-left: 20px; }
+.cd-table th:last-child,
+.cd-table td:last-child { padding-right: 20px; }
+.cd-table .is-team { width: 100%; text-align: left; }
+
+.cd-table tbody .is-team a,
+.cd-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 0.88rem/1.2 var(--font-body);
+  color: var(--text) !important;
+  text-decoration: none;
+}
+
+.cd-table tbody .is-team a:hover span { color: var(--gold-light); }
+.cd-table tbody .is-team a:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-radius: 6px; }
+.cd-table tbody tr { transition: background-color 160ms var(--tp-ease); }
+.cd-table tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+.cd-pos { font: 800 0.95rem/1 var(--font-display) !important; color: var(--text-faint) !important; }
+.cd-table tr.is-leader .cd-pos { color: var(--gold-light) !important; }
+.cd-pts { font: 800 1.05rem/1 var(--font-display) !important; color: var(--text) !important; }
+.cd-table tr.is-leader .cd-pts { color: var(--gold-light) !important; }
+.cd-table .is-pos { color: var(--tp-live); }
+.cd-table .is-neg { color: #f0a49a; }
+
+.cd-form { display: inline-flex; gap: 3px; }
+
+.cd-form i {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 6px;
+  font: 800 0.62rem/1 var(--font-display);
+  font-style: normal;
+}
+
+.cd-form i.is-g { background: rgba(123, 224, 143, 0.18); color: var(--tp-live); }
+.cd-form i.is-e { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+.cd-form i.is-p { background: rgba(229, 72, 77, 0.18); color: #f0a49a; }
+
+/* Compact table in the overview: hide the less-used columns */
+.cd-table.is-compact .is-wide { display: none; }
+
+/* Fixtures */
+.cd-days { display: grid; gap: 12px; }
+.cd-day > header { justify-content: space-between; }
+.cd-day h3 { margin: 0; font: 700 0.82rem/1.2 var(--font-body); }
+.cd-day h3::first-letter { text-transform: uppercase; }
+.cd-day > header > span { font: 500 0.7rem/1 var(--font-body); color: var(--text-faint); }
+.cd-side .tp-row {
+  grid-template-columns: minmax(0, 1fr) 60px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  row-gap: 3px;
+  column-gap: 8px;
+  padding: 8px 12px;
+}
+
+/* Narrow column: status sits above the score so team names keep their room */
+.cd-side .tp-row__status { grid-column: 1 / -1; font-size: 0.56rem; text-align: center; }
+.cd-side .tp-row__status:empty { display: none; }
+.cd-side .tp-row__team { font-size: 0.8rem; }
+
+.cd-explorer { display: grid; gap: 14px; }
+
+.cd-explorer__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cd-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cd-stepper button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-panel);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.cd-stepper button:hover:not(:disabled) { color: var(--text); border-color: var(--tp-line-strong); }
+.cd-stepper button:disabled { opacity: 0.35; cursor: default; }
+.cd-stepper button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.cd-stepper strong { min-width: 130px; font: 800 1rem/1 var(--font-display); text-align: center; text-transform: uppercase; }
+
+.cd-stepper select {
+  min-width: 220px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  background: var(--tp-panel);
+  font: 600 0.82rem/1 var(--font-body);
+  color: var(--text);
+}
+
+.cd-bracket { overflow: hidden; border-radius: 16px; }
+.cd-leaders { margin-top: 32px; }
+
+.cd-empty {
+  padding: 24px;
+  border: 1px dashed var(--tp-line-strong);
+  border-radius: 14px;
+  font: 500 0.82rem/1.5 var(--font-body);
+  color: var(--text-faint);
+}
+
+.cd-skel {
+  border-radius: 18px;
+  background: linear-gradient(90deg, var(--tp-panel) 0%, var(--tp-panel-2) 50%, var(--tp-panel) 100%);
+  background-size: 200% 100%;
+  animation: pf-shimmer 1.4s linear infinite;
+}
+
+.cd-skel--hero { height: 210px; }
+.cd-skel--body { height: 520px; }
+
+@media (max-width: 980px) {
+  .cd-overview { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .cd-hero { flex-direction: column; align-items: flex-start; gap: 16px; padding: 22px 18px; }
+  .cd-hero__logo { width: 72px; height: 72px; border-radius: 16px; }
+  .cd-hero__logo img { width: 48px; height: 48px; }
+  .cd-hero__facts li { min-width: 0; flex: 1 1 40%; }
+  .cd-table th:first-child, .cd-table td:first-child { padding-left: 12px; }
+  .cd-table th:last-child, .cd-table td:last-child { padding-right: 12px; }
+  .cd-table .is-wide,
+  .cd-table .is-narrow-hide { display: none; }
+  .cd-tabs .tp-segment { width: 100%; overflow-x: auto; }
+  .cd-tabs .tp-segment button { flex: 1; }
+  .cd-stepper { width: 100%; justify-content: space-between; }
+  .cd-stepper select { flex: 1; min-width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) { .cd-skel { animation: none; } }
+
+/* index.css forces some league logos to near-opaque white; keep the hero wash subtle */
+.cd-hero img.cd-hero__wash { opacity: 0.08 !important; }
