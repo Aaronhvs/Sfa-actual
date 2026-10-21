@@ -1,4 +1,4 @@
-from sfa.infrastructure.repositories.position_projection import current_position, scope_position
+from sfa.infrastructure.repositories.position_projection import scope_reference_position, scope_position
 from datetime import date
 from unicodedata import combining, normalize
 
@@ -391,7 +391,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             select(
                 Player.id.label("player_id"),
                 Player.name.label("player_name"),
-                scope_position(scope, None, current_position(season=scope.sources[0].season, scope=scope)).label('position'),
+                scope_position(scope, None, scope_reference_position(scope=scope,season=SFASeasonScore.season,
+                    team_id=Team.id,competition_id=SFASeasonScore.competition_id,
+                    fallback=_legacy_position_expression(Team.name,SFASeasonScore.competition_id))).label('position'),
                 Player.photo_url,
                 Team.name.label("team_name"),
                 Competition.name.label("competition_name"),
@@ -790,8 +792,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         ).label("rank")
         position_teams = _latest_verified_team(season=season, scope=_scope, competition_id=competition_id)
         position_team = aliased(Team)
-        resolved_position = (scope_position(_scope, competition_id,
-            current_position(season=season, competition_id=competition_id, scope=_scope)) if _scope is not None
+        resolved_position = (scope_position(_scope, competition_id,scope_reference_position(
+            scope=_scope,season=season,team_id=position_team.id,competition_id=agg.c.best_competition_id,
+            fallback=_legacy_position_expression(position_team.name,agg.c.best_competition_id))) if _scope is not None
             else _legacy_position_expression(position_team.name, agg.c.best_competition_id) if position is not None
             else Player.position)
         selected_columns = [
@@ -833,8 +836,12 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             stmt = stmt.outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
         if honor_agg is not None:
             stmt = stmt.outerjoin(honor_agg, Player.id == honor_agg.c.player_id)
-        stmt = stmt.where(Player.id.in_(_positive_total_player_ids(
-            agg, contextual_total_pts, honor_agg, 0 if name and name.strip() else min_matches)))
+        # Reuse the joined aggregate rather than aggregating the same scope a
+        # second time in an IN subquery. List and count share this predicate.
+        stmt = stmt.where(
+            contextual_total_pts > 0,
+            agg.c.sum_matches >= (0 if name and name.strip() else min_matches),
+        )
         if position is not None:
             stmt = stmt.where(resolved_position == position)
         stmt = stmt.order_by(*_stable_ranking_order(order_col, contextual_total_pts))
@@ -1361,8 +1368,10 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
             .order_by(*_stable_ranking_order(order_col, agg.c.sum_pts))
         )
-        stmt = stmt.where(Player.id.in_(_positive_total_player_ids(
-            agg, agg.c.sum_pts, None, 0 if name and name.strip() else min_matches)))
+        stmt = stmt.where(
+            agg.c.sum_pts > 0,
+            agg.c.sum_matches >= (0 if name and name.strip() else min_matches),
+        )
         if position is not None:
             stmt = stmt.where(_legacy_position_expression(Team.name, best_comp.c.competition_id) == position)
         if bonus_label in {"Promesa", "Veterano"}:
