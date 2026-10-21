@@ -220,7 +220,7 @@ export default function PlayerPage() {
           <ProfileCompetitions fixtures={fixtures} />
         </div>
 
-        <ProfileFixtures fixtures={fixtures} team={player.team} season={matchSeason} />
+        <ProfileFixtures fixtures={fixtures} events={events} team={player.team} season={matchSeason} />
 
       </div>
     </main>

@@ -583,42 +583,182 @@ export function ProfileStyle({ playerId, scope, available, stats, matches }: {
   )
 }
 
-/* ── Fixture table ──────────────────────────────────────────────────────── */
+/* ── Fixture table: sort, filter by competition, expandable points summary ── */
 
 const TABLE_PREVIEW = 8
 
-export function ProfileFixtures({ fixtures, team, season }: { fixtures: PlayerFixture[]; team: string; season: string }) {
-  const [expanded, setExpanded] = useState(false)
-  const ordered = [...fixtures].sort((a, b) => b.played_at.localeCompare(a.played_at))
-  if (ordered.length === 0) return null
-  const visible = expanded ? ordered : ordered.slice(0, TABLE_PREVIEW)
+type FixtureSort = 'recent' | 'best'
+
+const ACTION_NAMES: Record<string, string> = {
+  goal: 'Gol', goal_penalty: 'Gol de penal', assist: 'Asistencia', corner_assist: 'Córner asistido',
+}
+
+/** Plain-language reasons behind an action's value (no raw multipliers). */
+function actionReasons(event: PlayerEvent, ownTeam: string) {
+  const reasons: Array<{ text: string; up: boolean }> = []
+  const [home = 0, away = 0] = (event.score_before ?? '0:0').split(':').map(Number)
+  const diff = event.home_team === ownTeam ? home - away : away - home
+  if (event.m3 > 1) reasons.push({ text: diff < 0 ? 'Perdiendo' : diff === 0 ? 'Empate' : 'Momento decisivo', up: true })
+  else if (event.m3 < 1) reasons.push({ text: 'Partido resuelto', up: false })
+  if (event.m2 > 1) reasons.push({ text: 'Fase de peso', up: true })
+  if (event.m1 >= 1) reasons.push({ text: 'Rival de nivel', up: true })
+  else if (event.m1 < 0.75) reasons.push({ text: 'Rival menor', up: false })
+  if (event.mvisit > 1) reasons.push({ text: 'Fuera de casa', up: true })
+  if (event.m4 > 1) reasons.push({ text: 'Remate difícil', up: true })
+  return reasons
+}
+
+function FixtureSummary({ fixture, events, team }: { fixture: PlayerFixture; events: PlayerEvent[]; team: string }) {
+  const ownTeam = fixture.player_team ?? team
+  const actions = events
+    .filter((event) => event.fixture_id === fixture.fixture_id && event.event_type !== 'stats' && event.pts > 0)
+    .sort((a, b) => a.minute - b.minute)
+  const parts = [
+    { key: 'stats', label: 'Juego', value: fixture.breakdown?.stats?.pts ?? 0 },
+    { key: 'goal', label: 'Goles', value: (fixture.breakdown?.goal?.pts ?? 0) + (fixture.breakdown?.goal_penalty?.pts ?? 0) },
+    { key: 'assist', label: 'Asistencias', value: (fixture.breakdown?.assist?.pts ?? 0) + (fixture.breakdown?.corner_assist?.pts ?? 0) },
+  ].filter((part) => part.value !== 0)
+  const positive = parts.reduce((sum, part) => sum + Math.max(part.value, 0), 0) || 1
+  const passPct = fixture.passes_total > 0 ? Math.round((fixture.passes_accurate / fixture.passes_total) * 100) : null
+  const stats = [
+    { label: 'Remates', value: `${fixture.shots_total} (${fixture.shots_on} a puerta)` },
+    { label: 'Pases', value: `${fixture.passes_accurate}/${fixture.passes_total}${passPct != null ? ` · ${passPct} %` : ''}` },
+    { label: 'Pases clave', value: fixture.passes_key },
+    { label: 'Regates', value: fixture.dribbles_won },
+    { label: 'Duelos ganados', value: fixture.duels_won },
+    { label: 'Entradas + intercep.', value: fixture.tackles_won + fixture.interceptions },
+  ]
+
+  return (
+    <div className="pf-fxsum">
+      <div className="pf-fxsum__col">
+        <span className="pf-eyebrow">De dónde salen sus {pts(fixture.sfa_pts)} pts</span>
+        <div className="pf-fxsum__stack" aria-hidden="true">
+          {parts.map((part) => part.value > 0 && <i key={part.key} className={`is-${part.key}`} style={{ flexGrow: part.value }} />)}
+        </div>
+        <ul className="pf-fxsum__parts">
+          {parts.map((part) => (
+            <li key={part.key}>
+              <i className={`is-${part.key}`} aria-hidden="true" />
+              <span>{part.label}</span>
+              <b>{pts(part.value)}</b>
+              <em>{part.value > 0 ? `${Math.round((part.value / positive) * 100)} %` : ''}</em>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="pf-fxsum__col">
+        <span className="pf-eyebrow">{actions.length ? 'Acciones decisivas' : 'Su partido'}</span>
+        {actions.length > 0 ? (
+          <ul className="pf-fxsum__actions">
+            {actions.map((action) => (
+              <li key={action.id}>
+                <span className="pf-fxsum__min">{action.minute}'</span>
+                <span className="pf-fxsum__what">
+                  <strong>{ACTION_NAMES[action.event_type] ?? action.event_type}</strong>
+                  <span className="pf-fxsum__tags">
+                    {actionReasons(action, ownTeam).map((reason) => <em key={reason.text} className={reason.up ? 'is-up' : 'is-down'}>{reason.text}</em>)}
+                  </span>
+                </span>
+                <b>+{pts(action.pts)}</b>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="pf-fxsum__note">Sin goles ni asistencias: todos sus puntos salen del juego.</p>
+        )}
+        <dl className="pf-fxsum__stats">
+          {stats.map((stat) => <div key={stat.label}><dt>{stat.label}</dt><dd>{stat.value}</dd></div>)}
+        </dl>
+      </div>
+    </div>
+  )
+}
+
+export function ProfileFixtures({ fixtures, events, team, season }: { fixtures: PlayerFixture[]; events: PlayerEvent[]; team: string; season: string }) {
+  const [showAll, setShowAll] = useState(false)
+  const [sort, setSort] = useState<FixtureSort>('recent')
+  const [competition, setCompetition] = useState('')
+  const [open, setOpen] = useState<number | null>(null)
+  if (fixtures.length === 0) return null
+
+  const competitions = [...new Set(fixtures.map((fixture) => fixture.competition))]
+    .sort((a, b) => fixtures.filter((f) => f.competition === b).length - fixtures.filter((f) => f.competition === a).length)
+  const filtered = fixtures
+    .filter((fixture) => !competition || fixture.competition === competition)
+    .sort((a, b) => (sort === 'best' ? b.sfa_pts - a.sfa_pts : b.played_at.localeCompare(a.played_at)))
+  const visible = showAll ? filtered : filtered.slice(0, TABLE_PREVIEW)
 
   return (
     <section className="pf-panel" aria-labelledby="pf-fx-title">
-      <header className="pf-panel__head"><div><h2 id="pf-fx-title">Partidos</h2><p>{ordered.length} partidos con puntos SFA</p></div></header>
+      <header className="pf-panel__head">
+        <div><h2 id="pf-fx-title">Partidos</h2><p>{filtered.length} partidos con puntos SFA · pulsa uno para ver su resumen</p></div>
+      </header>
+
+      <div className="pf-fx-tools">
+        <div className="tp-segment" role="group" aria-label="Ordenar partidos">
+          <button type="button" className={sort === 'recent' ? 'is-active' : undefined} aria-pressed={sort === 'recent'} onClick={() => setSort('recent')}>Recientes</button>
+          <button type="button" className={sort === 'best' ? 'is-active' : undefined} aria-pressed={sort === 'best'} onClick={() => setSort('best')}>Mejores</button>
+        </div>
+        {competitions.length > 1 && (
+          <div className="tp-segment pf-fx-comps" role="group" aria-label="Filtrar por competición">
+            <button type="button" className={!competition ? 'is-active' : undefined} aria-pressed={!competition} onClick={() => setCompetition('')}>Todas</button>
+            {competitions.map((name) => {
+              const logo = tournamentCompetitionLogoByName(name)
+              return (
+                <button type="button" key={name} className={competition === name ? 'is-active' : undefined} aria-pressed={competition === name} onClick={() => setCompetition(name)}>
+                  {logo && <span className="tp-tile"><img src={logo} alt="" /></span>}
+                  {competitionLabel(name)}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       <div className="pf-table" role="table" aria-label="Partidos de la temporada">
         <div className="pf-table__head" role="row">
           <span role="columnheader">Fecha</span><span role="columnheader">Rival</span><span role="columnheader">Min</span>
           <span role="columnheader">G</span><span role="columnheader">A</span><span role="columnheader">Nota</span><span role="columnheader">Pts SFA</span>
         </div>
-        {visible.map((fixture) => {
+        {visible.map((fixture, index) => {
           const rival = rivalOf(fixture, team)
+          const isOpen = open === fixture.fixture_id
+          const href = matchHref(fixture, season)
           return (
-            <MaybeLink key={fixture.fixture_id} to={matchHref(fixture, season)} className="pf-table__row">
-              <span className="pf-table__date"><b>{shortDate(fixture.played_at)}</b><small>{competitionLabel(fixture.competition)}</small></span>
-              <span className="pf-table__rival"><small>{rival.home ? 'vs' : '@'}</small><Crest src={rival.logo} name={rival.name} size={20} /><span>{rival.name}</span></span>
-              <span>{fixture.minutes}'</span>
-              <span className={goalsIn(fixture) ? 'is-hit' : undefined}>{goalsIn(fixture)}</span>
-              <span className={assistsIn(fixture) ? 'is-hit' : undefined}>{assistsIn(fixture)}</span>
-              <span>{fixture.rating != null ? one(fixture.rating) : '—'}</span>
-              <b className="pf-table__pts">{pts(fixture.sfa_pts)}</b>
-            </MaybeLink>
+            <div key={fixture.fixture_id} className={`pf-fx${isOpen ? ' is-open' : ''}`}>
+              <button
+                type="button"
+                className="pf-table__row"
+                onClick={() => setOpen(isOpen ? null : fixture.fixture_id)}
+                aria-expanded={isOpen}
+                aria-controls={`pf-fxsum-${fixture.fixture_id}`}
+              >
+                <span className="pf-table__date">
+                  {sort === 'best' && <i className="pf-fx__rank">{index + 1}</i>}
+                  <b>{shortDate(fixture.played_at)}</b><small>{competitionLabel(fixture.competition)}</small>
+                </span>
+                <span className="pf-table__rival"><small className={rival.home ? 'is-home' : 'is-away'} title={rival.home ? 'Local: jugó en casa' : 'Visitante: jugó fuera de casa'} aria-label={rival.home ? 'Local' : 'Visitante'}>{rival.home ? 'L' : 'V'}</small><Crest src={rival.logo} name={rival.name} size={20} /><span>{rival.name}</span></span>
+                <span>{fixture.minutes}'</span>
+                <span className={goalsIn(fixture) ? 'is-hit' : undefined}>{goalsIn(fixture)}</span>
+                <span className={assistsIn(fixture) ? 'is-hit' : undefined}>{assistsIn(fixture)}</span>
+                <span>{fixture.rating != null ? one(fixture.rating) : '—'}</span>
+                <b className="pf-table__pts">{pts(fixture.sfa_pts)}<svg className="pf-fx__chev" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg></b>
+              </button>
+              {isOpen && (
+                <div className="pf-fx__body" id={`pf-fxsum-${fixture.fixture_id}`}>
+                  <FixtureSummary fixture={fixture} events={events} team={team} />
+                  {href && <Link to={href} className="pf-fx__link">Ver el partido completo →</Link>}
+                </div>
+              )}
+            </div>
           )
         })}
       </div>
-      {ordered.length > TABLE_PREVIEW && (
-        <button type="button" className="pf-more" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
-          {expanded ? 'Ver menos' : `Ver los ${ordered.length} partidos`}
+      {filtered.length > TABLE_PREVIEW && (
+        <button type="button" className="pf-more" onClick={() => setShowAll((value) => !value)} aria-expanded={showAll}>
+          {showAll ? 'Ver menos' : `Ver los ${filtered.length} partidos`}
         </button>
       )}
     </section>
