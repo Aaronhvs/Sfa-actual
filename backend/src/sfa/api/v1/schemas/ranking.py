@@ -32,6 +32,7 @@ class RankingPaginationSchema(BaseModel):
 
 
 class RankingResponseSchema(BaseModel):
+    min_matches: int = 1
     season: str
     scope: str | None = None
     total: int

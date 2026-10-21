@@ -106,6 +106,7 @@ export interface RankedPlayer {
 }
 
 export interface RankingResponse {
+  min_matches?: number
   season: string
   scope: string | null
   total: number

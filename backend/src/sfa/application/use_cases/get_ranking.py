@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from sfa.domain.ports import RankedPlayerDTO, SeasonRepositoryProtocol, SFAScoreRepositoryProtocol
+from sfa.domain.ranking_eligibility import ranking_min_matches
 
 ALL_SEASONS_SENTINEL = "all"
 DEFAULT_PAGE = 1
@@ -28,6 +29,7 @@ class RankingResult:
     total: int
     ranking: list[RankedPlayerDTO]
     pagination: RankingPagination
+    min_matches: int = 1
 
 
 @runtime_checkable
@@ -73,6 +75,8 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
         rules_version_id: int | None = None,
         use_total: bool = False,
     ) -> RankingResult:
+        name = name.strip() if name and name.strip() else None
+        min_matches = 0 if name else 1
         page = max(page, 1)
         limit = min(max(limit, 1), MAX_LIMIT)
         offset = max(offset, 0) if offset is not None else (page - 1) * limit
@@ -95,11 +99,14 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                     total=0,
                     ranking=[],
                     pagination=self._pagination(page, limit, 0),
+                    min_matches=min_matches,
                 )
             rules_version_id = await self._score_repo.resolve_rules_version_id_for_scope(
                 resolved_scope,
                 rules_version_id,
             )
+            min_matches = 0 if name else ranking_min_matches(await self._score_repo.get_ranking_max_matches(
+                scope=resolved_scope, competition_id=competition_id, rules_version_id=rules_version_id))
             ranking = await self._score_repo.get_ranking_for_scope(
                 resolved_scope,
                 position,
@@ -110,6 +117,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                 bonus_label,
                 rules_version_id,
                 use_total,
+                min_matches=min_matches,
             )
             total = await self._score_repo.get_ranking_total_for_scope(
                 resolved_scope,
@@ -118,6 +126,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                 name,
                 bonus_label,
                 rules_version_id,
+                use_total=use_total, min_matches=min_matches,
             )
             return RankingResult(
                 season=resolved_scope.sources[0].season,
@@ -125,6 +134,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                 total=total,
                 ranking=ranking,
                 pagination=self._pagination(page, limit, total),
+                min_matches=min_matches,
             )
         elif season is None:
             season = await self._score_repo.latest_season()
@@ -136,14 +146,19 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                 total=0,
                 ranking=[],
                 pagination=self._pagination(page, limit, 0),
+                min_matches=min_matches,
             )
 
         if season == ALL_SEASONS_SENTINEL:
+            min_matches = 0 if name else ranking_min_matches(await self._score_repo.get_ranking_max_matches(
+                competition_id=competition_id, rules_version_id=rules_version_id))
             ranking = await self._score_repo.get_ranking_all_seasons(
                 position, competition_id, limit, offset, name, bonus_label, rules_version_id, use_total,
+                min_matches=min_matches,
             )
             total = await self._score_repo.get_ranking_total_all_seasons(
                 position, competition_id, name, bonus_label, rules_version_id,
+                use_total=use_total, min_matches=min_matches,
             )
             return RankingResult(
                 season=ALL_SEASONS_SENTINEL,
@@ -151,6 +166,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                 total=total,
                 ranking=ranking,
                 pagination=self._pagination(page, limit, total),
+                min_matches=min_matches,
             )
 
         if not explicit_rules_version:
@@ -158,11 +174,15 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
                 season, rules_version_id,
             )
 
+        min_matches = 0 if name else ranking_min_matches(await self._score_repo.get_ranking_max_matches(
+            season=season, competition_id=competition_id, rules_version_id=rules_version_id))
         ranking = await self._score_repo.get_ranking(
             season, position, competition_id, limit, offset, name, bonus_label, rules_version_id, use_total,
+            min_matches=min_matches,
         )
         total = await self._score_repo.get_ranking_total(
             season, position, competition_id, name, bonus_label, rules_version_id,
+            use_total=use_total, min_matches=min_matches,
         )
         return RankingResult(
             season=season,
@@ -170,6 +190,7 @@ class GetRankingUseCase(GetRankingUseCaseProtocol):
             total=total,
             ranking=ranking,
             pagination=self._pagination(page, limit, total),
+            min_matches=min_matches,
         )
 
     def _pagination(self, page: int, limit: int, total_items: int) -> RankingPagination:

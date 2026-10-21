@@ -76,6 +76,7 @@ export default function RankingPage() {
   const [rankingExplanations, setRankingExplanations] = useState<RankingPlayerExplanation[]>([])
   const [selectedAnalysis, setSelectedAnalysis] = useState<RankingPlayerExplanation | null>(null)
   const [totalPlayers, setTotalPlayers] = useState(0)
+  const [minMatches, setMinMatches] = useState<number | undefined>()
   const [initialLoading, setInitialLoading] = useState(true)
   const [isContextRefreshing, setIsContextRefreshing] = useState(false)
   const [isListRefreshing, setIsListRefreshing] = useState(false)
@@ -219,18 +220,21 @@ export default function RankingPage() {
           podium: [] as RankedPlayer[],
           list: data.ranking,
           total: data.total,
+          minMatches: data.min_matches,
         }))
       : hasCurrentPodium
         ? requestRanking(LIST_PAGE_SIZE, listOffset).then((data) => ({
             podium: null,
             list: data.ranking,
             total: data.total,
+            minMatches: data.min_matches,
           }))
         : page === 0
           ? requestRanking(PODIUM_SIZE + LIST_PAGE_SIZE, 0).then((data) => ({
               podium: data.ranking.slice(0, PODIUM_SIZE),
               list: data.ranking.slice(PODIUM_SIZE),
               total: data.total,
+            minMatches: data.min_matches,
             }))
           : Promise.all([
               requestRanking(PODIUM_SIZE, 0),
@@ -239,10 +243,11 @@ export default function RankingPage() {
               podium: podiumData.ranking,
               list: listData.ranking,
               total: listData.total,
+              minMatches: listData.min_matches,
             }))
 
     request
-      .then(({ podium, list, total }) => {
+      .then(({ podium, list, total, minMatches }) => {
         if (controller.signal.aborted || requestId !== rankingRequestIdRef.current) return
         hasRankingResultRef.current = true
         if (podium !== null) {
@@ -259,6 +264,7 @@ export default function RankingPage() {
         setCommittedPage(page)
         setCommittedDirection(pageDir)
         setTotalPlayers(total)
+        setMinMatches(minMatches)
         setInitialLoading(false)
         setIsContextRefreshing(false)
         setIsListRefreshing(false)
@@ -670,6 +676,13 @@ export default function RankingPage() {
               )}
             </div>
 
+            {minMatches !== undefined && (
+              <p className="rp-context-label" aria-live="polite">
+                {minMatches > 0
+                  ? `Se muestran jugadores con al menos ${minMatches} ${minMatches === 1 ? 'partido' : 'partidos'}.`
+                  : 'Búsqueda por nombre: sin mínimo de partidos.'}
+              </p>
+            )}
             {!isWcSeason && (
               <FilterBar
                 position={position}

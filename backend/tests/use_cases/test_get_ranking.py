@@ -25,8 +25,11 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_competitions_for_player_season(self, player_id, season):
         return []
 
+    async def get_ranking_max_matches(self, **scope):
+        return 1
+
     async def get_ranking(self, season, position=None, competition_id=None, limit=50, offset=0, name=None, bonus_label=None,
-                          rules_version_id=None, use_total=False):
+                          rules_version_id=None, use_total=False, **eligibility):
         self.last_ranking_call = {
             "season": season,
             "position": position,
@@ -41,7 +44,7 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
         return self._ranking
 
     async def get_ranking_total(self, season, position=None, competition_id=None, name=None, bonus_label=None,
-                                rules_version_id=None):
+                                rules_version_id=None, **eligibility):
         return self._total
 
     async def latest_season(self):
@@ -57,11 +60,11 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
         return (0.0, None)
 
     async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50, offset=0,
-                                      name=None, bonus_label=None, rules_version_id=None, use_total=False):
+                                      name=None, bonus_label=None, rules_version_id=None, use_total=False, **eligibility):
         return self._ranking
 
     async def get_ranking_total_all_seasons(self, position=None, competition_id=None,
-                                            name=None, bonus_label=None, rules_version_id=None):
+                                            name=None, bonus_label=None, rules_version_id=None, **eligibility):
         return self._total
 
     async def get_available_seasons_for_player(self, player_id):

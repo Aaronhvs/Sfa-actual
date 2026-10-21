@@ -295,6 +295,11 @@ class SFAScoreRepositoryProtocol(Protocol):
         """Lista de nombres de competition donde el jugador tiene score."""
         ...
 
+    async def get_ranking_max_matches(
+        self, *, season: str | None = None, scope: AwardPeriodScope | None = None,
+        competition_id: int | None = None, rules_version_id: int | None = None,
+    ) -> int: ...
+
     async def get_ranking(
         self,
         season: str,
@@ -306,6 +311,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
+        *, min_matches: int = 1,
     ) -> list[RankedPlayerDTO]: ...
 
     async def get_ranking_total(
@@ -316,6 +322,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         name: str | None = None,
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
+        *, use_total: bool = False, min_matches: int = 1,
     ) -> int:
         """Total de jugadores en el ranking (sin limit)."""
         ...
@@ -331,6 +338,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
+        *, min_matches: int = 1,
     ) -> list[RankedPlayerDTO]: ...
 
     async def get_ranking_total_for_scope(
@@ -341,6 +349,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         name: str | None = None,
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
+        *, use_total: bool = False, min_matches: int = 1,
     ) -> int: ...
 
     async def resolve_rules_version_id_for_scope(
@@ -375,6 +384,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
         use_total: bool = False,
+        *, min_matches: int = 1,
     ) -> list[RankedPlayerDTO]: ...
 
     async def get_ranking_total_all_seasons(
@@ -384,6 +394,7 @@ class SFAScoreRepositoryProtocol(Protocol):
         name: str | None = None,
         bonus_label: str | None = None,
         rules_version_id: int | None = None,
+        *, use_total: bool = False, min_matches: int = 1,
     ) -> int: ...
 
     async def resolve_rules_version_id_for_season(

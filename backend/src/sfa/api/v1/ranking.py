@@ -65,6 +65,7 @@ async def get_ranking(
         season=result.season,
         scope=result.scope,
         total=result.total,
+        min_matches=result.min_matches,
         pagination=RankingPaginationSchema(
             page=result.pagination.page,
             limit=result.pagination.limit,
