@@ -21,6 +21,8 @@ from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.ingestion.models import IngestionLog
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
+from sfa.infrastructure.models.player_name_aliases import PlayerNameAlias
+from sfa.domain.player_name_aliases import normalize_search_name
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 from sfa.infrastructure.models.standings.models import StandingSnapshot
 from sfa.infrastructure.models.teams.models import Team
@@ -118,6 +120,7 @@ class IngestionRepository(IngestionRepositoryPort):
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
+        name_aliases: tuple[str, ...] = (),
     ) -> int:
         if external_id <= 0:
             raise ValueError("player external_id must be a positive integer")
@@ -146,7 +149,16 @@ class IngestionRepository(IngestionRepositoryPort):
         ).returning(Player.id)
         result = await self._session.execute(stmt)
         await self._session.flush()
-        return result.scalar_one()
+        player_id = result.scalar_one()
+        observed = {normalize_search_name(v): " ".join(v.split()) for v in (name, *name_aliases)
+                    if v and normalize_search_name(v) and len(v) <= 250}
+        if observed:
+            await self._session.execute(pg_insert(PlayerNameAlias).values([
+                {"player_id": player_id, "external_player_id": external_id, "provider": "api-football",
+                 "alias": value, "normalized_alias": key, "source_ref": "api-football-v3/fixtures/players",
+                 "captured_at": datetime.now(timezone.utc)} for key, value in observed.items()
+            ]).on_conflict_do_nothing(constraint="uq_player_name_alias"))
+        return player_id
 
     async def upsert_fixture(
         self,

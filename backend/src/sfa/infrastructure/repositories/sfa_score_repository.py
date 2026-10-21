@@ -1,4 +1,5 @@
 from sfa.infrastructure.repositories.position_projection import scope_reference_position, scope_position
+from sfa.infrastructure.repositories.player_name_search import player_name_filter
 from datetime import date
 from unicodedata import combining, normalize
 
@@ -872,7 +873,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 (await self._session.execute(matching_team_stmt)).scalars().all()
             )
             sub = stmt.subquery()
-            name_filter = _unaccent_ilike(sub.c.player_name, name)
+            name_filter = player_name_filter(sub.c.player_id, sub.c.player_name, name)
             if matching_team_ids:
                 name_filter = or_(name_filter, sub.c.player_id.in_(matching_team_ids))
             final = (
@@ -1390,7 +1391,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             sub = stmt.subquery()
             final = (
                 select(sub)
-                .where(_player_or_team_name_filter(sub.c.player_name, sub.c.team_name, name))
+                .where(or_(player_name_filter(sub.c.player_id, sub.c.player_name, name),
+                           _any_unaccent_ilike(sub.c.team_name, _team_search_terms(name))))
                 .order_by(sub.c.rank.asc(), sub.c.total_pts.desc(), sub.c.player_id.asc())
 
             )

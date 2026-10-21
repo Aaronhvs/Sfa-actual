@@ -1,5 +1,23 @@
 # Plan: 0065 — Sistema global y continuo de posiciones verificables
 
+## Paridad multi-batch antes del siguiente lote
+
+- [ ] Capturar published_corrections compactos en bloque: status/version/revisión, decisiones y fragments de metadata after-image, bonos protegidos y ownership de fila. Misma snapshot RR/fingerprint; no consultar manifests completos por cada score/bono.
+- [ ] Validar position_decision contra after-image publicada, assignment aceptada y fixture/contexto/intervalo/allowlist/version; fecha histórica, no vigencia actual. Solo entonces reinyectar metadata canónica y comparar detalles completos y todos los números. Tests de tags desconocidos/manipulados/batch revertido y alteración numérica.
+- [ ] Baseline de bono protegido exige igualdad de fila completa con after-image vigente; registrar reviewed_frozen_baseline y delta del modelo actual. Bonos no protegidos siguen paridad pura; rollups/ranking validan sumas reales sin excepciones numéricas.
+- [ ] Limitar contrafactual a componentes afectados: fuera conservar baseline; dentro recalcular íntegros pares/bonos/rollups y journalizar cambios de filas previamente protegidas. Verificar ausencia real de achievements si corresponde, no asumirla para Espart.
+- [ ] Incluir precedencia explícita por fila en lote sucesor con before igual a after vigente previa; detectar cabezas incompatibles. Aplicar/revertir sucesor deja lote previo publicado y sus otras filas intactas; revert anterior con sucesor dependiente rechaza. No elegir propietario solo por fecha.
+- [ ] Clon con batch previo publicado pasa baseline auditado auténtico, rechaza corrupción y demuestra segundo batch/cierre/revert coherentes antes de publicar Espart con CAS de captura fresca.
+
+## Delta prioritario Espart: corregir conflicto y publicar lote adicional
+
+- [ ] Inspeccionar versiones y exclusión del fixture1635702 para1022093/API568001 por IDs; distinguir conflicto de fuente de ambigüedad intrínseca. No modificar Player.position ni convertir mayoría en aceptación automática.
+- [ ] Seleccionar/importar versión definitiva validada ya conservada o refresh único acotado si falta, con cuota/serialidad y restauración operativa; arbitraje durable conserva originales/fechas/proofs y empate incompatible permanece bloqueado.
+- [ ] Repetir perfil con gates existentes y denominadores reales; solo si queda elegible adoptar LAT como clasificación SFA del scope y FB/LEFT como detalle sustentado. Selección genérica permite otros IDs respaldados por la misma corrección sin hardcodes.
+- [ ] Capturar baseline fresco posterior a batches actuales y preparar batch adicional con allowlists LAT verificadas, cierre de bonos/pares y paridad/CAS completa. No reusar manifest viejo ni repetir261; una clasificación ya ocupada exige supersession explícita, no duplicado.
+- [ ] Clon con batch previo publicado: aplicar/idempotencia/revert de lote adicional conserva valores y journal del primero; guardas0055 e índices0056 activos, sin degradación de hotfixELO ni0066.
+- [ ] Publicar lote adicional autorizado y verificar etiqueta LAT/filtro/count/ficha/actuaciones y puntos reales, explicaciones/cache afectados y scope season-2026 exclusivo. Reportar si sigue un gate fallido sin afirmar aplicado; no tocar otros años ni presentar la etiqueta como habitual verificado.
+
 ## Hotfix prioritario ELO/live sin perder el piloto publicado
 
 - [ ] Correlacionar PID/consulta/CPU y plan del replay con los triggers activos; capturar backlog/propietario y hashes del batch publicado antes de remediar. No desactivar guardas ni usar privilegio publisher para ingestas.

@@ -12,6 +12,7 @@ from sfa.domain.ingestion_ports import (
 )
 from sfa.domain.name_matching import event_matches_player as _event_matches_player
 from sfa.domain.position_mapping import KNOWN_POSITIONS, map_position
+from sfa.domain.player_name_aliases import PlayerNameProfileDTO
 from sfa.domain.scoring.services import (
     ScoreTimeline,
     ShootoutDecider,
@@ -284,11 +285,18 @@ class IngestCompetitionUseCase:
                                 ps.player_name in KNOWN_POSITIONS
                                 or position != Position.MC
                             )
+                            name_options = {}
+                            if ps.player_full_name or (ps.player_first_name and ps.player_last_name):
+                                name_options["name_aliases"] = PlayerNameProfileDTO(
+                                    ps.player_external_id, ps.player_name, ps.player_first_name,
+                                    ps.player_last_name, ps.player_full_name,
+                                ).aliases()
                             player_db_id = await self._repo.upsert_player(
                                 ps.player_external_id, ps.player_name,
                                 position,
                                 photo_url=ps.photo_url,
                                 update_position=update_pos,
+                                **name_options,
                             )
 
                             await self._repo.upsert_player_stats(

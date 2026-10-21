@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from collections import defaultdict
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sfa.application.use_cases.calculate_achievement_bonuses import (
@@ -42,6 +43,82 @@ class ActiveSeasonPositionImpactResult:
     rankings_json: str
 
 
+def _published_artifacts(snapshot):
+    """Verify exact published artifacts before replaying their audit metadata.
+
+    This bounded increment supports disjoint batches. Overlapping artifact
+    owners require explicit succession and must not be silently resolved.
+    """
+    owners = {"events": {}, "bonuses": {}}
+    for batch in snapshot.get("published_corrections", []):
+        if batch["status"] != "published" or batch["rules_version_id"] != snapshot["version"]:
+            continue
+        for kind in owners:
+            for row in batch["after_image"].get(kind, []):
+                if row["id"] in owners[kind]:
+                    raise ValueError("Overlapping published artifacts require explicit succession support")
+                owners[kind][row["id"]] = (row, batch)
+    pairs = {(r['season'], r['competition_id']) for r in snapshot['rollups']}
+    if snapshot.get('scope'):
+        pairs = {(source['season'], c) for source in snapshot['scope']['sources'] for c in source['competition_ids']}
+    for kind, collection in (('events', 'scores'), ('bonuses', 'bonuses')):
+        current = {r.get('id'): r for r in snapshot[collection]}
+        for row_id, (expected, _) in owners[kind].items():
+            if (expected['season'], expected['competition_id']) in pairs and current.get(row_id) != expected:
+                raise ValueError('Published artifact is missing or differs from its authoritative after-image')
+    tags, bonuses = {}, {}
+    memberships = defaultdict(set)
+    for stat in snapshot['stats']:
+        memberships[stat['player_id'], stat['fixture_id']].add(stat['team_id'])
+    for old in snapshot["scores"]:
+        tag = old["calculation_details"].get("position_decision")
+        if not tag:
+            continue
+        entry = owners["events"].get(old["id"])
+        if not entry or entry[0] != old:
+            continue
+        batch = entry[1]
+        image = batch["after_image"]
+        teams = memberships[old['player_id'], old['fixture_id']]
+        if len(teams) != 1:
+            continue
+        team_id = next(iter(teams))
+        assignments = [a for a in image.get("assignments", []) if
+            a["player_id"] == old["player_id"] and a["revision_id"] == tag.get("decision_id")
+            and a in snapshot.get("assignments", []) and a["status"] == "accepted"
+            and a["assertion_kind"] == "curated_fixture_scoring_role"
+            and a["publication_batch_id"] == batch["batch_id"]
+            and a["position"] == old["position"] and a["season"] == old["season"]
+            and a["team_id"] == team_id and old["fixture_id"] in (a["applicable_fixture_ids"] or [])]
+        classes = [c for c in image.get("classifications", []) if
+            c["player_id"] == old["player_id"] and c["decision_id"] == tag.get("decision_id")
+            and c in snapshot.get("scope_classifications", []) and c["batch_id"] == batch["batch_id"]
+            and c["position"] == old["position"] and c["scope_key"] == tag.get("scope_key")
+            and c["team_id"] == team_id and old["competition_id"] in c["scope_competition_ids"]]
+        if len(assignments) != 1 or len(classes) != 1:
+            continue
+        a = assignments[0]
+        fixture = next((f for f in snapshot["fixtures"] if f["id"] == old["fixture_id"]), None)
+        expected = {"decision_id": a["revision_id"], "assertion_kind": a["assertion_kind"],
+                    "source_ref": a["source_ref"], "policy": a["decision_policy"],
+                    "accepted_at": a["effective_until"], "fixture_id": old["fixture_id"],
+                    "coverage": classes[0]["definition"]["coverage"], "scope_key": classes[0]["scope_key"]}
+        try:
+            valid_time = fixture and (datetime.fromisoformat(a["effective_from"]) <= datetime.fromisoformat(fixture["played_at"])
+                < datetime.fromisoformat(a["effective_until"]))
+            if datetime.fromisoformat(tag.get("accepted_at", "")) == datetime.fromisoformat(expected["accepted_at"]):
+                expected["accepted_at"] = tag["accepted_at"]
+        except (ValueError, TypeError):
+            continue
+        if valid_time and tag == expected:
+            tags[old["event_id"]] = tag
+    for old in snapshot["bonuses"]:
+        entry = owners["bonuses"].get(old.get("id"))
+        if entry and entry[0] == old:
+            bonuses[old["player_id"], old["achievement_id"]] = old
+    return tags, bonuses
+
+
 class SimulateActiveSeasonPositionImpactUseCase:
     def execute(self, snapshot: dict, *, catalog: list[dict],
                 observations: list[dict]) -> ActiveSeasonPositionImpactResult:
@@ -60,6 +137,7 @@ class SimulateActiveSeasonPositionImpactUseCase:
         b1 = _build_b1_contributions_map(raws)
         fields = ("base_points", "m1", "m2", "m3", "m4", "mvisit", "mrating",
                   "combined_before_clamp", "combined_after_clamp", "final_points")
+        verified_tags, protected_bonuses = _published_artifacts(snapshot)
         parity_errors, baseline, detail_mismatches = [], {}, []
         for event_id, old in stored.items():
             raw = raw_by_id.get(event_id)
@@ -80,6 +158,8 @@ class SimulateActiveSeasonPositionImpactUseCase:
                 parity_errors.append({"event_id": event_id, "differences": mismatch})
             else:
                 baseline[event_id] = before
+                if event_id in verified_tags:
+                    before.calculation_details["position_decision"] = deepcopy(verified_tags[event_id])
                 if before.calculation_details != old["calculation_details"]:
                     detail_mismatches.append(event_id)
         rolls = {(r["player_id"], r["competition_id"], r["season"]): r for r in snapshot["rollups"]}
@@ -138,6 +218,20 @@ class SimulateActiveSeasonPositionImpactUseCase:
 
         old_totals = {key: _money(r["total_pts"]) for key, r in rolls.items()}
         bonuses_before, bonus_details_before = achievement_bonuses(old_totals)
+        published_bonus_drift = [{"key": key, "published": b["final_bonus"],
+                                 "model": str(bonuses_before.get(key)),
+                                 "model_available": key in bonuses_before}
+                                for key, b in protected_bonuses.items()
+                                if bonuses_before.get(key) != _money(b["final_bonus"])]
+        protected_details = [{"player_id": b["player_id"], "achievement_id": b["achievement_id"],
+                              "rank_in_team": b["calculation_details"]["rank_in_team"],
+                              "bonus": b["final_bonus"], "competition_id": b["competition_id"],
+                              "season": b["season"], "calculation_details": b["calculation_details"]}
+                             for b in protected_bonuses.values()]
+        bonus_details_before = [b for b in bonus_details_before
+            if (b["player_id"], b["achievement_id"]) not in protected_bonuses] + protected_details
+        for key, b in protected_bonuses.items():
+            bonuses_before[key] = _money(b["final_bonus"])
         saved_bonuses = {(b["player_id"], b["achievement_id"]): _money(b["final_bonus"]) for b in snapshot["bonuses"]}
         bonus_errors = [{"key": key, "stored": str(saved_bonuses.get(key)), "replay": str(bonuses_before.get(key))}
                         for key in sorted(set(saved_bonuses) | set(bonuses_before))
@@ -145,7 +239,7 @@ class SimulateActiveSeasonPositionImpactUseCase:
         achievement_map = {a["id"]: a for a in snapshot["achievements"]}
         bonus_rollups = defaultdict(Decimal)
         for (pid, aid), value in saved_bonuses.items():
-            a = achievement_map[aid]
+            a = achievement_map.get(aid) or next(b for b in snapshot["bonuses"] if b["player_id"] == pid and b["achievement_id"] == aid)
             bonus_rollups[pid, a["competition_id"], a["season"]] += value
         bonus_rollup_errors = [{"key": key, "stored": r["achievement_bonus_pts"], "bonus_sum": str(bonus_rollups[key])}
                                for key, r in rolls.items() if _money(r["achievement_bonus_pts"]) != bonus_rollups[key]]
@@ -186,7 +280,8 @@ class SimulateActiveSeasonPositionImpactUseCase:
                           if s["event_id"] not in baseline or s["event_id"] in detail_mismatch_ids}
         blocked_scopes.update((e["key"][1], e["key"][2]) for e in rollup_errors + bonus_rollup_errors)
         for e in bonus_errors:
-            a = achievement_map[e["key"][1]]
+            a = achievement_map.get(e["key"][1]) or next(b for b in snapshot["bonuses"]
+                if (b["player_id"], b["achievement_id"]) == e["key"])
             blocked_scopes.add((a["competition_id"], a["season"]))
         deltas, event_deltas, excluded = defaultdict(Decimal), [], []
         changed_totals = dict(old_totals)
@@ -197,6 +292,8 @@ class SimulateActiveSeasonPositionImpactUseCase:
             scores = by_fixture[key]
             if not scores or all(s["position"] == proposal for s in scores):
                 continue
+            if any(s['event_id'] in verified_tags for s in scores):
+                raise ValueError("Touched published events require explicit succession support")
             f = fixtures[key[1]]
             if (f["competition_id"], f["season"]) in blocked_scopes:
                 excluded.append({"player_id": key[0], "fixture_id": key[1],
@@ -227,9 +324,19 @@ class SimulateActiveSeasonPositionImpactUseCase:
                                      "before_base": old["base_points"], "after_base": after.base_points,
                                      "action": old["action_type"]})
         bonuses_after, bonus_details_after = achievement_bonuses(changed_totals)
+        touched = {(rolls[key]["team_id"], key[1], key[2]) for key in changed_totals
+                   if changed_totals[key] != old_totals[key]}
+        if any((b["team_id"], b["competition_id"], b["season"]) in touched for b in protected_bonuses.values()):
+            raise ValueError("Touched published bonus component requires explicit succession support")
+        for key, b in protected_bonuses.items():
+            bonuses_after[key] = _money(b["final_bonus"])
+        bonus_details_after = [b for b in bonus_details_after
+            if (b["player_id"], b["achievement_id"]) not in protected_bonuses] + protected_details
         bonus_deltas = defaultdict(Decimal)
         bonus_changes = []
         for key, value in bonuses_after.items():
+            if key in protected_bonuses:
+                continue
             a = achievement_map[key[1]]
             if (a["competition_id"], a["season"]) in blocked_scopes:
                 continue
@@ -263,6 +370,9 @@ class SimulateActiveSeasonPositionImpactUseCase:
                   "changed_players": sum(r["delta"] != 0 for r in player_deltas),
                   "bonus_changes": bonus_changes, "bonus_rows_replayed": len(bonuses_before),
                   "bonus_details_before": bonus_details_before, "bonus_details_after": bonus_details_after,
+                  "verified_published_events": len(verified_tags),
+                  "verified_published_bonuses": len(protected_bonuses),
+                  "published_bonus_model_drift": published_bonus_drift,
                   "honors_invariant": ("Raw goals/assists/dribbles/duels/minutes unchanged; "
                                        "no position input; frozen honor rows retained"),
                   "top50_entries": sorted(top_after - top_before), "top50_exits": sorted(top_before - top_after),

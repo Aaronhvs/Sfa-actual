@@ -120,6 +120,13 @@ class SeasonPositionCorrectionRepository(PositionPublicationSQL):
             keys['lineup_arbitrations']='position_lineup_arbitrations'
         if 'scope_classifications' in snapshot:
             keys['scope_classifications']='position_scope_classifications'
+        if 'published_corrections' in snapshot:
+            actual = list((await self._session.execute(text(
+                "SELECT jsonb_build_object('batch_id',batch_id,'status',status,'published_at',published_at,"
+                "'rules_version_id',guard_rules_version_id,'after_image',after_image) "
+                "FROM position_correction_batches ORDER BY published_at,batch_id"))).scalars())
+            if canonical(actual) != canonical(snapshot['published_corrections']):
+                raise ValueError('Frozen capture no longer matches published correction journals')
         for key, table in keys.items():
             values = sorted(snapshot[key], key=lambda r: r['id'])
             # Expanding migration columns are not a change to a pre-migration input image.

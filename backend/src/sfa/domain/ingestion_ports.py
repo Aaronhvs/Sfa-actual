@@ -106,6 +106,9 @@ class PlayerStatsRawDTO:
     goals_conceded: int = 0
     photo_url: str | None = None
     rating: float | None = None
+    player_first_name: str | None = None
+    player_last_name: str | None = None
+    player_full_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -224,6 +227,7 @@ class IngestionRepositoryPort(Protocol):
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
+        name_aliases: tuple[str, ...] = (),
     ) -> int: ...
 
     async def upsert_fixture(

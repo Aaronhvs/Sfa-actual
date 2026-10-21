@@ -888,3 +888,9 @@ def get_active_season_position_snapshot_source(session):
     from sfa.infrastructure.repositories.player_event_score_repository import PlayerEventScoreRepository
     return ActiveSeasonPositionSnapshotSource(session,SeasonRepository(session),ScoringRulesVersionRepository(session),
                                              SFAScoreRepository(session),PlayerEventScoreRepository(session))
+
+
+def get_enrich_player_name_aliases_use_case(session):
+    from sfa.application.use_cases.enrich_player_name_aliases import EnrichPlayerNameAliasesUseCase
+    from sfa.infrastructure.repositories.player_name_alias_repository import PlayerNameAliasRepository
+    return EnrichPlayerNameAliasesUseCase(PlayerNameAliasRepository(session))

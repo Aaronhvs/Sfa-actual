@@ -31,7 +31,10 @@ from sfa.infrastructure.models.team_elo_seeds.models import TeamEloSeed
 from sfa.infrastructure.models.team_strengths.models import TeamStrength
 from sfa.infrastructure.models.teams.models import Team
 
+from sfa.infrastructure.models.player_name_aliases import PlayerNameAlias
+
 __all__ = [
+    "PlayerNameAlias",
     "Base",
     "Position",
     "EventType",

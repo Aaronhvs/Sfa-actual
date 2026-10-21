@@ -7,6 +7,7 @@ from datetime import date, datetime
 import httpx
 
 from sfa.domain.enrichment.birth_date_ports import PlayerBirthDateRawDTO
+from sfa.domain.player_name_aliases import PlayerNameProfileDTO, PlayerNameProfilePageDTO
 from sfa.domain.fixture_detail_ports import (
     FixtureDetailDTO,
     FixtureLineupPlayerDTO,
@@ -627,6 +628,9 @@ class APIFootballProvider:
                             saves=goals.get("saves") or 0,
                             goals_conceded=goals.get("conceded") or 0,
                             rating=rating,
+                            player_first_name=player_data.get("firstname"),
+                            player_last_name=player_data.get("lastname"),
+                            player_full_name=player_data.get("full_name"),
                         )
                     )
                 except (KeyError, TypeError, IndexError) as exc:
@@ -712,6 +716,9 @@ class APIFootballProvider:
                             saves=goals.get("saves") or 0,
                             goals_conceded=goals.get("conceded") or 0,
                             rating=rating,
+                            player_first_name=player_data.get("firstname"),
+                            player_last_name=player_data.get("lastname"),
+                            player_full_name=player_data.get("full_name"),
                         )
                     )
                 except (KeyError, TypeError, IndexError) as exc:
@@ -731,6 +738,37 @@ class APIFootballProvider:
             if dto is not None:
                 result.append(dto)
         return result
+
+    @staticmethod
+    def parse_player_name_profile(entry: dict) -> PlayerNameProfileDTO | None:
+        player = entry.get("player") or {}
+        external_id = player.get("id")
+        if type(external_id) is not int or external_id <= 0:
+            return None
+
+        def value(key):
+            text = player.get(key)
+            return text.strip() if isinstance(text, str) and text.strip() else None
+
+        return PlayerNameProfileDTO(external_id, value("name"), value("firstname"),
+                                    value("lastname"), value("full_name"))
+
+    async def fetch_player_name_profile(self, player_id: int, season: int) -> PlayerNameProfileDTO | None:
+        data = await self._get("players", {"id": player_id, "season": season})
+        for entry in data.get("response", []):
+            profile = self.parse_player_name_profile(entry)
+            if profile is not None and profile.external_id == player_id:
+                return profile
+        return None
+
+    async def fetch_team_name_profiles(self, team_id: int, season: int, page: int = 1) -> PlayerNameProfilePageDTO:
+        data = await self._get("players", {"team": team_id, "season": season, "page": page})
+        paging = data.get("paging") or {}
+        current, total = paging.get("current", page), paging.get("total", 1)
+        if type(current) is not int or type(total) is not int or current != page or not 1 <= current <= total <= 1000:
+            raise ValueError("Unexpected player profile pagination")
+        profiles = tuple(p for entry in data.get("response", []) if (p := self.parse_player_name_profile(entry)))
+        return PlayerNameProfilePageDTO(profiles, current, total)
 
     async def fetch_player_birth_date(
         self,

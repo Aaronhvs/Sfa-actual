@@ -1,0 +1,2545 @@
+{
+  "schema": "active-season-position-impact-v1",
+  "meta": {
+    "captured_at": "2026-10-21T23:13:07.197326+00:00",
+    "isolation": "repeatable read",
+    "read_only": "on"
+  },
+  "players": [
+    {
+      "birth_date": null,
+      "external_id": 568001,
+      "fbref_id": null,
+      "heatmap_url": null,
+      "id": 1022093,
+      "name": "X. Espart",
+      "photo_url": "https://media.api-sports.io/football/players/568001.png",
+      "position": "MC",
+      "position_source": "apifootball",
+      "sofascore_id": null,
+      "team_id": 1,
+      "understat_id": null
+    }
+  ],
+  "ranking": [
+    {
+      "matches_played": 8,
+      "player_id": 1022093,
+      "player_name": "X. Espart",
+      "position": "MC",
+      "rank": 139,
+      "total_pts": 7325.03
+    }
+  ],
+  "teams": [
+    {
+      "competition_id": 10,
+      "external_id": 529,
+      "id": 1,
+      "name": "Barcelona"
+    },
+    {
+      "competition_id": 1,
+      "external_id": 531,
+      "id": 4,
+      "name": "Athletic Club"
+    },
+    {
+      "competition_id": 10,
+      "external_id": 543,
+      "id": 6,
+      "name": "Real Betis"
+    },
+    {
+      "competition_id": 1,
+      "external_id": 728,
+      "id": 8,
+      "name": "Rayo Vallecano"
+    },
+    {
+      "competition_id": 1,
+      "external_id": 532,
+      "id": 12,
+      "name": "Valencia"
+    },
+    {
+      "competition_id": 1,
+      "external_id": 546,
+      "id": 13,
+      "name": "Getafe"
+    },
+    {
+      "competition_id": 10,
+      "external_id": 85,
+      "id": 99,
+      "name": "Paris Saint Germain"
+    },
+    {
+      "competition_id": 1,
+      "external_id": 797,
+      "id": 495,
+      "name": "Elche"
+    },
+    {
+      "competition_id": 1,
+      "external_id": 539,
+      "id": 8378,
+      "name": "Levante"
+    }
+  ],
+  "competitions": [
+    {
+      "competition_factor": 1.0,
+      "country": "ESP",
+      "id": 1,
+      "name": "La Liga",
+      "participant_kind": "club"
+    },
+    {
+      "competition_factor": 1.5,
+      "country": "EUR",
+      "id": 10,
+      "name": "Champions League",
+      "participant_kind": "club"
+    }
+  ],
+  "fixtures": [
+    {
+      "away_goals": 5,
+      "away_team_id": 1,
+      "competition_id": 1,
+      "external_id": 1570346,
+      "home_goals": 0,
+      "home_team_id": 495,
+      "id": 77729,
+      "matchday": 2,
+      "played_at": "2026-08-23T19:30:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "regular",
+      "status": "FT"
+    },
+    {
+      "away_goals": 0,
+      "away_team_id": 4,
+      "competition_id": 1,
+      "external_id": 1570335,
+      "home_goals": 2,
+      "home_team_id": 1,
+      "id": 77735,
+      "matchday": 1,
+      "played_at": "2026-08-27T19:00:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "regular",
+      "status": "FT"
+    },
+    {
+      "away_goals": 2,
+      "away_team_id": 8,
+      "competition_id": 1,
+      "external_id": 1570354,
+      "home_goals": 5,
+      "home_team_id": 1,
+      "id": 77745,
+      "matchday": 3,
+      "played_at": "2026-08-31T19:30:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "regular",
+      "status": "FT"
+    },
+    {
+      "away_goals": 5,
+      "away_team_id": 1,
+      "competition_id": 1,
+      "external_id": 1570371,
+      "home_goals": 0,
+      "home_team_id": 12,
+      "id": 77751,
+      "matchday": 4,
+      "played_at": "2026-09-06T14:15:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "regular",
+      "status": "FT"
+    },
+    {
+      "away_goals": 4,
+      "away_team_id": 1,
+      "competition_id": 1,
+      "external_id": 1570376,
+      "home_goals": 2,
+      "home_team_id": 8378,
+      "id": 77761,
+      "matchday": 5,
+      "played_at": "2026-09-13T14:15:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "regular",
+      "status": "FT"
+    },
+    {
+      "away_goals": 0,
+      "away_team_id": 13,
+      "competition_id": 1,
+      "external_id": 1570404,
+      "home_goals": 3,
+      "home_team_id": 1,
+      "id": 77786,
+      "matchday": 8,
+      "played_at": "2026-10-10T16:30:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "regular",
+      "status": "FT"
+    },
+    {
+      "away_goals": 5,
+      "away_team_id": 1,
+      "competition_id": 1,
+      "external_id": 1570413,
+      "home_goals": 2,
+      "home_team_id": 6,
+      "id": 77802,
+      "matchday": 9,
+      "played_at": "2026-10-17T16:30:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "regular",
+      "status": "FT"
+    },
+    {
+      "away_goals": 2,
+      "away_team_id": 1,
+      "competition_id": 10,
+      "external_id": 1635702,
+      "home_goals": 4,
+      "home_team_id": 99,
+      "id": 851925,
+      "matchday": 3,
+      "played_at": "2026-10-20T19:00:00+00:00",
+      "score_source": "api_football",
+      "season": "2026",
+      "stage": "group",
+      "status": "FT"
+    }
+  ],
+  "stats": [
+    {
+      "appearances": 1,
+      "assists": 1,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 0,
+      "corner_assists": 0,
+      "dribbles_attempts": 3,
+      "dribbles_past": 1,
+      "dribbles_won": 1,
+      "duels_total": 14,
+      "duels_won": 10,
+      "fixture_id": 77729,
+      "fouls_committed": 1,
+      "fouls_drawn": 0,
+      "goals": 0,
+      "goals_conceded": 0,
+      "id": 1453959,
+      "interceptions": 2,
+      "minutes": 90,
+      "passes_accuracy": 85,
+      "passes_completed": 44,
+      "passes_key": 1,
+      "passes_total": 52,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 7.7,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 0,
+      "shots_total": 0,
+      "tackles_won": 6,
+      "team_id": 1
+    },
+    {
+      "appearances": 1,
+      "assists": 0,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 1,
+      "corner_assists": 0,
+      "dribbles_attempts": 0,
+      "dribbles_past": 0,
+      "dribbles_won": 0,
+      "duels_total": 5,
+      "duels_won": 2,
+      "fixture_id": 77735,
+      "fouls_committed": 2,
+      "fouls_drawn": 0,
+      "goals": 0,
+      "goals_conceded": 0,
+      "id": 1492484,
+      "interceptions": 2,
+      "minutes": 93,
+      "passes_accuracy": 77,
+      "passes_completed": 30,
+      "passes_key": 1,
+      "passes_total": 39,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 6.3,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 1,
+      "shots_total": 1,
+      "tackles_won": 1,
+      "team_id": 1
+    },
+    {
+      "appearances": 1,
+      "assists": 1,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 0,
+      "corner_assists": 0,
+      "dribbles_attempts": 5,
+      "dribbles_past": 1,
+      "dribbles_won": 3,
+      "duels_total": 11,
+      "duels_won": 5,
+      "fixture_id": 77745,
+      "fouls_committed": 0,
+      "fouls_drawn": 1,
+      "goals": 0,
+      "goals_conceded": 0,
+      "id": 1533181,
+      "interceptions": 1,
+      "minutes": 90,
+      "passes_accuracy": 92,
+      "passes_completed": 61,
+      "passes_key": 2,
+      "passes_total": 66,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 6.9,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 0,
+      "shots_total": 1,
+      "tackles_won": 1,
+      "team_id": 1
+    },
+    {
+      "appearances": 1,
+      "assists": 0,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 0,
+      "corner_assists": 0,
+      "dribbles_attempts": 1,
+      "dribbles_past": 1,
+      "dribbles_won": 1,
+      "duels_total": 11,
+      "duels_won": 8,
+      "fixture_id": 77751,
+      "fouls_committed": 2,
+      "fouls_drawn": 0,
+      "goals": 0,
+      "goals_conceded": 0,
+      "id": 1563923,
+      "interceptions": 1,
+      "minutes": 90,
+      "passes_accuracy": 79,
+      "passes_completed": 31,
+      "passes_key": 0,
+      "passes_total": 39,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 7.2,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 0,
+      "shots_total": 1,
+      "tackles_won": 6,
+      "team_id": 1
+    },
+    {
+      "appearances": 1,
+      "assists": 0,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 0,
+      "corner_assists": 0,
+      "dribbles_attempts": 0,
+      "dribbles_past": 0,
+      "dribbles_won": 0,
+      "duels_total": 12,
+      "duels_won": 9,
+      "fixture_id": 77761,
+      "fouls_committed": 3,
+      "fouls_drawn": 2,
+      "goals": 1,
+      "goals_conceded": 0,
+      "id": 1614583,
+      "interceptions": 0,
+      "minutes": 80,
+      "passes_accuracy": 92,
+      "passes_completed": 47,
+      "passes_key": 0,
+      "passes_total": 51,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 7.2,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 1,
+      "shots_total": 1,
+      "tackles_won": 6,
+      "team_id": 1
+    },
+    {
+      "appearances": 1,
+      "assists": 0,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 0,
+      "corner_assists": 0,
+      "dribbles_attempts": 1,
+      "dribbles_past": 0,
+      "dribbles_won": 1,
+      "duels_total": 6,
+      "duels_won": 4,
+      "fixture_id": 77786,
+      "fouls_committed": 1,
+      "fouls_drawn": 1,
+      "goals": 0,
+      "goals_conceded": 0,
+      "id": 1626163,
+      "interceptions": 1,
+      "minutes": 90,
+      "passes_accuracy": 95,
+      "passes_completed": 58,
+      "passes_key": 1,
+      "passes_total": 61,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 7.3,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 0,
+      "shots_total": 0,
+      "tackles_won": 1,
+      "team_id": 1
+    },
+    {
+      "appearances": 1,
+      "assists": 0,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 0,
+      "corner_assists": 0,
+      "dribbles_attempts": 3,
+      "dribbles_past": 1,
+      "dribbles_won": 1,
+      "duels_total": 11,
+      "duels_won": 4,
+      "fixture_id": 77802,
+      "fouls_committed": 3,
+      "fouls_drawn": 1,
+      "goals": 0,
+      "goals_conceded": 0,
+      "id": 1702625,
+      "interceptions": 2,
+      "minutes": 90,
+      "passes_accuracy": 90,
+      "passes_completed": 55,
+      "passes_key": 1,
+      "passes_total": 61,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 6.9,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 0,
+      "shots_total": 2,
+      "tackles_won": 1,
+      "team_id": 1
+    },
+    {
+      "appearances": 1,
+      "assists": 0,
+      "blocks": 0,
+      "cards_red": 0,
+      "cards_yellow": 0,
+      "corner_assists": 0,
+      "dribbles_attempts": 2,
+      "dribbles_past": 0,
+      "dribbles_won": 1,
+      "duels_total": 8,
+      "duels_won": 4,
+      "fixture_id": 851925,
+      "fouls_committed": 2,
+      "fouls_drawn": 0,
+      "goals": 1,
+      "goals_conceded": 0,
+      "id": 1729956,
+      "interceptions": 0,
+      "minutes": 74,
+      "passes_accuracy": 83,
+      "passes_completed": 35,
+      "passes_key": 1,
+      "passes_total": 42,
+      "penalty_won": 0,
+      "player_id": 1022093,
+      "rating": 7.01,
+      "saves": 0,
+      "season": "2026",
+      "shots_on": 1,
+      "shots_total": 1,
+      "tackles_won": 3,
+      "team_id": 1
+    }
+  ],
+  "snapshots": [
+    {
+      "fixture_id": 77802,
+      "id": 6,
+      "payload": {
+        "coach_name": "H. Flick",
+        "coach_photo": "https://media.api-sports.io/football/coachs/6472.png",
+        "formation": "4-2-3-1",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "Joan García",
+            "number": 1,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1257,
+            "grid": "2:4",
+            "name": "J. Koundé",
+            "number": 23,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "Pau Cubarsí Paredes",
+            "number": 5,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "Gerard Martín",
+            "number": 18,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "number": 12,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 44,
+            "grid": "3:2",
+            "name": "Rodri",
+            "number": 16,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "number": 8,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "number": 10,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 340626,
+            "grid": "4:2",
+            "name": "Fermín",
+            "number": 7,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 7334,
+            "grid": "4:1",
+            "name": "K. Adeyemi",
+            "number": 14,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 643,
+            "grid": "5:1",
+            "name": "Gabriel Jesus",
+            "number": 9,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 574799,
+            "grid": null,
+            "name": "B. Farinas",
+            "number": 4,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "Alejandro Balde",
+            "number": 3,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 433396,
+            "grid": null,
+            "name": "Marc Bernal",
+            "number": 22,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "João Cancelo",
+            "number": 2,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 538,
+            "grid": null,
+            "name": "F. de Jong",
+            "number": 21,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 619,
+            "grid": null,
+            "name": "Eric García",
+            "number": 24,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 296667,
+            "grid": null,
+            "name": "Gavi",
+            "number": 6,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 138787,
+            "grid": null,
+            "name": "A. Gordon",
+            "number": 17,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1305,
+            "grid": null,
+            "name": "D. Livaković",
+            "number": 25,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1323,
+            "grid": null,
+            "name": "Dani Olmo",
+            "number": 20,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1496,
+            "grid": null,
+            "name": "Raphinha",
+            "number": 11,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczęsny",
+            "number": 13,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "eaf63a0e0a760e7090a7895abf249e78bc3071f0b16ccd969a7d5e257b9d8140",
+      "provider": "api-football",
+      "received_at": "2026-10-18T14:25:39.509411+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "retained-corpus:fixture:api:supplement:v2:1570413",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 77729,
+      "id": 8,
+      "payload": {
+        "formation": "4-2-3-1",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "J. Garcia",
+            "position": "G"
+          },
+          {
+            "external_id": 619,
+            "grid": "2:4",
+            "name": "E. Garcia",
+            "position": "D"
+          },
+          {
+            "external_id": 2282,
+            "grid": "2:3",
+            "name": "A. Christensen",
+            "position": "D"
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "G. Martin",
+            "position": "D"
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "position": "D"
+          },
+          {
+            "external_id": 433396,
+            "grid": "3:2",
+            "name": "M. Bernal",
+            "position": "M"
+          },
+          {
+            "external_id": 296667,
+            "grid": "3:1",
+            "name": "Gavi",
+            "position": "M"
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "position": "M"
+          },
+          {
+            "external_id": 340626,
+            "grid": "4:2",
+            "name": "Fermín",
+            "position": "M"
+          },
+          {
+            "external_id": 7334,
+            "grid": "4:1",
+            "name": "K. Adeyemi",
+            "position": "M"
+          },
+          {
+            "external_id": 1496,
+            "grid": "5:1",
+            "name": "Raphinha",
+            "position": "F"
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczesny",
+            "position": "G"
+          },
+          {
+            "external_id": 543468,
+            "grid": null,
+            "name": "E. Aller",
+            "position": "G"
+          },
+          {
+            "external_id": 1257,
+            "grid": null,
+            "name": "J. Kounde",
+            "position": "D"
+          },
+          {
+            "external_id": 433395,
+            "grid": null,
+            "name": "A. Cortes",
+            "position": "D"
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "J. Cancelo",
+            "position": "D"
+          },
+          {
+            "external_id": 396623,
+            "grid": null,
+            "name": "P. Cubarsi",
+            "position": "D"
+          },
+          {
+            "external_id": 570752,
+            "grid": null,
+            "name": "J. Pesquer",
+            "position": "D"
+          },
+          {
+            "external_id": 133609,
+            "grid": null,
+            "name": "Pedri",
+            "position": "M"
+          },
+          {
+            "external_id": 574799,
+            "grid": null,
+            "name": "B. Farinas",
+            "position": "M"
+          },
+          {
+            "external_id": 1323,
+            "grid": null,
+            "name": "D. Olmo",
+            "position": "M"
+          },
+          {
+            "external_id": 138787,
+            "grid": null,
+            "name": "A. Gordon",
+            "position": "F"
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "position": "F"
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "d7a0aa212d226277158bbebe770495030f51490be5d14782a32ceb67765fa560",
+      "provider": "api-football",
+      "received_at": "2026-10-18T14:56:41.23762+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "retained-corpus:fixture:api:supplement:v2:1570346",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 77735,
+      "id": 9,
+      "payload": {
+        "formation": "4-3-3",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "J. Garcia",
+            "position": "G"
+          },
+          {
+            "external_id": 619,
+            "grid": "2:4",
+            "name": "E. Garcia",
+            "position": "D"
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "P. Cubarsi",
+            "position": "D"
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "G. Martin",
+            "position": "D"
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "position": "D"
+          },
+          {
+            "external_id": 340626,
+            "grid": "3:3",
+            "name": "Fermín",
+            "position": "M"
+          },
+          {
+            "external_id": 433396,
+            "grid": "3:2",
+            "name": "M. Bernal",
+            "position": "M"
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "position": "M"
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "position": "F"
+          },
+          {
+            "external_id": 1496,
+            "grid": "4:2",
+            "name": "Raphinha",
+            "position": "F"
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "position": "F"
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczesny",
+            "position": "G"
+          },
+          {
+            "external_id": 543468,
+            "grid": null,
+            "name": "E. Aller",
+            "position": "G"
+          },
+          {
+            "external_id": 1257,
+            "grid": null,
+            "name": "J. Kounde",
+            "position": "D"
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "J. Cancelo",
+            "position": "D"
+          },
+          {
+            "external_id": 2282,
+            "grid": null,
+            "name": "A. Christensen",
+            "position": "D"
+          },
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "A. Balde",
+            "position": "D"
+          },
+          {
+            "external_id": 44,
+            "grid": null,
+            "name": "Rodri",
+            "position": "M"
+          },
+          {
+            "external_id": 574799,
+            "grid": null,
+            "name": "B. Farinas",
+            "position": "M"
+          },
+          {
+            "external_id": 1323,
+            "grid": null,
+            "name": "D. Olmo",
+            "position": "M"
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "position": "F"
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "position": "F"
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "76e04c5f1b8120ea6ee1caea6c40fb2d8679d69032e86bf38c34b78aab9d1ca9",
+      "provider": "api-football",
+      "received_at": "2026-10-18T14:56:45.083974+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "retained-corpus:fixture:api:supplement:v2:1570335",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 77745,
+      "id": 11,
+      "payload": {
+        "formation": "4-2-3-1",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "J. Garcia",
+            "position": "G"
+          },
+          {
+            "external_id": 1257,
+            "grid": "2:4",
+            "name": "J. Kounde",
+            "position": "D"
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "P. Cubarsi",
+            "position": "D"
+          },
+          {
+            "external_id": 2282,
+            "grid": "2:2",
+            "name": "A. Christensen",
+            "position": "D"
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "position": "D"
+          },
+          {
+            "external_id": 433396,
+            "grid": "3:2",
+            "name": "M. Bernal",
+            "position": "M"
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "position": "M"
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "position": "M"
+          },
+          {
+            "external_id": 1323,
+            "grid": "4:2",
+            "name": "D. Olmo",
+            "position": "M"
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "position": "M"
+          },
+          {
+            "external_id": 1496,
+            "grid": "5:1",
+            "name": "Raphinha",
+            "position": "F"
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczesny",
+            "position": "G"
+          },
+          {
+            "external_id": 543468,
+            "grid": null,
+            "name": "E. Aller",
+            "position": "G"
+          },
+          {
+            "external_id": 181701,
+            "grid": null,
+            "name": "G. Martin",
+            "position": "D"
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "J. Cancelo",
+            "position": "D"
+          },
+          {
+            "external_id": 619,
+            "grid": null,
+            "name": "E. Garcia",
+            "position": "D"
+          },
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "A. Balde",
+            "position": "D"
+          },
+          {
+            "external_id": 44,
+            "grid": null,
+            "name": "Rodri",
+            "position": "M"
+          },
+          {
+            "external_id": 574799,
+            "grid": null,
+            "name": "B. Farinas",
+            "position": "M"
+          },
+          {
+            "external_id": 340626,
+            "grid": null,
+            "name": "Fermín",
+            "position": "M"
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "position": "F"
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "position": "F"
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "215614bb418b2d1e7077ec7d5f36e0834dfc0db06b94e080ee5f698b6aba3ad9",
+      "provider": "api-football",
+      "received_at": "2026-10-18T14:56:49.099352+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "retained-corpus:fixture:api:supplement:v2:1570354",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 77751,
+      "id": 14,
+      "payload": {
+        "formation": "4-3-3",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "J. Garcia",
+            "position": "G"
+          },
+          {
+            "external_id": 619,
+            "grid": "2:4",
+            "name": "E. Garcia",
+            "position": "D"
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "P. Cubarsi",
+            "position": "D"
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "G. Martin",
+            "position": "D"
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "position": "D"
+          },
+          {
+            "external_id": 340626,
+            "grid": "3:3",
+            "name": "Fermín",
+            "position": "M"
+          },
+          {
+            "external_id": 44,
+            "grid": "3:2",
+            "name": "Rodri",
+            "position": "M"
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "position": "M"
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "position": "F"
+          },
+          {
+            "external_id": 1496,
+            "grid": "4:2",
+            "name": "Raphinha",
+            "position": "F"
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "position": "F"
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczesny",
+            "position": "G"
+          },
+          {
+            "external_id": 1305,
+            "grid": null,
+            "name": "D. Livakovic",
+            "position": "G"
+          },
+          {
+            "external_id": 1257,
+            "grid": null,
+            "name": "J. Kounde",
+            "position": "D"
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "J. Cancelo",
+            "position": "D"
+          },
+          {
+            "external_id": 2282,
+            "grid": null,
+            "name": "A. Christensen",
+            "position": "D"
+          },
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "A. Balde",
+            "position": "D"
+          },
+          {
+            "external_id": 296667,
+            "grid": null,
+            "name": "Gavi",
+            "position": "M"
+          },
+          {
+            "external_id": 433396,
+            "grid": null,
+            "name": "M. Bernal",
+            "position": "M"
+          },
+          {
+            "external_id": 1323,
+            "grid": null,
+            "name": "D. Olmo",
+            "position": "M"
+          },
+          {
+            "external_id": 643,
+            "grid": null,
+            "name": "Gabriel Jesus",
+            "position": "F"
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "position": "F"
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "position": "F"
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "937fd61d18866b3b5bf503aeef4d1e650eaeb9131b2e68dddf55e1fae85b6c28",
+      "provider": "api-football",
+      "received_at": "2026-10-18T14:56:53.119736+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "retained-corpus:fixture:api:supplement:v2:1570371",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 77761,
+      "id": 18,
+      "payload": {
+        "formation": "4-3-3",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "J. Garcia",
+            "position": "G"
+          },
+          {
+            "external_id": 619,
+            "grid": "2:4",
+            "name": "E. Garcia",
+            "position": "D"
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "P. Cubarsi",
+            "position": "D"
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "G. Martin",
+            "position": "D"
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "position": "D"
+          },
+          {
+            "external_id": 340626,
+            "grid": "3:3",
+            "name": "Fermin",
+            "position": "M"
+          },
+          {
+            "external_id": 44,
+            "grid": "3:2",
+            "name": "Rodri",
+            "position": "M"
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "position": "M"
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "position": "F"
+          },
+          {
+            "external_id": 1496,
+            "grid": "4:2",
+            "name": "Raphinha",
+            "position": "F"
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "position": "F"
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczesny",
+            "position": "G"
+          },
+          {
+            "external_id": 1305,
+            "grid": null,
+            "name": "D. Livakovic",
+            "position": "G"
+          },
+          {
+            "external_id": 1257,
+            "grid": null,
+            "name": "J. Kounde",
+            "position": "D"
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "J. Cancelo",
+            "position": "D"
+          },
+          {
+            "external_id": 2282,
+            "grid": null,
+            "name": "A. Christensen",
+            "position": "D"
+          },
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "A. Balde",
+            "position": "D"
+          },
+          {
+            "external_id": 296667,
+            "grid": null,
+            "name": "Gavi",
+            "position": "M"
+          },
+          {
+            "external_id": 433396,
+            "grid": null,
+            "name": "M. Bernal",
+            "position": "M"
+          },
+          {
+            "external_id": 1323,
+            "grid": null,
+            "name": "D. Olmo",
+            "position": "M"
+          },
+          {
+            "external_id": 643,
+            "grid": null,
+            "name": "Gabriel Jesus",
+            "position": "F"
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "position": "F"
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "position": "F"
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "ab2119744fc52509dbc4bc156ca3ec8419ade9a418c5c93c58c52f35a7b3e720",
+      "provider": "api-football",
+      "received_at": "2026-10-18T14:57:01.276423+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "retained-corpus:fixture:api:supplement:v2:1570376",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 77786,
+      "id": 23,
+      "payload": {
+        "formation": "4-3-3",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "J. Garcia",
+            "position": "G"
+          },
+          {
+            "external_id": 1257,
+            "grid": "2:4",
+            "name": "J. Kounde",
+            "position": "D"
+          },
+          {
+            "external_id": 619,
+            "grid": "2:3",
+            "name": "E. Garcia",
+            "position": "D"
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "G. Martin",
+            "position": "D"
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "position": "D"
+          },
+          {
+            "external_id": 1323,
+            "grid": "3:3",
+            "name": "D. Olmo",
+            "position": "M"
+          },
+          {
+            "external_id": 44,
+            "grid": "3:2",
+            "name": "Rodri",
+            "position": "M"
+          },
+          {
+            "external_id": 296667,
+            "grid": "3:1",
+            "name": "Gavi",
+            "position": "M"
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "position": "F"
+          },
+          {
+            "external_id": 643,
+            "grid": "4:2",
+            "name": "Gabriel Jesus",
+            "position": "F"
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "position": "F"
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczesny",
+            "position": "G"
+          },
+          {
+            "external_id": 1305,
+            "grid": null,
+            "name": "D. Livakovic",
+            "position": "G"
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "J. Cancelo",
+            "position": "D"
+          },
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "A. Balde",
+            "position": "D"
+          },
+          {
+            "external_id": 396623,
+            "grid": null,
+            "name": "P. Cubarsi",
+            "position": "D"
+          },
+          {
+            "external_id": 133609,
+            "grid": null,
+            "name": "Pedri",
+            "position": "M"
+          },
+          {
+            "external_id": 433396,
+            "grid": null,
+            "name": "M. Bernal",
+            "position": "M"
+          },
+          {
+            "external_id": 574799,
+            "grid": null,
+            "name": "B. Farinas",
+            "position": "M"
+          },
+          {
+            "external_id": 340626,
+            "grid": null,
+            "name": "Fermin",
+            "position": "M"
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "position": "F"
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "position": "F"
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "c5a2db0d3d6fdb6b1a4d1b62e645caf620685f5ff62cfb9ed357d231a0050d15",
+      "provider": "api-football",
+      "received_at": "2026-10-18T14:57:13.31257+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "retained-corpus:fixture:api:supplement:v2:1570404",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 77761,
+      "id": 877,
+      "payload": {
+        "coach_name": "Hansi Flick",
+        "coach_photo": "https://media.api-sports.io/football/coachs/6472.png",
+        "formation": "4-3-3",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "J. Garcia",
+            "number": 1,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 619,
+            "grid": "2:4",
+            "name": "E. Garcia",
+            "number": 24,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "P. Cubarsi",
+            "number": 5,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "G. Martin",
+            "number": 18,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "number": 12,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 340626,
+            "grid": "3:3",
+            "name": "Fermin",
+            "number": 7,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 44,
+            "grid": "3:2",
+            "name": "Rodri",
+            "number": 16,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "number": 8,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "number": 10,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1496,
+            "grid": "4:2",
+            "name": "Raphinha",
+            "number": 11,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "number": 17,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczesny",
+            "number": 13,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1305,
+            "grid": null,
+            "name": "D. Livakovic",
+            "number": 25,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1257,
+            "grid": null,
+            "name": "J. Kounde",
+            "number": 23,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 855,
+            "grid": null,
+            "name": "J. Cancelo",
+            "number": 2,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 2282,
+            "grid": null,
+            "name": "A. Christensen",
+            "number": 15,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "A. Balde",
+            "number": 3,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 296667,
+            "grid": null,
+            "name": "Gavi",
+            "number": 6,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 433396,
+            "grid": null,
+            "name": "M. Bernal",
+            "number": 22,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1323,
+            "grid": null,
+            "name": "D. Olmo",
+            "number": 20,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 643,
+            "grid": null,
+            "name": "Gabriel Jesus",
+            "number": 9,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "number": 29,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "number": 14,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "f00962f1515909494d6873876a72947b3afc07005b0a09a44630063681ac011a",
+      "provider": "api-football",
+      "received_at": "2026-10-19T15:35:47.086857+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 851925,
+      "id": 2194,
+      "payload": {
+        "coach_name": "H. Flick",
+        "coach_photo": "https://media.api-sports.io/football/coachs/6472.png",
+        "formation": "4-2-3-1",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "Joan García",
+            "number": 1,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 855,
+            "grid": "2:4",
+            "name": "João Cancelo",
+            "number": 2,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "Pau Cubarsí Paredes",
+            "number": 5,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "Gerard Martín",
+            "number": 18,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:1",
+            "name": "X. Espart",
+            "number": 12,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 433396,
+            "grid": "3:2",
+            "name": "Marc Bernal",
+            "number": 22,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "number": 8,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "number": 10,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1323,
+            "grid": "4:2",
+            "name": "Dani Olmo",
+            "number": 20,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "number": 17,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1496,
+            "grid": "5:1",
+            "name": "Raphinha",
+            "number": 11,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "Alejandro Balde",
+            "number": 3,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 567999,
+            "grid": null,
+            "name": "A. Campos",
+            "number": 41,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 538,
+            "grid": null,
+            "name": "F. de Jong",
+            "number": 21,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 574799,
+            "grid": null,
+            "name": "B. Farinas",
+            "number": 4,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 340626,
+            "grid": null,
+            "name": "Fermín",
+            "number": 7,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 643,
+            "grid": null,
+            "name": "Gabriel Jesus",
+            "number": 9,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 296667,
+            "grid": null,
+            "name": "Gavi",
+            "number": 6,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1305,
+            "grid": null,
+            "name": "D. Livaković",
+            "number": 25,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 44,
+            "grid": null,
+            "name": "Rodri",
+            "number": 16,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczęsny",
+            "number": 13,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "number": 29,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "number": 14,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "cab575b27ffa1d5b156a9562c0ccf37f273d5d9bf4237f9c98446a807332460c",
+      "provider": "api-football",
+      "received_at": "2026-10-20T18:56:40.430436+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    },
+    {
+      "fixture_id": 851925,
+      "id": 2252,
+      "payload": {
+        "coach_name": "H. Flick",
+        "coach_photo": "https://media.api-sports.io/football/coachs/6472.png",
+        "formation": "4-2-3-1",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "grid": "1:1",
+            "name": "Joan García",
+            "number": 1,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 568001,
+            "grid": "2:4",
+            "name": "X. Espart",
+            "number": 12,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 396623,
+            "grid": "2:3",
+            "name": "Pau Cubarsí Paredes",
+            "number": 5,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 181701,
+            "grid": "2:2",
+            "name": "Gerard Martín",
+            "number": 18,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 855,
+            "grid": "2:1",
+            "name": "João Cancelo",
+            "number": 2,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 433396,
+            "grid": "3:2",
+            "name": "Marc Bernal",
+            "number": 22,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 133609,
+            "grid": "3:1",
+            "name": "Pedri",
+            "number": 8,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 386828,
+            "grid": "4:3",
+            "name": "Lamine Yamal",
+            "number": 10,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1323,
+            "grid": "4:2",
+            "name": "Dani Olmo",
+            "number": 20,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 138787,
+            "grid": "4:1",
+            "name": "A. Gordon",
+            "number": 17,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1496,
+            "grid": "5:1",
+            "name": "Raphinha",
+            "number": 11,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 161928,
+            "grid": null,
+            "name": "Alejandro Balde",
+            "number": 3,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 567999,
+            "grid": null,
+            "name": "A. Campos",
+            "number": 41,
+            "player_id": null,
+            "position": "D",
+            "sfa_points": null
+          },
+          {
+            "external_id": 538,
+            "grid": null,
+            "name": "F. de Jong",
+            "number": 21,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 574799,
+            "grid": null,
+            "name": "B. Farinas",
+            "number": 4,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 340626,
+            "grid": null,
+            "name": "Fermín",
+            "number": 7,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 643,
+            "grid": null,
+            "name": "Gabriel Jesus",
+            "number": 9,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 296667,
+            "grid": null,
+            "name": "Gavi",
+            "number": 6,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 1305,
+            "grid": null,
+            "name": "D. Livaković",
+            "number": 25,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 44,
+            "grid": null,
+            "name": "Rodri",
+            "number": 16,
+            "player_id": null,
+            "position": "M",
+            "sfa_points": null
+          },
+          {
+            "external_id": 851,
+            "grid": null,
+            "name": "W. Szczęsny",
+            "number": 13,
+            "player_id": null,
+            "position": "G",
+            "sfa_points": null
+          },
+          {
+            "external_id": 550547,
+            "grid": null,
+            "name": "H. Abdelkarim",
+            "number": 29,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          },
+          {
+            "external_id": 7334,
+            "grid": null,
+            "name": "K. Adeyemi",
+            "number": 14,
+            "player_id": null,
+            "position": "F",
+            "sfa_points": null
+          }
+        ],
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        }
+      },
+      "payload_hash": "896fa25508e573bd1635b390427d3ae0249aa2d2d1047ec8aaa4671910356f0c",
+      "provider": "api-football",
+      "received_at": "2026-10-20T20:10:46.699491+00:00",
+      "schema_version": "api-football-grid-v3",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "team_id": 1,
+      "validation_reason": null,
+      "validation_status": "interpreted"
+    }
+  ],
+  "assignments": [],
+  "scope_classifications": [],
+  "lineup_arbitrations": [],
+  "scores": [],
+  "supplementary": [
+    {
+      "id": "direct:1635702:529",
+      "fixture_id": 851925,
+      "team_id": 1,
+      "payload": {
+        "team": {
+          "external_id": 529,
+          "name": "Barcelona"
+        },
+        "formation": "4-2-3-1",
+        "start_xi": [
+          {
+            "external_id": 182718,
+            "name": "Joan García",
+            "position": "G",
+            "grid": "1:1"
+          },
+          {
+            "external_id": 568001,
+            "name": "X. Espart",
+            "position": "D",
+            "grid": "2:4"
+          },
+          {
+            "external_id": 396623,
+            "name": "Pau Cubarsí Paredes",
+            "position": "D",
+            "grid": "2:3"
+          },
+          {
+            "external_id": 181701,
+            "name": "Gerard Martín",
+            "position": "D",
+            "grid": "2:2"
+          },
+          {
+            "external_id": 855,
+            "name": "João Cancelo",
+            "position": "D",
+            "grid": "2:1"
+          },
+          {
+            "external_id": 433396,
+            "name": "Marc Bernal",
+            "position": "M",
+            "grid": "3:2"
+          },
+          {
+            "external_id": 133609,
+            "name": "Pedri",
+            "position": "M",
+            "grid": "3:1"
+          },
+          {
+            "external_id": 386828,
+            "name": "Lamine Yamal",
+            "position": "M",
+            "grid": "4:3"
+          },
+          {
+            "external_id": 1323,
+            "name": "Dani Olmo",
+            "position": "M",
+            "grid": "4:2"
+          },
+          {
+            "external_id": 138787,
+            "name": "A. Gordon",
+            "position": "M",
+            "grid": "4:1"
+          },
+          {
+            "external_id": 1496,
+            "name": "Raphinha",
+            "position": "F",
+            "grid": "5:1"
+          }
+        ],
+        "substitutes": [
+          {
+            "external_id": 161928,
+            "name": "Alejandro Balde",
+            "position": "D",
+            "grid": null
+          },
+          {
+            "external_id": 567999,
+            "name": "A. Campos",
+            "position": "D",
+            "grid": null
+          },
+          {
+            "external_id": 538,
+            "name": "F. de Jong",
+            "position": "M",
+            "grid": null
+          },
+          {
+            "external_id": 574799,
+            "name": "B. Farinas",
+            "position": "M",
+            "grid": null
+          },
+          {
+            "external_id": 340626,
+            "name": "Fermín",
+            "position": "M",
+            "grid": null
+          },
+          {
+            "external_id": 643,
+            "name": "Gabriel Jesus",
+            "position": "F",
+            "grid": null
+          },
+          {
+            "external_id": 296667,
+            "name": "Gavi",
+            "position": "M",
+            "grid": null
+          },
+          {
+            "external_id": 1305,
+            "name": "D. Livaković",
+            "position": "G",
+            "grid": null
+          },
+          {
+            "external_id": 44,
+            "name": "Rodri",
+            "position": "M",
+            "grid": null
+          },
+          {
+            "external_id": 851,
+            "name": "W. Szczęsny",
+            "position": "G",
+            "grid": null
+          },
+          {
+            "external_id": 550547,
+            "name": "H. Abdelkarim",
+            "position": "F",
+            "grid": null
+          },
+          {
+            "external_id": 7334,
+            "name": "K. Adeyemi",
+            "position": "F",
+            "grid": null
+          }
+        ]
+      },
+      "payload_hash": "086d76b4a52a3b16721aed6972f8c2d1bdc06ec972faba001da6185eb4040a08",
+      "received_at": "2026-10-21T23:05:42.860029+00:00",
+      "fetched_at": "2026-10-21T23:05:42.860029+00:00",
+      "source_ref": "api-football-v3/fixtures/lineups",
+      "authority": "api-football-direct-validated"
+    }
+  ]
+}

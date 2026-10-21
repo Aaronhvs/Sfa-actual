@@ -38,6 +38,8 @@ class ActiveSeasonPositionSnapshotSource:
         assignments=await table('player_position_assignments',f'x.player_id IN ({player_ids})')
         arbitrations=await table('position_lineup_arbitrations',f'x.fixture_id IN ({fixture_ids})')
         classifications=await table('position_scope_classifications','x.scope_key=:scope')
+        corrections=await query("SELECT batch_id,status,published_at,guard_rules_version_id AS rules_version_id,after_image "
+                                "FROM position_correction_batches x ORDER BY published_at,batch_id")
         achievements=await table('competition_achievements',period)
         bonuses=await table('player_achievement_bonuses',period+' AND x.rules_version_id=:version')
         honors=await table('individual_honors','x.scope_key=:scope AND x.rules_version_id=:version')
@@ -75,6 +77,7 @@ class ActiveSeasonPositionSnapshotSource:
                 'use_total':True,'ranking':ranking,'players':players,'fixtures':fixtures,'stats':stats,
                 'snapshots':snapshots,'assignments':assignments,'lineup_arbitrations':arbitrations,
                 'scope_classifications':classifications,'rollups':rolls,'scores':persisted,'raw_events':raw,
+                'published_corrections':corrections,
                 'unavailable_raw_fixtures':unavailable,'achievements':achievements,'bonuses':bonuses,'honors':honors,
                 'teams':await table('teams'),'competitions':await table('competitions'),
                 'rules':await table('scoring_rules_versions','x.id=:version'),'provider_requests':0,'writes':0}
