@@ -7,6 +7,7 @@ import { buildMatchModel, type MatchPlayer } from '../components/tournaments/mat
 import { ArrowIcon } from '../components/tournaments/MatchUI'
 import type { TournamentMatchDetail } from '../types'
 import { tournamentCompetitionLogoByName, tournamentStageLabel } from '../utils/tournaments'
+import { strengthFromElo } from '../utils/teams'
 import './TournamentMatchPage.css'
 
 export default function TournamentMatchPage() {
@@ -85,7 +86,7 @@ export default function TournamentMatchPage() {
       const result = await fetchTeamRanking({ scope: teamScope, name, page: 1 })
       const team = result.ranking.find((item) => externalId != null && item.team_logo_url?.endsWith(`/teams/${externalId}.png`))
         ?? result.ranking.find((item) => item.name === name)
-      return team?.elo_score ?? null
+      return strengthFromElo(team?.elo_raw)
     }
     fetchSeasons()
       .then((catalog) => {

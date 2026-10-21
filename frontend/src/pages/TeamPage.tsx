@@ -6,7 +6,7 @@ import type { RankedPlayer } from '../types'
 import type { RankedTeam } from '../types/teamRanking'
 import { competitionLabel } from '../utils/footballLabels'
 import { tournamentCompetitionLogoByName } from '../utils/tournaments'
-import { levelBand } from '../utils/teams'
+import { levelBand, strengthFromElo } from '../utils/teams'
 import './TeamPage.css'
 
 const POSITION: Record<string, string> = {
@@ -84,7 +84,7 @@ export default function TeamPage() {
   }
 
   const { team, scope, season, players } = data
-  const level = team.elo_score
+  const level = strengthFromElo(team.elo_raw)
   const leader = players[0]
   const squadTotal = players.reduce((sum, player) => sum + player.sfa_pts, 0)
   const goals = players.reduce((sum, player) => sum + player.goals, 0)
@@ -136,7 +136,7 @@ export default function TeamPage() {
               </span>
               <span className="tm-level__copy">
                 <strong>{levelBand(level)}</strong>
-                <small>Nivel competitivo según su ELO</small>
+                <small>ELO {team.elo_raw != null ? Math.round(team.elo_raw).toLocaleString('es-ES') : '—'} · escala del motor SFA</small>
               </span>
             </div>
             <p>

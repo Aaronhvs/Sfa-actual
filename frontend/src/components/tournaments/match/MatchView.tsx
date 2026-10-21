@@ -89,7 +89,7 @@ function TeamName({ team, level }: { team: TournamentMatchTeam; level: number | 
   return (
     <>
       {href ? <Link to={href} className="mt-score__name">{team.name}</Link> : <strong className="mt-score__name">{team.name}</strong>}
-      {level != null && <span className="mt-score__level" title="Nivel competitivo como rival (ELO, 0–100)">Nivel {Math.round(level)} · {levelBand(level)}</span>}
+      {level != null && <span className="mt-score__level" title="Fuerza del equipo en la escala del motor SFA (0–100), la que usa el multiplicador de rival">Nivel {Math.round(level)} · {levelBand(level)}</span>}
     </>
   )
 }
