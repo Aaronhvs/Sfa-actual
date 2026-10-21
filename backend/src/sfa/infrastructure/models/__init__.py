@@ -14,6 +14,12 @@ from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.individual_honors.models import IndividualHonorModel
 from sfa.infrastructure.models.ingestion.models import IngestionLog
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
+from sfa.infrastructure.models.player_positions.models import (
+    FixtureLineupSnapshot,
+    PlayerPositionAssignment,
+    PlayerPositionEvidence,
+    PositionSourceCoverage,
+)
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.player_tm_ids.models import PlayerTmId
 from sfa.infrastructure.models.players.models import Player
@@ -42,6 +48,10 @@ __all__ = [
     "IngestionLog",
     "ScoringRulesVersion",
     "PlayerEventScore",
+    "FixtureLineupSnapshot",
+    "PlayerPositionAssignment",
+    "PlayerPositionEvidence",
+    "PositionSourceCoverage",
     "TeamStrength",
     "PlayerTmId",
     "CompetitionAchievementModel",

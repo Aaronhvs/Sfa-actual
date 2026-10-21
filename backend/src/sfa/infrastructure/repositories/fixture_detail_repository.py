@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import replace
-from datetime import datetime
+from dataclasses import asdict, replace
+from datetime import datetime, timezone
 
 import redis.asyncio as aioredis
 from sqlalchemy import Integer, case, func, select
@@ -21,6 +21,7 @@ from sfa.domain.fixture_detail_ports import (
     FixtureTimelineEventDTO,
     FixtureVenueDTO,
 )
+from sfa.domain.player_positions.ports import PositionEvidenceRecorder
 from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixture_events.models import FixtureEvent
 from sfa.infrastructure.models.fixtures.models import Fixture
@@ -47,10 +48,27 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
         provider: APIFootballProvider,
         redis: aioredis.Redis,
         session: AsyncSession,
+        position_recorder: PositionEvidenceRecorder | None = None,
     ) -> None:
         self._provider = provider
         self._redis = redis
         self._session = session
+        self._position_recorder = position_recorder
+
+    async def _preserve_lineups(self, detail: FixtureDetailDTO) -> bool:
+        if self._position_recorder is None or not detail.lineups:
+            return True
+        try:
+            result = await self._position_recorder.execute(
+                detail.fixture.external_id,
+                json.dumps({"fixture": {"external_id": detail.fixture.external_id},
+                            "lineups": [asdict(lineup) for lineup in detail.lineups]}),
+                "fixture-detail:normalized-api-football-v3", datetime.now(timezone.utc).isoformat(),
+            )
+            return result.status == "recorded"
+        except Exception:
+            logger.exception("Durable lineup capture failed fixture=%d", detail.fixture.external_id)
+            return False
 
     async def get_fixture_detail(
         self,
@@ -60,6 +78,7 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
         cached = await self._redis.get(cache_key)
         if cached:
             detail = self._detail_from_dict(json.loads(cached))
+            await self._preserve_lineups(detail)
             return await self.attach_sfa_scores(detail)
 
         try:
@@ -72,6 +91,11 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
             return None
         if detail is None:
             return None
+
+        preserved = await self._preserve_lineups(detail)
+        if not preserved:
+            # Avoid putting an unarchived provider response behind another six-hour TTL.
+            return await self.attach_sfa_scores(detail)
 
         if detail.fixture.status in _COMPLETED_STATUSES:
             ttl = _DETAIL_COMPLETED_TTL_SECONDS

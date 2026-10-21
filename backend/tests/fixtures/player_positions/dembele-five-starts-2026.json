@@ -1,0 +1,350 @@
+{
+  "player_id": 7571,
+  "external_player_id": 153,
+  "external_team_id": 85,
+  "season": "2026",
+  "captured_at": "2026-10-20T02:01:27.783547+00:00",
+  "expected_position": "DEL",
+  "versions": [
+    {
+      "fixture_external_id": 1552735,
+      "competition_id": 9,
+      "played_at": "2026-08-23T18:45:00+00:00",
+      "formation": "4-3-3",
+      "participant_team_ids": [
+        94,
+        85
+      ],
+      "starters": [
+        {
+          "external_id": 2068,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 9,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 257,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 16367,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 33,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 336657,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 128384,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 335051,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 343027,
+          "grid": "4:3",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 153,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 483,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ],
+      "payload_sha256": "cdf7aea3e798368a0103e659d3dc747464fc035cae17aead0723927c5ab32b67"
+    },
+    {
+      "fixture_external_id": 1635705,
+      "competition_id": 10,
+      "played_at": "2026-09-09T19:00:00+00:00",
+      "formation": "4-3-3",
+      "participant_team_ids": [
+        85,
+        656
+      ],
+      "starters": [
+        {
+          "external_id": 2068,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 9,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 161671,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 16367,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 263482,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 491087,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 128384,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 328,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 274300,
+          "grid": "4:3",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 153,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 931,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ],
+      "payload_sha256": "27e6cab472b3aab3b4c281a5efe5b77edc06234a5b9ce3913cd5bff2419bc293"
+    },
+    {
+      "fixture_external_id": 1552757,
+      "competition_id": 9,
+      "played_at": "2026-09-13T18:45:00+00:00",
+      "formation": "4-3-3",
+      "participant_team_ids": [
+        106,
+        85
+      ],
+      "starters": [
+        {
+          "external_id": 2068,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 9,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 257,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 16367,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 263482,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 336657,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 128384,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 335051,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 153,
+          "grid": "4:3",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 931,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 483,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ],
+      "payload_sha256": "5aed500985741abfa41ba718bc65b72d9407075b78b5a1f4bbbe04e0227c1903"
+    },
+    {
+      "fixture_external_id": 1552773,
+      "competition_id": 9,
+      "played_at": "2026-09-20T18:45:00+00:00",
+      "formation": "4-3-3",
+      "participant_team_ids": [
+        81,
+        85
+      ],
+      "starters": [
+        {
+          "external_id": 2068,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 336657,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 257,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 16367,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 263482,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 335051,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 128384,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 328,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 343027,
+          "grid": "4:3",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 153,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 483,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ],
+      "payload_sha256": "efb4d139512cbcdba5f4b621c8d0e9ed36ef22c604e43945a7972fa965418947"
+    },
+    {
+      "fixture_external_id": 1635690,
+      "competition_id": 10,
+      "played_at": "2026-10-14T19:00:00+00:00",
+      "formation": "4-3-3",
+      "participant_team_ids": [
+        50,
+        85
+      ],
+      "starters": [
+        {
+          "external_id": 2068,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 9,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 257,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 16367,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 263482,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 336657,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 128384,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 328,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 274300,
+          "grid": "4:3",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 153,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 343027,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ],
+      "payload_sha256": "404a5fa31b3bb0979716b5eeee80ac0998c1eab9dfd18f5a98e531e480a84e99"
+    }
+  ]
+}

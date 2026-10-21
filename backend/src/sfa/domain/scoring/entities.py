@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from sfa.infrastructure.models.enums import Position
+from sfa.domain.enums import Position
 
 from .value_objects import (
     ActionType,

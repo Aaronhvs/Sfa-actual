@@ -325,6 +325,8 @@ class IngestCompetitionUseCase:
                                 },
                             )
 
+                            position = await self._repo.resolve_scoring_position(player_db_id, fixture_db_id, position)
+
                             # GK: skip SFA event scoring
                             if position == Position.GK:
                                 continue

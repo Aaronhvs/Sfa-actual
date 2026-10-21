@@ -142,6 +142,9 @@ class FakeIngestionRepository:
         # latest upsert_season_score call per player_id
         self.season_scores: dict[int, dict] = {}
 
+    async def resolve_scoring_position(self, player_id, fixture_id, fallback):
+        return getattr(self, 'accepted_positions', {}).get((player_id, fixture_id), fallback)
+
     async def upsert_competition(
         self,
         name: str,
@@ -468,6 +471,19 @@ async def test_repository_rejects_non_positive_player_external_id():
 
     with pytest.raises(ValueError, match="positive integer"):
         await repository.upsert_player(0, "Invalid Identity", Position.MC)
+
+
+@pytest.mark.anyio
+async def test_ingestion_resolves_the_accepted_fixture_role_before_goalkeeper_exclusion():
+    provider = FakeFootballProvider(fixtures=[_fixture()], player=_player_stats(position='Midfielder'))
+    baseline = FakeIngestionRepository()
+    await IngestCompetitionUseCase(provider, baseline).execute(_LEAGUE, 2024)
+    accepted = FakeIngestionRepository()
+    accepted.accepted_positions = {(1, 1): Position.GK}
+    await IngestCompetitionUseCase(provider, accepted).execute(_LEAGUE, 2024)
+    assert baseline.player_events[1, 1]
+    assert not accepted.player_events
+    assert accepted.player_stats[1, 1] == baseline.player_stats[1, 1]
 
 
 # ---------------------------------------------------------------------------

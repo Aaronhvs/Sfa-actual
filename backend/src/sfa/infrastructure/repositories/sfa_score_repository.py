@@ -1,3 +1,4 @@
+from sfa.infrastructure.repositories.position_projection import current_position, scope_position
 from datetime import date
 from unicodedata import combining, normalize
 
@@ -390,7 +391,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             select(
                 Player.id.label("player_id"),
                 Player.name.label("player_name"),
-                Player.position,
+                scope_position(scope, None, current_position(season=scope.sources[0].season, scope=scope)).label('position'),
                 Player.photo_url,
                 Team.name.label("team_name"),
                 Competition.name.label("competition_name"),
@@ -480,12 +481,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         b1_pts, b1_label = await self._get_b1_bonus_for_scope(
             player_id, scope, rules_version_id
         )
-        position = position_for_context(
-            _position_value(representative["position"]),
-            player_name=representative["player_name"],
-            team_name=representative["team_name"],
-            competition_id=representative["competition_id"],
-        )
+        position = _position_value(representative['position'])
         score = PlayerScoreDTO(
             player_id=representative["player_id"],
             player_name=representative["player_name"],
@@ -792,12 +788,18 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         rank_col = func.rank().over(
             order_by=[order_col.desc(), contextual_total_pts.desc()]
         ).label("rank")
+        position_teams = _latest_verified_team(season=season, scope=_scope, competition_id=competition_id)
+        position_team = aliased(Team)
+        resolved_position = (scope_position(_scope, competition_id,
+            current_position(season=season, competition_id=competition_id, scope=_scope)) if _scope is not None
+            else _legacy_position_expression(position_team.name, agg.c.best_competition_id) if position is not None
+            else Player.position)
         selected_columns = [
             rank_col,
             Player.id.label("player_id"),
             Player.name.label("player_name"),
             Player.birth_date.label("birth_date"),
-            Player.position,
+            resolved_position.label('position'),
             Competition.name.label("competition_name"),
             agg.c.best_competition_id.label("competition_id"),
             contextual_total_pts.label("total_pts"),
@@ -824,6 +826,9 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             .join(eligible_players, Player.id == eligible_players.c.player_id)
             .join(Competition, agg.c.best_competition_id == Competition.id)
         )
+        if _scope is not None or position is not None:
+            stmt = (stmt.join(position_teams, Player.id == position_teams.c.player_id)
+                    .join(position_team, position_team.id == position_teams.c.display_team_id))
         if needs_b1_filter:
             stmt = stmt.outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
         if honor_agg is not None:
@@ -831,11 +836,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         stmt = stmt.where(Player.id.in_(_positive_total_player_ids(
             agg, contextual_total_pts, honor_agg, 0 if name and name.strip() else min_matches)))
         if position is not None:
-            position_teams = _latest_verified_team(season=season, scope=_scope, competition_id=competition_id)
-            position_team = aliased(Team)
-            stmt = (stmt.join(position_teams, Player.id == position_teams.c.player_id)
-                    .join(position_team, position_team.id == position_teams.c.display_team_id)
-                    .where(_legacy_position_expression(position_team.name, agg.c.best_competition_id) == position))
+            stmt = stmt.where(resolved_position == position)
         stmt = stmt.order_by(*_stable_ranking_order(order_col, contextual_total_pts))
         if needs_b1_filter:
             bonus_filter = _bonus_label_filter(
@@ -971,12 +972,10 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             b1_label = _b1_label_for_birth_date(row["birth_date"])
             if b1_total > 0:
                 b1_label = "Veterano" if b1_veteran >= b1_young and b1_veteran > 0 else "Promesa"
-            display_position = position_for_context(
-                _position_value(row["position"]),
-                player_name=row["player_name"],
-                team_name=team_name,
-                competition_id=row["competition_id"],
-            )
+            display_position = (_position_value(row['position']) if _scope is not None or position is not None
+                                else position_for_context(_position_value(row['position']),
+                                    player_name=row['player_name'], team_name=team_name,
+                                    competition_id=row['competition_id']))
             if position is not None and display_position != position:
                 continue
             result.append(RankedPlayerDTO(

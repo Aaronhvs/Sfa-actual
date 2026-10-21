@@ -18,6 +18,10 @@ ingest_interval_minutes = max(1, settings.INGEST_INTERVAL_MINUTES)
 # Only ingests competitions with live or recently finished matches (within 4 hours).
 # If nothing is active, exits immediately at zero extra cost.
 celery_app.conf.beat_schedule = {
+    "collect-durable-player-position-lineups": {
+        "task": "collect_position_lineups_task",
+        "schedule": timedelta(minutes=15),
+    },
     # Checks if there are live or recently finished matches to ingest.
     # Only ingests competitions listed in ACTIVE_COMPETITIONS (ingest_today_task.py).
     "ingest-today-competitions": {

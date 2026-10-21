@@ -6,6 +6,7 @@ from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.teams.models import Team
+from sfa.infrastructure.repositories.position_projection import current_position
 
 
 class PlayerRepository(PlayerRepositoryProtocol):
@@ -36,7 +37,7 @@ class PlayerRepository(PlayerRepositoryProtocol):
         )
         stmt = (
             select(
-                Player.id, Player.name, Player.position,
+                Player.id, Player.name, current_position(),
                 Player.photo_url,
                 Team.name.label("team_name"),
             )

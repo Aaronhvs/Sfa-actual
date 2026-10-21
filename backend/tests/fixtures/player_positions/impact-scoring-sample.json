@@ -1,0 +1,640 @@
+{
+  "raw": {
+    "event_id": 1492343,
+    "player_id": 7571,
+    "fixture_id": 79468,
+    "competition_id": 255,
+    "season": "2026",
+    "event_type": "stats",
+    "minute": 90,
+    "score_diff": null,
+    "psxg": null,
+    "player_team_pos": 10,
+    "rival_team_pos": 10,
+    "is_away": false,
+    "stage_factor": 1.3,
+    "goals": 0,
+    "assists": 1,
+    "shots_on": 1,
+    "passes_key": 2,
+    "passes_total": 16,
+    "passes_accuracy": 69.0,
+    "dribbles_won": 0,
+    "duels_won": 0,
+    "tackles_won": 0,
+    "interceptions": 0,
+    "blocks": 0,
+    "fouls_drawn": 0,
+    "fouls_committed": 0,
+    "cards_yellow": 0,
+    "cards_red": 0,
+    "penalty_won": 0,
+    "dribbles_past": 0,
+    "rating": 6.9,
+    "player_position": "EXT",
+    "minutes": 51,
+    "player_team_strength": 76.52,
+    "rival_team_strength": 70.5,
+    "player_birth_date": "1997-05-15",
+    "fixture_date": "2026-08-12",
+    "passes_completed": 11,
+    "player_team_elo_raw": 1935.64,
+    "rival_team_elo_raw": 1893.49,
+    "elo_model_version": "club_elo_v2",
+    "player_seed_source": "season_rollover",
+    "rival_seed_source": "season_rollover"
+  },
+  "score": {
+    "id": 5721246,
+    "m1": 0.97,
+    "m2": 1.15,
+    "m3": 1.0,
+    "m4": 1.0,
+    "mvisit": 1.0,
+    "season": "2026",
+    "mrating": 0.7,
+    "event_id": 1492343,
+    "position": "EXT",
+    "player_id": 7571,
+    "created_at": "2026-08-16T19:40:17.801605+00:00",
+    "fixture_id": 79468,
+    "action_type": "stats",
+    "base_points": 119.48,
+    "final_points": 119.48,
+    "competition_id": 255,
+    "rules_version_id": 4,
+    "calculation_details": {
+      "M1": 0.97,
+      "M2": 1.15,
+      "M3": 1.0,
+      "M4": 1.0,
+      "Mvisit": 1.0,
+      "action": "STATS",
+      "Mrating": 0.7,
+      "minutes": 51,
+      "position": "EXT",
+      "m1_source": "fixture_elo_snapshot",
+      "base_total": 119.48,
+      "m1_original": 0.97,
+      "final_points": 119.48,
+      "passes_total": 16,
+      "strength_used": true,
+      "m1_stats_weight": 0.35,
+      "stats_breakdown": {
+        "xg_no_goal": 1.0,
+        "xa_no_assist": 1.0
+      },
+      "m1_stats_applied": 0.989,
+      "midfield_bonuses": {
+        "enabled": false
+      },
+      "passes_completed": 11,
+      "passes_threshold": 28,
+      "elo_model_version": "club_elo_v2",
+      "passes_puntuables": 0.0,
+      "rival_seed_source": "season_rollover",
+      "player_seed_source": "season_rollover",
+      "rival_team_elo_raw": 1893.49,
+      "diminishing_applied": {
+        "xg_no_goal": {
+          "cap": 3,
+          "pts": 65.0,
+          "count": 1.0,
+          "extra_factor": 0.3
+        },
+        "xa_no_assist": {
+          "cap": 4,
+          "pts": 85.0,
+          "count": 1.0,
+          "extra_factor": 0.3
+        }
+      },
+      "passes_accuracy_pct": 68.8,
+      "player_team_elo_raw": 1935.64,
+      "rival_team_strength": 70.5,
+      "combined_after_clamp": 0.7808,
+      "player_team_strength": 76.52,
+      "stats_m2_attenuation": 0.5,
+      "combined_before_clamp": 0.7808,
+      "passes_puntuables_raw": 0,
+      "stage_factor_original": 1.3,
+      "stage_factor_effective": 1.15,
+      "minutes_penalty_applied": false,
+      "pass_accuracy_bonus_raw": 0,
+      "pass_accuracy_bonus_base": 0,
+      "safe_circulation_excess_passes": 0,
+      "safe_circulation_adjustment_applied": false,
+      "safe_circulation_excess_pass_factor": 0.35,
+      "safe_circulation_completed_pass_threshold": 85
+    },
+    "combined_after_clamp": 0.7808,
+    "combined_before_clamp": 0.7808
+  },
+  "fixture": {
+    "id": 79468,
+    "stage": "final",
+    "season": "2026",
+    "status": "FT",
+    "matchday": null,
+    "played_at": "2026-08-12T19:00:00+00:00",
+    "away_goals": 1,
+    "home_goals": 2,
+    "external_id": 1583664,
+    "away_team_id": 46,
+    "home_team_id": 99,
+    "score_source": "api_football",
+    "competition_id": 255
+  },
+  "rules": [
+    {
+      "id": 4,
+      "name": "v2.1-tuned-bonuses",
+      "version": "2.1",
+      "is_active": true,
+      "created_at": "2026-06-13T03:13:13.608081+00:00",
+      "config_json": {
+        "m1_clamp": [
+          0.6,
+          1.8
+        ],
+        "m4_clamp": [
+          1.0,
+          1.5
+        ],
+        "b1_enabled": true,
+        "m1_divisor": 20.0,
+        "base_points": {
+          "DC": {
+            "goal": 1000,
+            "assist": 850,
+            "blocks": 180,
+            "tackles": 90,
+            "red_card": -500,
+            "duels_won": 25,
+            "xg_no_goal": 50,
+            "fouls_drawn": 15,
+            "penalty_won": 80,
+            "yellow_card": -120,
+            "dribbles_won": 40,
+            "goal_penalty": 350,
+            "xa_no_assist": 120,
+            "corner_assist": 450,
+            "dribbles_past": -60,
+            "goal_shootout": 350,
+            "interceptions": 160,
+            "fouls_committed": -15,
+            "passes_completed": 2,
+            "pass_accuracy_bonus": 1
+          },
+          "MF": {
+            "goal": 720,
+            "assist": 550,
+            "blocks": 80,
+            "tackles": 95,
+            "red_card": -500,
+            "duels_won": 18,
+            "xg_no_goal": 55,
+            "fouls_drawn": 25,
+            "penalty_won": 180,
+            "yellow_card": -120,
+            "dribbles_won": 80,
+            "goal_penalty": 350,
+            "xa_no_assist": 95,
+            "corner_assist": 280,
+            "dribbles_past": -20,
+            "goal_shootout": 350,
+            "interceptions": 130,
+            "fouls_committed": -20,
+            "passes_completed": 7,
+            "pass_accuracy_bonus": 1
+          },
+          "DEL": {
+            "goal": 665,
+            "assist": 500,
+            "blocks": 100,
+            "tackles": 80,
+            "red_card": -500,
+            "duels_won": 18,
+            "xg_no_goal": 60,
+            "fouls_drawn": 40,
+            "penalty_won": 220,
+            "yellow_card": -120,
+            "dribbles_won": 70,
+            "goal_penalty": 390,
+            "xa_no_assist": 60,
+            "corner_assist": 250,
+            "dribbles_past": 0,
+            "goal_shootout": 390,
+            "interceptions": 70,
+            "fouls_committed": -25,
+            "passes_completed": 3
+          },
+          "EXT": {
+            "goal": 550,
+            "assist": 480,
+            "blocks": 90,
+            "tackles": 75,
+            "red_card": -500,
+            "duels_won": 18,
+            "xg_no_goal": 65,
+            "fouls_drawn": 60,
+            "penalty_won": 220,
+            "yellow_card": -120,
+            "dribbles_won": 110,
+            "goal_penalty": 300,
+            "xa_no_assist": 85,
+            "corner_assist": 260,
+            "dribbles_past": 0,
+            "goal_shootout": 300,
+            "interceptions": 70,
+            "fouls_committed": -25,
+            "passes_completed": 1
+          },
+          "LAT": {
+            "goal": 850,
+            "assist": 620,
+            "blocks": 110,
+            "tackles": 100,
+            "red_card": -500,
+            "duels_won": 18,
+            "xg_no_goal": 45,
+            "fouls_drawn": 25,
+            "penalty_won": 120,
+            "yellow_card": -120,
+            "dribbles_won": 95,
+            "goal_penalty": 350,
+            "xa_no_assist": 90,
+            "corner_assist": 300,
+            "dribbles_past": -45,
+            "goal_shootout": 350,
+            "interceptions": 120,
+            "fouls_committed": -15,
+            "passes_completed": 2,
+            "pass_accuracy_bonus": 1
+          },
+          "MCO": {
+            "goal": 600,
+            "assist": 520,
+            "blocks": 90,
+            "tackles": 55,
+            "red_card": -500,
+            "duels_won": 10,
+            "xg_no_goal": 70,
+            "fouls_drawn": 35,
+            "penalty_won": 180,
+            "yellow_card": -150,
+            "dribbles_won": 110,
+            "goal_penalty": 310,
+            "xa_no_assist": 90,
+            "corner_assist": 260,
+            "dribbles_past": -15,
+            "goal_shootout": 310,
+            "interceptions": 70,
+            "fouls_committed": -25,
+            "passes_completed": 2,
+            "pass_accuracy_bonus": 1
+          }
+        },
+        "mvisit_bonus": 1.15,
+        "b1_bonus_table": {
+          "1": 200,
+          "2": 400,
+          "3": 600
+        },
+        "combined_clamp": [
+          0.3,
+          4.0
+        ],
+        "m1_stats_clamp": [
+          0.85,
+          1.2
+        ],
+        "m1_stats_weight": 0.35,
+        "b1_young_max_age": 20,
+        "b1_young_min_age": 17,
+        "mrating_top_value": 1.3,
+        "b1_competition_ids": [
+          350
+        ],
+        "b1_veteran_min_age": 35,
+        "m4_psxg_multiplier": 0.8,
+        "mrating_none_value": 0.75,
+        "mrating_thresholds": [
+          [
+            6.5,
+            0.5
+          ],
+          [
+            7.0,
+            0.7
+          ],
+          [
+            7.5,
+            0.85
+          ],
+          [
+            8.0,
+            1.0
+          ],
+          [
+            8.5,
+            1.15
+          ]
+        ],
+        "diminishing_returns": {
+          "blocks": {
+            "cap": 4,
+            "extra_factor": 0.25
+          },
+          "tackles": {
+            "cap": 5,
+            "extra_factor": 0.25
+          },
+          "duels_won": {
+            "cap": 8,
+            "extra_factor": 0.25
+          },
+          "xg_no_goal": {
+            "cap": 3,
+            "extra_factor": 0.3
+          },
+          "xa_no_assist": {
+            "cap": 4,
+            "extra_factor": 0.3
+          },
+          "interceptions": {
+            "cap": 5,
+            "extra_factor": 0.25
+          }
+        },
+        "m1_strength_divisor": 200,
+        "stats_m2_attenuation": 0.5,
+        "minutes_penalty_factor": 0.5,
+        "passes_avg_by_position": {
+          "DC": 32,
+          "MF": 42,
+          "DEL": 10,
+          "EXT": 28,
+          "LAT": 38,
+          "MCO": 45
+        },
+        "cup_lower_div_strengths": {
+          "amateur": 10.0,
+          "third_division": 18.0,
+          "second_division": 35.0
+        },
+        "league_strength_factors": {
+          "La Liga": 0.95,
+          "Ligue 1": 0.82,
+          "Serie A": 0.9,
+          "default": 0.5,
+          "Bundesliga": 0.9,
+          "Eredivisie": 0.75,
+          "S\u00c3\u00bcper Lig": 0.65,
+          "Primeira Liga": 0.75,
+          "Premier League": 1.0,
+          "Jupiler Pro League": 0.65,
+          "Scottish Premiership": 0.65
+        },
+        "minutes_threshold_stats": 15,
+        "mvisit_eligible_actions": [
+          "corner_assist",
+          "assist",
+          "goal",
+          "goal_penalty",
+          "goal_shootout"
+        ],
+        "achievement_phase_bonuses": {
+          "world_cup": {
+            "winner": 9000,
+            "runner_up": 6000,
+            "semi_final": 4000,
+            "round_of_16": 1200,
+            "round_of_32": 500,
+            "third_place": 5000,
+            "fourth_place": 5000,
+            "quarter_final": 2500
+          },
+          "europa_league": {
+            "winner": 8000,
+            "qualify_ko": 1200,
+            "semi_final": 4500,
+            "round_of_16": 2000,
+            "quarter_final": 3000
+          },
+          "domestic_league": {
+            "top_4": 1500,
+            "champion": 12000,
+            "runner_up": 4000
+          },
+          "champions_league": {
+            "winner": 15000,
+            "runner_up": 11000,
+            "qualify_ko": 1000,
+            "semi_final": 6500,
+            "round_of_16": 2000,
+            "quarter_final": 3500
+          },
+          "conference_league": {
+            "winner": 5500,
+            "qualify_ko": 800,
+            "semi_final": 3000,
+            "round_of_16": 1200,
+            "quarter_final": 2000
+          },
+          "domestic_cup_major": {
+            "winner": 4500,
+            "runner_up": 2000,
+            "semi_final": 1200
+          },
+          "domestic_cup_minor": {
+            "winner": 2000,
+            "runner_up": 600
+          }
+        },
+        "competition_bonus_weights": {
+          "FA Cup": 0.65,
+          "EFL Cup": 0.45,
+          "La Liga": 0.9,
+          "Ligue 1": 0.8,
+          "Serie A": 0.85,
+          "DFB-Pokal": 0.6,
+          "Bundesliga": 0.85,
+          "Copa del Rey": 0.65,
+          "Coppa Italia": 0.6,
+          "DFL-Supercup": 0.35,
+          "Europa League": 0.75,
+          "Premier League": 0.95,
+          "UEFA Super Cup": 0.45,
+          "Coupe de France": 0.55,
+          "Champions League": 1.0,
+          "Community Shield": 0.25,
+          "Conference League": 0.55,
+          "Supercoppa Italiana": 0.35,
+          "Supercopa de Espa\u00c3\u00b1a": 0.4,
+          "Troph\u00c3\u00a9e des Champions": 0.3
+        },
+        "promoted_default_strength": 30.0,
+        "promoted_playoff_strength": 25.0,
+        "promoted_champion_strength": 35.0,
+        "ranking_min_minutes_global": 600,
+        "promoted_runner_up_strength": 30.0,
+        "enable_midfield_control_bonuses": true,
+        "ranking_min_minutes_competition": 180,
+        "midfield_control_bonus_cap_per_match": 180,
+        "enable_performance_based_achievement_bonus": true
+      },
+      "description": "DEL.goal 650->665; achievement phase bonuses escalados (CL winner 15000, liga 12000)"
+    }
+  ],
+  "team_id": 99,
+  "competitions": [
+    {
+      "id": 1,
+      "name": "La Liga",
+      "country": "ESP",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 3,
+      "name": "Premier League",
+      "country": "ENG",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 6,
+      "name": "Bundesliga",
+      "country": "GER",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 7,
+      "name": "Serie A",
+      "country": "ITA",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 9,
+      "name": "Ligue 1",
+      "country": "FRA",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 10,
+      "name": "Champions League",
+      "country": "EUR",
+      "participant_kind": "club",
+      "competition_factor": 1.5
+    },
+    {
+      "id": 22,
+      "name": "Copa del Rey",
+      "country": "ESP",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 23,
+      "name": "Supercopa de Espa\u00f1a",
+      "country": "ESP",
+      "participant_kind": "club",
+      "competition_factor": 1.1
+    },
+    {
+      "id": 90,
+      "name": "FA Cup",
+      "country": "ENG",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 92,
+      "name": "DFB-Pokal",
+      "country": "GER",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 94,
+      "name": "Coppa Italia",
+      "country": "ITA",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 96,
+      "name": "Coupe de France",
+      "country": "FRA",
+      "participant_kind": "club",
+      "competition_factor": 1.0
+    },
+    {
+      "id": 253,
+      "name": "Europa League",
+      "country": "EUR",
+      "participant_kind": "club",
+      "competition_factor": 1.3
+    },
+    {
+      "id": 254,
+      "name": "Conference League",
+      "country": "EUR",
+      "participant_kind": "club",
+      "competition_factor": 1.1
+    },
+    {
+      "id": 255,
+      "name": "UEFA Super Cup",
+      "country": "EUR",
+      "participant_kind": "club",
+      "competition_factor": 1.05
+    },
+    {
+      "id": 256,
+      "name": "EFL Cup",
+      "country": "ENG",
+      "participant_kind": "club",
+      "competition_factor": 0.85
+    },
+    {
+      "id": 257,
+      "name": "Community Shield",
+      "country": "ENG",
+      "participant_kind": "club",
+      "competition_factor": 0.75
+    },
+    {
+      "id": 258,
+      "name": "DFL-Supercup",
+      "country": "GER",
+      "participant_kind": "club",
+      "competition_factor": 0.85
+    },
+    {
+      "id": 259,
+      "name": "Supercoppa Italiana",
+      "country": "ITA",
+      "participant_kind": "club",
+      "competition_factor": 0.85
+    },
+    {
+      "id": 260,
+      "name": "Troph\u00e9e des Champions",
+      "country": "FRA",
+      "participant_kind": "club",
+      "competition_factor": 0.8
+    },
+    {
+      "id": 350,
+      "name": "World Cup",
+      "country": "INT",
+      "participant_kind": "national_team",
+      "competition_factor": 1.75
+    }
+  ]
+}

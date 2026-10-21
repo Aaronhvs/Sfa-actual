@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from sfa.infrastructure.models.enums import EventType, IngestionStatus, Position
+from sfa.domain.enums import EventType, IngestionStatus, Position
 
 
 class ProviderDailyQuotaExceededError(RuntimeError):
@@ -208,6 +208,8 @@ class FixtureScoreBackfillRepositoryPort(Protocol):
 
 @runtime_checkable
 class IngestionRepositoryPort(Protocol):
+    async def resolve_scoring_position(self, player_id: int, fixture_id: int, fallback: Position) -> Position: ...
+
     async def upsert_competition(
         self, name: str, country: str, factor: float,
         participant_kind: str = "club",

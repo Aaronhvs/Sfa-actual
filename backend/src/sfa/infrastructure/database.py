@@ -6,6 +6,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
 from sfa.core.config import get_settings
+from sfa.infrastructure.position_transaction import PositionAwareSession
 
 settings = get_settings()
 
@@ -23,6 +24,7 @@ engine = create_async_engine(
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
+    sync_session_class=PositionAwareSession,
     expire_on_commit=False,
 )
 

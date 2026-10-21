@@ -7,7 +7,6 @@ from sqlalchemy import Date, cast, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sfa.domain.player_position_overrides import position_for_context
 from sfa.domain.scoring.entities import PlayerEventScore
 from sfa.domain.scoring_ports import PlayerEventRawContextDTO, PlayerEventScoreRepositoryPort
 from sfa.infrastructure.models.competitions.models import CompetitionStage
@@ -19,6 +18,7 @@ from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore as PlayerEventScoreModel
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
+from sfa.infrastructure.repositories.position_projection import historical_position
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,10 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 Fixture.away_team_id,
                 Fixture.season,
                 func.coalesce(CompetitionStage.stage_factor, 1.0).label("stage_factor"),
-                Player.position,
+                historical_position(
+                    team_id=PlayerEvent.team_id, competition_id=Fixture.competition_id,
+                    season=Fixture.season, played_at=Fixture.played_at, fixture_id=Fixture.id,
+                ),
                 Player.name.label("player_name"),
                 Player.birth_date.label("player_birth_date"),
                 cast(Fixture.played_at, Date).label("fixture_date"),
@@ -138,6 +141,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 & (elo_away.c.team_id == Fixture.away_team_id),
             )
             .where(*filters, Fixture.status.in_(_FINAL_FIXTURE_STATUSES))
+            .order_by(PlayerEvent.id)
         )
         event_rows = (await self._session.execute(stmt)).all()
 
@@ -242,11 +246,7 @@ class PlayerEventScoreRepository(PlayerEventScoreRepositoryPort):
                 penalty_won=stats.penalty_won if stats else None,
                 dribbles_past=stats.dribbles_past if stats else None,
                 rating=float(stats.rating) if stats and stats.rating is not None else None,
-                player_position=position_for_context(
-                    row.position.value if hasattr(row.position, "value") else str(row.position),
-                    player_name=row.player_name,
-                    competition_id=row.competition_id,
-                ) or "",
+                player_position=row.position or "",
                 minutes=stats.minutes if stats else None,
                 player_team_strength=player_team_strength,
                 rival_team_strength=rival_team_strength,

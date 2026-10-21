@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     API_FOOTBALL_KEY: str = ""
     API_FOOTBALL_BASE_URL: str = "https://v3.football.api-sports.io"
 
+    # Evidence acquisition and publication are independent rollout gates.
+    POSITION_ACQUISITION_ENABLED: bool = False
+    POSITION_SHADOW_READ: bool = False
+    POSITION_PUBLICATION_ENABLED: bool = False
+    POSITION_AUTOMATIC_REFRESH_ENABLED: bool = False
+    POSITION_LINEUP_REQUEST_BUDGET: int = 10
+    POSITION_DAILY_RESERVE: int = 100
+
     # Admin API key — empty string disables the check (dev only)
     # In production, must be set or all /admin requests are blocked
     ADMIN_API_KEY: str = ""

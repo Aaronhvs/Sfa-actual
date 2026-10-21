@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.api.v1.schemas.ingestion_status import (
@@ -138,9 +138,10 @@ async def _run_fix_player_positions(
     use_case: FixPlayerPositionsUseCase,
     db: AsyncSession,
 ) -> FixPlayerPositionsResult:
-    result = await use_case.execute()
-    await db.commit()
-    return result
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Heuristic position repair retired. Use evidence-based position review and correction publication.",
+    )
 
 
 @router.post("/players/fix-positions")

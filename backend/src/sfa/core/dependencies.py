@@ -381,7 +381,8 @@ async def get_fixture_detail_repository(
         settings.API_FOOTBALL_KEY,
         settings.API_FOOTBALL_BASE_URL,
     )
-    return FixtureDetailRepository(provider=provider, redis=redis, session=db)
+    recorder = get_record_position_evidence_use_case() if settings.POSITION_ACQUISITION_ENABLED else None
+    return FixtureDetailRepository(provider=provider, redis=redis, session=db, position_recorder=recorder)
 
 
 async def get_tournament_fixture_detail_use_case(
@@ -732,3 +733,158 @@ async def require_admin_key(
 
 
 __all__ = ["get_db", "get_redis", "require_admin_key"]
+
+
+def get_player_position_audit_use_case(snapshot_path):
+    """Compose the offline audit without constructing a football provider."""
+    from sfa.application.use_cases.audit_player_positions import AuditPlayerPositionsUseCase
+    from sfa.infrastructure.repositories.position_audit_snapshot_source import FilePositionAuditSnapshotSource
+
+    return AuditPlayerPositionsUseCase(FilePositionAuditSnapshotSource(snapshot_path))
+
+
+def get_record_position_evidence_use_case(session_factory=None):
+    from sfa.application.use_cases.record_position_evidence import RecordPositionEvidenceUseCase
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.repositories.player_position_repository import PlayerPositionRepository
+    from sfa.tasks.position_evidence_capture import PositionEvidenceCaptureAdapter
+
+    return PositionEvidenceCaptureAdapter(
+        session_factory or AsyncSessionLocal,
+        lambda session: RecordPositionEvidenceUseCase(PlayerPositionRepository(session)),
+    )
+
+
+def get_review_position_assignment_use_case(session):
+    from sfa.application.use_cases.review_position_assignment import ReviewPositionAssignmentUseCase
+    from sfa.infrastructure.repositories.player_position_repository import PlayerPositionRepository
+
+    return ReviewPositionAssignmentUseCase(PlayerPositionRepository(session))
+
+
+def get_import_position_evidence_adapter(session_factory=None):
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.tasks.import_position_evidence import ImportPositionEvidenceAdapter
+
+    sessions = session_factory or AsyncSessionLocal
+    return ImportPositionEvidenceAdapter(sessions, get_record_position_evidence_use_case(sessions),
+                                         get_review_position_assignment_use_case)
+
+
+def get_collect_position_lineups_use_case(client, redis, session_factory=None):
+    from sfa.application.use_cases.collect_position_lineups import CollectPositionLineupsUseCase
+    from sfa.core.config import get_settings
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.providers.position_lineup_provider import PositionLineupProvider
+
+    sessions = session_factory or AsyncSessionLocal
+    return CollectPositionLineupsUseCase(
+        PositionLineupProvider(client), get_record_position_evidence_use_case(sessions),
+        get_position_collection_state(redis, sessions),
+        daily_reserve=get_settings().POSITION_DAILY_RESERVE,
+    )
+
+
+def get_position_collection_state(redis, session_factory=None, lease_key="position-lineups:acquisition:lease"):
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.repositories.player_position_repository import PlayerPositionRepository
+    from sfa.tasks.position_lineup_collection_state import PositionLineupCollectionStateAdapter
+
+    return PositionLineupCollectionStateAdapter(session_factory or AsyncSessionLocal, PlayerPositionRepository,
+                                               redis, lease_key)
+
+
+def get_reconcile_position_coverage_use_case(client, redis, session_factory=None):
+    from sfa.application.use_cases.reconcile_position_coverage import ReconcilePositionCoverageUseCase
+    from sfa.core.config import get_settings
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.providers.position_lineup_provider import PositionLineupProvider
+    from sfa.infrastructure.repositories.player_position_repository import PlayerPositionRepository
+    from sfa.tasks.position_lineup_collection_state import PositionLineupCollectionStateAdapter
+
+    return ReconcilePositionCoverageUseCase(
+        PositionLineupProvider(client), PositionLineupCollectionStateAdapter(
+            session_factory or AsyncSessionLocal, PlayerPositionRepository, redis,
+        ), daily_reserve=get_settings().POSITION_DAILY_RESERVE,
+    )
+
+
+async def get_due_position_calendar_scope(season):
+    from sfa.application.use_cases.ingest_competition import LEAGUES
+    from sfa.infrastructure.database import AsyncSessionLocal
+    from sfa.infrastructure.repositories.player_position_repository import PlayerPositionRepository
+    from sfa.tasks.ingest_today_task import ACTIVE_COMPETITIONS
+
+    async with AsyncSessionLocal() as session:
+        repository = PlayerPositionRepository(session)
+        for league in LEAGUES:
+            if (league.id, int(season)) in ACTIVE_COMPETITIONS and await repository.calendar_scope_due(league.id, season):
+                competition_id = await repository.competition_id_for_name(league.name)
+                if competition_id:
+                    return competition_id, league.id
+    return None
+
+
+def get_recover_position_lineups_use_case(snapshot_path, archive_directory, ssh_host):
+    from sfa.application.use_cases.recover_missing_lineups import RecoverMissingLineupsUseCase
+    from sfa.infrastructure.providers.ssh_lineup_evidence_provider import SshLineupEvidenceProvider
+    from sfa.infrastructure.repositories.file_lineup_evidence_archive import FileLineupEvidenceArchive
+    from sfa.infrastructure.repositories.position_audit_snapshot_source import FilePositionAuditSnapshotSource
+
+    return RecoverMissingLineupsUseCase(
+        FilePositionAuditSnapshotSource(snapshot_path), SshLineupEvidenceProvider(ssh_host),
+        FileLineupEvidenceArchive(archive_directory),
+    )
+
+
+def get_catalog_lineup_batch_use_case(archive_directory, ssh_host):
+    from sfa.application.use_cases.capture_catalog_lineup_batch import CaptureCatalogLineupBatchUseCase
+    from sfa.infrastructure.providers.ssh_lineup_evidence_provider import SshLineupEvidenceProvider
+    from sfa.infrastructure.repositories.file_lineup_evidence_archive import FileLineupEvidenceArchive
+
+    return CaptureCatalogLineupBatchUseCase(
+        SshLineupEvidenceProvider(ssh_host), FileLineupEvidenceArchive(archive_directory),
+    )
+
+
+def get_position_correction_use_cases(session):
+    from sfa.application.use_cases.publish_position_correction import (
+        PublishPositionCorrectionUseCase,
+        RevertPositionCorrectionUseCase,
+    )
+    from sfa.application.use_cases.simulate_position_correction import SimulatePositionCorrectionUseCase
+    from sfa.infrastructure.repositories.player_event_score_repository import PlayerEventScoreRepository
+    from sfa.infrastructure.repositories.position_correction_repository import PostgreSQLPositionCorrectionRepository
+    from sfa.infrastructure.repositories.scoring_rules_version_repository import ScoringRulesVersionRepository
+
+    corrections = PostgreSQLPositionCorrectionRepository(session)
+    simulation = SimulatePositionCorrectionUseCase(
+        corrections, PlayerEventScoreRepository(session), ScoringRulesVersionRepository(session),
+    )
+    return simulation, PublishPositionCorrectionUseCase(corrections, simulation), RevertPositionCorrectionUseCase(corrections)
+
+
+def get_season_position_correction_use_cases(session):
+    from sfa.application.use_cases.prepare_season_position_correction import PrepareSeasonPositionCorrectionUseCase
+    from sfa.application.use_cases.publish_season_position_correction import PublishSeasonPositionCorrectionUseCase
+    from sfa.application.use_cases.publish_position_correction import RevertPositionCorrectionUseCase
+    from sfa.application.use_cases.record_position_evidence import RecordPositionEvidenceUseCase
+    from sfa.application.use_cases.simulate_active_season_position_impact import SimulateActiveSeasonPositionImpactUseCase
+    from sfa.infrastructure.repositories.player_position_repository import PlayerPositionRepository
+    from sfa.infrastructure.repositories.player_event_score_repository import PlayerEventScoreRepository
+    from sfa.infrastructure.repositories.season_position_correction_repository import SeasonPositionCorrectionRepository
+
+    repo = SeasonPositionCorrectionRepository(session, RecordPositionEvidenceUseCase(PlayerPositionRepository(session)),
+                                             PlayerEventScoreRepository(session))
+    return (PrepareSeasonPositionCorrectionUseCase(SimulateActiveSeasonPositionImpactUseCase()),
+            PublishSeasonPositionCorrectionUseCase(repo), RevertPositionCorrectionUseCase(repo), repo)
+
+
+def get_active_season_position_snapshot_source(session):
+    from sfa.infrastructure.repositories.active_season_position_snapshot_source import ActiveSeasonPositionSnapshotSource
+    from sfa.infrastructure.repositories.season_repository import SeasonRepository
+    from sfa.infrastructure.repositories.scoring_rules_version_repository import ScoringRulesVersionRepository
+    from sfa.infrastructure.repositories.sfa_score_repository import SFAScoreRepository
+    from sfa.infrastructure.repositories.player_event_score_repository import PlayerEventScoreRepository
+    return ActiveSeasonPositionSnapshotSource(session,SeasonRepository(session),ScoringRulesVersionRepository(session),
+                                             SFAScoreRepository(session),PlayerEventScoreRepository(session))

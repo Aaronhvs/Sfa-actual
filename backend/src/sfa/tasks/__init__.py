@@ -1,6 +1,7 @@
 from .calculate_achievement_bonuses_task import calculate_achievement_bonuses_task
 from .calculate_scores_for_rules_version_task import calculate_scores_for_rules_version_task
 from .calculate_team_strengths_task import calculate_team_strengths_task
+from .collect_position_lineups_task import collect_position_lineups_task
 from .elo_tasks import (
     apply_elo_pools_then_recalculate_task,
     apply_elo_update_task,
@@ -28,6 +29,7 @@ from .reingest_player_task import reingest_player_task
 from .run_full_recalculation_task import run_full_recalculation_task
 
 __all__ = [
+    "collect_position_lineups_task",
     "calculate_achievement_bonuses_task",
     "enrich_player_birth_dates_task",
     "infer_competition_achievements_task",

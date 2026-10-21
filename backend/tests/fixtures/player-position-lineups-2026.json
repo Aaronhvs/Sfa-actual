@@ -1,0 +1,998 @@
+{
+  "schema": "sfa-position-audit-snapshot-v1",
+  "season": "2026",
+  "captured_at": "2026-10-18T14:25:39.509411+00:00",
+  "read_only": true,
+  "players": [
+    {
+      "id": 28,
+      "external_id": 1257,
+      "name": "J. Koundé",
+      "position": "LAT",
+      "position_source": "transfermarkt"
+    },
+    {
+      "id": 29,
+      "external_id": 396623,
+      "name": "Pau Cubarsí Paredes",
+      "position": "DC",
+      "position_source": "transfermarkt"
+    },
+    {
+      "id": 34,
+      "external_id": 386828,
+      "name": "Lamine Yamal",
+      "position": "EXT",
+      "position_source": "transfermarkt"
+    },
+    {
+      "id": 38,
+      "external_id": 181701,
+      "name": "Gerard Martín",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 40,
+      "external_id": 133609,
+      "name": "Pedri",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 52,
+      "external_id": 340626,
+      "name": "Fermín",
+      "position": "EXT",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 68,
+      "external_id": 18895,
+      "name": "F. Lejeune",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 71,
+      "external_id": 128582,
+      "name": "Jorge de Frutos",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 72,
+      "external_id": 47285,
+      "name": "Unai López",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 73,
+      "external_id": 47109,
+      "name": "Óscar Valentín",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 74,
+      "external_id": 47543,
+      "name": "Álvaro García",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 75,
+      "external_id": 52,
+      "name": "Sergio Camello",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 77,
+      "external_id": 41552,
+      "name": "P. Ciss",
+      "position": "MC",
+      "position_source": "transfermarkt"
+    },
+    {
+      "id": 798,
+      "external_id": 47533,
+      "name": "Catena",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 804,
+      "external_id": 46658,
+      "name": "Rubén García",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 805,
+      "external_id": 46746,
+      "name": "A. Budimir",
+      "position": "DEL",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 868,
+      "external_id": 47329,
+      "name": "Adrià Pedrosa",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 917,
+      "external_id": 182718,
+      "name": "Joan García",
+      "position": "GK",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 918,
+      "external_id": 286601,
+      "name": "O. El Hilali",
+      "position": "DC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 920,
+      "external_id": 47249,
+      "name": "L. Cabrera",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 922,
+      "external_id": 438284,
+      "name": "Rafael Bauzà",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1038,
+      "external_id": 47302,
+      "name": "Diego Llorente",
+      "position": "DC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1043,
+      "external_id": 1578,
+      "name": "G. Lo Celso",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1044,
+      "external_id": 181421,
+      "name": "A. Ezzalzouli",
+      "position": "EXT",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1072,
+      "external_id": 2813,
+      "name": "Marko Dmitrović",
+      "position": "GK",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1117,
+      "external_id": 18867,
+      "name": "Diego Rico",
+      "position": "DC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1230,
+      "external_id": 1703,
+      "name": "A. Rațiu",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1234,
+      "external_id": 46887,
+      "name": "Pedro Díaz",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 2035,
+      "external_id": 46662,
+      "name": "Moncayola",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 2037,
+      "external_id": 182621,
+      "name": "Iker Muñoz",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 2092,
+      "external_id": 1697,
+      "name": "Pablo Fornals",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 2093,
+      "external_id": 47582,
+      "name": "C. Hernández",
+      "position": "DEL",
+      "position_source": "transfermarkt"
+    },
+    {
+      "id": 3020,
+      "external_id": 736,
+      "name": "Fran García",
+      "position": "LAT",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 3021,
+      "external_id": 748,
+      "name": "Dani Ceballos",
+      "position": "EXT",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 3034,
+      "external_id": 183699,
+      "name": "Urko González",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 3039,
+      "external_id": 312990,
+      "name": "Roberto Fernández",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 4891,
+      "external_id": 46667,
+      "name": "Kike Barja",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 5221,
+      "external_id": 1439,
+      "name": "Héctor Bellerín",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 5629,
+      "external_id": 47448,
+      "name": "Aitor Fernández",
+      "position": "GK",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 7867,
+      "external_id": 7334,
+      "name": "K. Adeyemi",
+      "position": "EXT",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 7949,
+      "external_id": 643,
+      "name": "Gabriel Jesus",
+      "position": "DEL",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 8292,
+      "external_id": 44,
+      "name": "Rodri",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 22085,
+      "external_id": 388495,
+      "name": "Javier Hernandez",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 37211,
+      "external_id": 30441,
+      "name": "E. Audero",
+      "position": "GK",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 100657,
+      "external_id": 450716,
+      "name": "Roger Hinojo",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 124130,
+      "external_id": 415089,
+      "name": "Gabriel Moscardo",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 190412,
+      "external_id": 282054,
+      "name": "C. Riedel",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 222879,
+      "external_id": 2181,
+      "name": "G. Tsitaishvili",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1021714,
+      "external_id": 46990,
+      "name": "Álvaro Vallés",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1021718,
+      "external_id": 355004,
+      "name": "V. Gómez",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1021763,
+      "external_id": 421044,
+      "name": "Íñigo Arguibide",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1022093,
+      "external_id": 568001,
+      "name": "X. Espart",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1022297,
+      "external_id": 381197,
+      "name": "Asier Osambela",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1033477,
+      "external_id": 375915,
+      "name": "Q. Hartman",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1083186,
+      "external_id": 104795,
+      "name": "Mujaid Sadick",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1370753,
+      "external_id": 316519,
+      "name": "F. Bernal",
+      "position": "MC",
+      "position_source": "apifootball"
+    },
+    {
+      "id": 1615553,
+      "external_id": 560924,
+      "name": "Unai Santos",
+      "position": "MC",
+      "position_source": "apifootball"
+    }
+  ],
+  "fixtures": [
+    {
+      "id": 77774,
+      "external_id": 1570391,
+      "season": "2026",
+      "competition_id": 1,
+      "played_at": "2026-09-15 17:00:00+00:00",
+      "status": "FT",
+      "home_team_external_id": 728,
+      "away_team_external_id": 540
+    },
+    {
+      "id": 77785,
+      "external_id": 1570399,
+      "season": "2026",
+      "competition_id": 1,
+      "played_at": "2026-09-19 12:00:00+00:00",
+      "status": "FT",
+      "home_team_external_id": 727,
+      "away_team_external_id": 728
+    },
+    {
+      "id": 77802,
+      "external_id": 1570413,
+      "season": "2026",
+      "competition_id": 1,
+      "played_at": "2026-10-17 16:30:00+00:00",
+      "status": "FT",
+      "home_team_external_id": 543,
+      "away_team_external_id": 529
+    }
+  ],
+  "cache": [
+    {
+      "key": "fixture:api:supplement:v2:1570391",
+      "sha256": "936b0256c195e18edd72b07db80995c023f8b0bc34a1b0f7e0c24c41f161f93c",
+      "payload": {
+        "fixture": {
+          "external_id": 1570391,
+          "stage": "Regular Season - 6",
+          "matchday": null,
+          "played_at": "2026-09-15T17:00:00+00:00",
+          "status": "FT",
+          "status_label": "Match Finished",
+          "elapsed": 90,
+          "home_team": {
+            "external_id": 728,
+            "name": "Rayo Vallecano"
+          },
+          "away_team": {
+            "external_id": 540,
+            "name": "Espanyol"
+          },
+          "home_goals": 2,
+          "away_goals": 1,
+          "home_winner": true,
+          "away_winner": false,
+          "competition_id": null,
+          "competition_name": null
+        },
+        "lineups": [
+          {
+            "team": {
+              "external_id": 728,
+              "name": "Rayo Vallecano"
+            },
+            "formation": "4-2-3-1",
+            "coach_name": "Benat San Jose",
+            "coach_photo": "https://media.api-sports.io/football/coachs/26023.png",
+            "start_xi": [
+              {
+                "external_id": 30441,
+                "name": "E. Audero",
+                "position": "G",
+                "grid": "1:1"
+              },
+              {
+                "external_id": 1703,
+                "name": "A. Ratiu",
+                "position": "D",
+                "grid": "2:4"
+              },
+              {
+                "external_id": 18895,
+                "name": "F. Lejeune",
+                "position": "D",
+                "grid": "2:3"
+              },
+              {
+                "external_id": 104795,
+                "name": "M. Sadick",
+                "position": "D",
+                "grid": "2:2"
+              },
+              {
+                "external_id": 47329,
+                "name": "A. Pedrosa",
+                "position": "D",
+                "grid": "2:1"
+              },
+              {
+                "external_id": 47285,
+                "name": "U. Lopez",
+                "position": "M",
+                "grid": "3:2"
+              },
+              {
+                "external_id": 41552,
+                "name": "P. Ciss",
+                "position": "M",
+                "grid": "3:1"
+              },
+              {
+                "external_id": 2181,
+                "name": "G. Tsitaishvili",
+                "position": "M",
+                "grid": "4:3"
+              },
+              {
+                "external_id": 46887,
+                "name": "P. Diaz",
+                "position": "M",
+                "grid": "4:2"
+              },
+              {
+                "external_id": 47543,
+                "name": "A. Garcia",
+                "position": "M",
+                "grid": "4:1"
+              },
+              {
+                "external_id": 52,
+                "name": "S. Camello",
+                "position": "F",
+                "grid": "5:1"
+              }
+            ]
+          },
+          {
+            "team": {
+              "external_id": 540,
+              "name": "Espanyol"
+            },
+            "formation": "4-2-3-1",
+            "coach_name": "Manolo Gonzalez",
+            "coach_photo": "https://media.api-sports.io/football/coachs/25639.png",
+            "start_xi": [
+              {
+                "external_id": 2813,
+                "name": "M. Dmitrovic",
+                "position": "G",
+                "grid": "1:1"
+              },
+              {
+                "external_id": 286601,
+                "name": "O. El Hilali",
+                "position": "D",
+                "grid": "2:4"
+              },
+              {
+                "external_id": 282054,
+                "name": "C. Riedel",
+                "position": "D",
+                "grid": "2:3"
+              },
+              {
+                "external_id": 47249,
+                "name": "L. Cabrera",
+                "position": "D",
+                "grid": "2:2"
+              },
+              {
+                "external_id": 450716,
+                "name": "R. Hinojo",
+                "position": "D",
+                "grid": "2:1"
+              },
+              {
+                "external_id": 183699,
+                "name": "U. Gonzalez",
+                "position": "M",
+                "grid": "3:2"
+              },
+              {
+                "external_id": 415089,
+                "name": "Gabriel Moscardo",
+                "position": "M",
+                "grid": "3:1"
+              },
+              {
+                "external_id": 388495,
+                "name": "J. Hernandez",
+                "position": "M",
+                "grid": "4:3"
+              },
+              {
+                "external_id": 438284,
+                "name": "R. Bauza",
+                "position": "M",
+                "grid": "4:2"
+              },
+              {
+                "external_id": 375915,
+                "name": "Q. Hartman",
+                "position": "M",
+                "grid": "4:1"
+              },
+              {
+                "external_id": 312990,
+                "name": "R. Fernandez Jaen",
+                "position": "F",
+                "grid": "5:1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "fixture:api:supplement:v2:1570399",
+      "sha256": "8683202afdb5e9b5ae6efd34bd05cce7346af9321efe0666047714f842956785",
+      "payload": {
+        "fixture": {
+          "external_id": 1570399,
+          "stage": "Regular Season - 7",
+          "matchday": null,
+          "played_at": "2026-09-19T12:00:00+00:00",
+          "status": "FT",
+          "status_label": "Match Finished",
+          "elapsed": 90,
+          "home_team": {
+            "external_id": 727,
+            "name": "Osasuna"
+          },
+          "away_team": {
+            "external_id": 728,
+            "name": "Rayo Vallecano"
+          },
+          "home_goals": 1,
+          "away_goals": 1,
+          "home_winner": null,
+          "away_winner": null,
+          "competition_id": null,
+          "competition_name": null
+        },
+        "lineups": [
+          {
+            "team": {
+              "external_id": 727,
+              "name": "Osasuna"
+            },
+            "formation": "5-4-1",
+            "coach_name": "Miguel Ramis Luis",
+            "coach_photo": "https://media.api-sports.io/football/coachs/26015.png",
+            "start_xi": [
+              {
+                "external_id": 47448,
+                "name": "A. Fernandez",
+                "position": "G",
+                "grid": "1:1"
+              },
+              {
+                "external_id": 421044,
+                "name": "I. Arguibide",
+                "position": "D",
+                "grid": "2:5"
+              },
+              {
+                "external_id": 381197,
+                "name": "A. Osambela",
+                "position": "D",
+                "grid": "2:4"
+              },
+              {
+                "external_id": 47533,
+                "name": "A. Catena",
+                "position": "D",
+                "grid": "2:3"
+              },
+              {
+                "external_id": 560924,
+                "name": "U. Santos",
+                "position": "D",
+                "grid": "2:2"
+              },
+              {
+                "external_id": 18867,
+                "name": "D. Rico",
+                "position": "D",
+                "grid": "2:1"
+              },
+              {
+                "external_id": 46658,
+                "name": "R. Garcia",
+                "position": "M",
+                "grid": "3:4"
+              },
+              {
+                "external_id": 46662,
+                "name": "J. Moncayola",
+                "position": "M",
+                "grid": "3:3"
+              },
+              {
+                "external_id": 182621,
+                "name": "I. Munoz",
+                "position": "M",
+                "grid": "3:2"
+              },
+              {
+                "external_id": 46667,
+                "name": "K. Barja",
+                "position": "M",
+                "grid": "3:1"
+              },
+              {
+                "external_id": 46746,
+                "name": "A. Budimir",
+                "position": "F",
+                "grid": "4:1"
+              }
+            ]
+          },
+          {
+            "team": {
+              "external_id": 728,
+              "name": "Rayo Vallecano"
+            },
+            "formation": "4-3-3",
+            "coach_name": "Benat San Jose",
+            "coach_photo": "https://media.api-sports.io/football/coachs/26023.png",
+            "start_xi": [
+              {
+                "external_id": 30441,
+                "name": "E. Audero",
+                "position": "G",
+                "grid": "1:1"
+              },
+              {
+                "external_id": 1703,
+                "name": "A. Ratiu",
+                "position": "D",
+                "grid": "2:4"
+              },
+              {
+                "external_id": 104795,
+                "name": "M. Sadick",
+                "position": "D",
+                "grid": "2:3"
+              },
+              {
+                "external_id": 18895,
+                "name": "F. Lejeune",
+                "position": "D",
+                "grid": "2:2"
+              },
+              {
+                "external_id": 47329,
+                "name": "A. Pedrosa",
+                "position": "D",
+                "grid": "2:1"
+              },
+              {
+                "external_id": 47285,
+                "name": "U. Lopez",
+                "position": "M",
+                "grid": "3:3"
+              },
+              {
+                "external_id": 41552,
+                "name": "P. Ciss",
+                "position": "M",
+                "grid": "3:2"
+              },
+              {
+                "external_id": 47109,
+                "name": "O. Valentin",
+                "position": "M",
+                "grid": "3:1"
+              },
+              {
+                "external_id": 128582,
+                "name": "J. de Frutos",
+                "position": "F",
+                "grid": "4:3"
+              },
+              {
+                "external_id": 52,
+                "name": "S. Camello",
+                "position": "F",
+                "grid": "4:2"
+              },
+              {
+                "external_id": 47543,
+                "name": "A. Garcia",
+                "position": "F",
+                "grid": "4:1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "fixture:api:supplement:v2:1570413",
+      "sha256": "3cb15e4aeab9382baa96113cfbc99c5cf5150be0b9ca4766dafa8b9539cf30dc",
+      "payload": {
+        "fixture": {
+          "external_id": 1570413,
+          "stage": "Regular Season - 9",
+          "matchday": null,
+          "played_at": "2026-10-17T16:30:00+00:00",
+          "status": "FT",
+          "status_label": "Match Finished",
+          "elapsed": 90,
+          "home_team": {
+            "external_id": 543,
+            "name": "Real Betis"
+          },
+          "away_team": {
+            "external_id": 529,
+            "name": "Barcelona"
+          },
+          "home_goals": 2,
+          "away_goals": 5,
+          "home_winner": false,
+          "away_winner": true,
+          "competition_id": null,
+          "competition_name": null
+        },
+        "lineups": [
+          {
+            "team": {
+              "external_id": 543,
+              "name": "Real Betis"
+            },
+            "formation": "4-2-3-1",
+            "coach_name": "M. Pellegrini",
+            "coach_photo": "https://media.api-sports.io/football/coachs/3.png",
+            "start_xi": [
+              {
+                "external_id": 46990,
+                "name": "Álvaro Vallés",
+                "position": "G",
+                "grid": "1:1"
+              },
+              {
+                "external_id": 1439,
+                "name": "Héctor Bellerín",
+                "position": "D",
+                "grid": "2:4"
+              },
+              {
+                "external_id": 47302,
+                "name": "Diego Llorente",
+                "position": "D",
+                "grid": "2:3"
+              },
+              {
+                "external_id": 355004,
+                "name": "V. Gómez",
+                "position": "D",
+                "grid": "2:2"
+              },
+              {
+                "external_id": 736,
+                "name": "Fran García",
+                "position": "D",
+                "grid": "2:1"
+              },
+              {
+                "external_id": 316519,
+                "name": "F. Bernal",
+                "position": "M",
+                "grid": "3:2"
+              },
+              {
+                "external_id": 748,
+                "name": "Dani Ceballos",
+                "position": "M",
+                "grid": "3:1"
+              },
+              {
+                "external_id": 1578,
+                "name": "G. Lo Celso",
+                "position": "M",
+                "grid": "4:3"
+              },
+              {
+                "external_id": 1697,
+                "name": "Pablo Fornals",
+                "position": "M",
+                "grid": "4:2"
+              },
+              {
+                "external_id": 181421,
+                "name": "A. Ezzalzouli",
+                "position": "M",
+                "grid": "4:1"
+              },
+              {
+                "external_id": 47582,
+                "name": "C. Hernández",
+                "position": "F",
+                "grid": "5:1"
+              }
+            ]
+          },
+          {
+            "team": {
+              "external_id": 529,
+              "name": "Barcelona"
+            },
+            "formation": "4-2-3-1",
+            "coach_name": "H. Flick",
+            "coach_photo": "https://media.api-sports.io/football/coachs/6472.png",
+            "start_xi": [
+              {
+                "external_id": 182718,
+                "name": "Joan García",
+                "position": "G",
+                "grid": "1:1"
+              },
+              {
+                "external_id": 1257,
+                "name": "J. Koundé",
+                "position": "D",
+                "grid": "2:4"
+              },
+              {
+                "external_id": 396623,
+                "name": "Pau Cubarsí Paredes",
+                "position": "D",
+                "grid": "2:3"
+              },
+              {
+                "external_id": 181701,
+                "name": "Gerard Martín",
+                "position": "D",
+                "grid": "2:2"
+              },
+              {
+                "external_id": 568001,
+                "name": "X. Espart",
+                "position": "D",
+                "grid": "2:1"
+              },
+              {
+                "external_id": 44,
+                "name": "Rodri",
+                "position": "M",
+                "grid": "3:2"
+              },
+              {
+                "external_id": 133609,
+                "name": "Pedri",
+                "position": "M",
+                "grid": "3:1"
+              },
+              {
+                "external_id": 386828,
+                "name": "Lamine Yamal",
+                "position": "M",
+                "grid": "4:3"
+              },
+              {
+                "external_id": 340626,
+                "name": "Fermín",
+                "position": "M",
+                "grid": "4:2"
+              },
+              {
+                "external_id": 7334,
+                "name": "K. Adeyemi",
+                "position": "M",
+                "grid": "4:1"
+              },
+              {
+                "external_id": 643,
+                "name": "Gabriel Jesus",
+                "position": "F",
+                "grid": "5:1"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "rules_fingerprint": "2117cf5c4dd5a8de1223ae44140685ef1e382e8549fe6a05df09cb9cf229636f",
+  "starter_denominator_available": false
+}

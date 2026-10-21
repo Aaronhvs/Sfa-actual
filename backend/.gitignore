@@ -55,3 +55,7 @@ _archive/
 # Frontend (if building from repo root)
 frontend/node_modules/
 frontend/dist/
+
+!migrations/0052*.sql
+!migrations/0053*.sql
+!migrations/0054*.sql

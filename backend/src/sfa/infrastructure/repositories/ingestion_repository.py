@@ -49,6 +49,10 @@ def _normalize_fixture_event_type(event_type: str, detail: str) -> str | None:
 
 
 class IngestionRepository(IngestionRepositoryPort):
+    async def resolve_scoring_position(self, player_id: int, fixture_id: int, fallback: Position) -> Position:
+        return Position(await self._session.scalar(select(func.sfa_fixture_scoring_position(
+            player_id, fixture_id, fallback.value))) or fallback.value)
+
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 

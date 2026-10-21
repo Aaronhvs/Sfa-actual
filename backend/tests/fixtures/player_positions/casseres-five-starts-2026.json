@@ -1,0 +1,662 @@
+{
+  "description": "Read-only retained Toulouse lineups; conflicting versions are intentional regression evidence.",
+  "captured_at": "2026-10-20T01:34:59.094194+00:00",
+  "player_id": 42541,
+  "external_player_id": 50956,
+  "team_id": 108,
+  "external_team_id": 96,
+  "season": "2026",
+  "competition_id": 9,
+  "stored_position": "DC",
+  "scope_inventory_complete": false,
+  "expected_cases": [
+    {
+      "fixture_external_id": 1552785,
+      "formation": "4-4-2",
+      "grid": "3:3"
+    },
+    {
+      "fixture_external_id": 1552778,
+      "formation": "4-2-3-1",
+      "grid": "3:2"
+    },
+    {
+      "fixture_external_id": 1552772,
+      "formation": "4-4-2",
+      "grid": "3:2"
+    },
+    {
+      "fixture_external_id": 1552761,
+      "formation": "4-2-3-1",
+      "grid": "3:2"
+    },
+    {
+      "fixture_external_id": 1552754,
+      "formation": "4-2-3-1",
+      "grid": "3:2"
+    }
+  ],
+  "versions": [
+    {
+      "snapshot_id": 1391,
+      "payload_hash": "1979ad47a77f9e7e2664ab9c32d38eaf5ee27bc6b9d77dc1c81e5d8ec131ee0f",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "fixture_external_id": 1552754,
+      "played_at": "2026-09-03T18:45:00+00:00",
+      "formation": "4-2-3-1",
+      "participant_team_ids": [
+        79,
+        96
+      ],
+      "starters": [
+        {
+          "external_id": 325346,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 15793,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 514464,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 362741,
+          "grid": "4:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 386277,
+          "grid": "4:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 489903,
+          "grid": "4:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "5:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 997,
+      "payload_hash": "4d54a2e43767e4bb57fc41dccc769af5cca849a598666ec720fda281e0099674",
+      "source_ref": "api-football-v3/fixtures/lineups",
+      "fixture_external_id": 1552761,
+      "played_at": "2026-09-12T18:45:00+00:00",
+      "formation": "4-2-3-1",
+      "participant_team_ids": [
+        96,
+        97
+      ],
+      "starters": [
+        {
+          "external_id": 551204,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 489905,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 25533,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 362741,
+          "grid": "4:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 386277,
+          "grid": "4:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 489903,
+          "grid": "4:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "5:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 1390,
+      "payload_hash": "869c8d55349f4666f3d7733e046f174617303dd6d3a2decd4ba08bca7034fa5c",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "fixture_external_id": 1552761,
+      "played_at": "2026-09-12T18:45:00+00:00",
+      "formation": "4-2-3-1",
+      "participant_team_ids": [
+        96,
+        97
+      ],
+      "starters": [
+        {
+          "external_id": 551204,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 489905,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 25533,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 362741,
+          "grid": "4:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 386277,
+          "grid": "4:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 489903,
+          "grid": "4:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "5:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 509,
+      "payload_hash": "7667f16d25d100fe8688405dcfe93a626ce74c05dbf68816d08c54c0fd1d45bc",
+      "source_ref": "api-football-v3/fixtures/lineups",
+      "fixture_external_id": 1552772,
+      "played_at": "2026-09-19T18:45:00+00:00",
+      "formation": "4-4-2",
+      "participant_team_ids": [
+        96,
+        111
+      ],
+      "starters": [
+        {
+          "external_id": 325346,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 489905,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 386277,
+          "grid": "3:4",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 416901,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 489903,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 162703,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 1387,
+      "payload_hash": "6908e67f3259d595680df38c3cc6d3885a234dadd640db475aa627eb98e52377",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "fixture_external_id": 1552772,
+      "played_at": "2026-09-19T18:45:00+00:00",
+      "formation": "4-4-2",
+      "participant_team_ids": [
+        96,
+        111
+      ],
+      "starters": [
+        {
+          "external_id": 325346,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 489905,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 386277,
+          "grid": "3:4",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 416901,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 489903,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 162703,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 342,
+      "payload_hash": "fe1f28c2212587e35d192bfc0887fac6f3ad4cf44c5fe984a198abbaa62f4373",
+      "source_ref": "api-football-v3/fixtures/lineups",
+      "fixture_external_id": 1552778,
+      "played_at": "2026-10-10T18:45:00+00:00",
+      "formation": "4-2-3-1",
+      "participant_team_ids": [
+        91,
+        96
+      ],
+      "starters": [
+        {
+          "external_id": 325346,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 489905,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 514464,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 386277,
+          "grid": "4:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 162703,
+          "grid": "4:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 489903,
+          "grid": "4:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "5:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 1386,
+      "payload_hash": "d48307c7b160df3346070bd6eafd3119ea0d72d5b1707a9263692995f6d9a86e",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "fixture_external_id": 1552778,
+      "played_at": "2026-10-10T18:45:00+00:00",
+      "formation": "4-2-3-1",
+      "participant_team_ids": [
+        91,
+        96
+      ],
+      "starters": [
+        {
+          "external_id": 325346,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 489905,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 514464,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 386277,
+          "grid": "4:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 162703,
+          "grid": "4:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 489903,
+          "grid": "4:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "5:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 182,
+      "payload_hash": "95fdf312e074476b0a3a5f265293f9fe93fe5134002a67e3d143c042ef9405d6",
+      "source_ref": "api-football-v3/fixtures/lineups",
+      "fixture_external_id": 1552785,
+      "played_at": "2026-10-16T18:45:00+00:00",
+      "formation": "4-2-3-1",
+      "participant_team_ids": [
+        96,
+        1298
+      ],
+      "starters": [
+        {
+          "external_id": 325346,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 15793,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 416901,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 39115,
+          "grid": "4:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 162703,
+          "grid": "4:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 386277,
+          "grid": "4:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "5:1",
+          "coarse_position": "F"
+        }
+      ]
+    },
+    {
+      "snapshot_id": 1375,
+      "payload_hash": "35ff75264b2b53ba2bd7e7445d1a26e84b6b9cf1ff7c645c4fcac5711e4ebb62",
+      "source_ref": "fixture-detail:normalized-api-football-v3",
+      "fixture_external_id": 1552785,
+      "played_at": "2026-10-16T18:45:00+00:00",
+      "formation": "4-4-2",
+      "participant_team_ids": [
+        96,
+        1298
+      ],
+      "starters": [
+        {
+          "external_id": 325346,
+          "grid": "1:1",
+          "coarse_position": "G"
+        },
+        {
+          "external_id": 334952,
+          "grid": "2:4",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 50735,
+          "grid": "2:3",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 15793,
+          "grid": "2:2",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 472266,
+          "grid": "2:1",
+          "coarse_position": "D"
+        },
+        {
+          "external_id": 39115,
+          "grid": "3:4",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 50956,
+          "grid": "3:3",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 416901,
+          "grid": "3:2",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 386277,
+          "grid": "3:1",
+          "coarse_position": "M"
+        },
+        {
+          "external_id": 203428,
+          "grid": "4:2",
+          "coarse_position": "F"
+        },
+        {
+          "external_id": 162703,
+          "grid": "4:1",
+          "coarse_position": "F"
+        }
+      ]
+    }
+  ]
+}

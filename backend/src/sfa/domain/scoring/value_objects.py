@@ -5,7 +5,7 @@ from datetime import date
 from enum import Enum
 from typing import Any
 
-from sfa.infrastructure.models.enums import Position
+from sfa.domain.enums import Position
 
 
 class PositionGroup(str, Enum):
