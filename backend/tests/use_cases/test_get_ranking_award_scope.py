@@ -29,11 +29,14 @@ class FakeScopeScoreRepository:
         self.scope = scope
         return preferred_rules_version_id or 7
 
-    async def get_ranking_for_scope(self, scope, *args):
+    async def get_ranking_max_matches(self, **scope):
+        return 1
+
+    async def get_ranking_for_scope(self, scope, *args, **eligibility):
         self.version = args[-2]
         return [self.player]
 
-    async def get_ranking_total_for_scope(self, scope, *args):
+    async def get_ranking_total_for_scope(self, scope, *args, **eligibility):
         return 1
 
 

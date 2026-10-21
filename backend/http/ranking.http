@@ -23,6 +23,15 @@ GET http://localhost:8000/api/v1/ranking?season=2024-25&position=EXT&competition
 ### Ranking acumulado de todas las temporadas
 GET http://localhost:8000/api/v1/ranking?season=all&limit=10
 
+### Eligibility: positive displayed points and dynamic min_matches in response
+GET http://localhost:8000/api/v1/ranking?scope=season-2026&competition_id=1&use_total=true
+
+### Name bypasses only the match minimum (response min_matches=0)
+GET http://localhost:8000/api/v1/ranking?scope=season-2026&name=Camello
+
+### World Cup has its own maximum and threshold
+GET http://localhost:8000/api/v1/ranking?scope=world-cup-2026
+
 ###
 
 ### Ranking temporada 2025-26
