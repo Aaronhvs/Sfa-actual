@@ -871,7 +871,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 select(sub)
                 .where(name_filter)
                 .order_by(sub.c.rank.asc(), sub.c.total_pts.desc(), sub.c.player_id.asc())
-                
+
             )
         else:
             final = stmt
@@ -1384,7 +1384,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 select(sub)
                 .where(_player_or_team_name_filter(sub.c.player_name, sub.c.team_name, name))
                 .order_by(sub.c.rank.asc(), sub.c.total_pts.desc(), sub.c.player_id.asc())
-                
+
             )
         else:
             final = stmt
