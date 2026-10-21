@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,4 +38,6 @@ class PlayerEventScore(Base):
 
     __table_args__ = (
         UniqueConstraint("event_id", "rules_version_id", name="uq_pes_event_version"),
+        Index("ix_pes_player_context", "player_id", "competition_id", "season", "rules_version_id",
+              postgresql_include=["final_points", "fixture_id", "action_type"]),
     )
