@@ -1,5 +1,14 @@
 # Plan: 0065 — Sistema global y continuo de posiciones verificables
 
+## Hotfix prioritario ELO/live sin perder el piloto publicado
+
+- [ ] Correlacionar PID/consulta/CPU y plan del replay con los triggers activos; capturar backlog/propietario y hashes del batch publicado antes de remediar. No desactivar guardas ni usar privilegio publisher para ingestas.
+- [ ] Añadir migración compatible que reemplace el escaneo DISTINCT de manifest por lookups específicos OLD/NEW y proyección mínima; verificar índice parcial de fixture allowlist con EXPLAIN real. No editar únicamente 0053 ya aplicada.
+- [ ] En 0055 proyectar rules_version_id e IDs completos de bonos/rollups del journal en columnas STORED generadas con helper IMMUTABLE puro; validar equivalencia con manifest/after_image de batches v1/v2 antes/después. Reemplazar todos los hotloops JSON por columnas pequeñas, nunca b.*; conservar status publicado, OLD/NEW y bypass exclusivo, sin omitir imágenes malformadas.
+- [ ] Hacer replace_fixture_team_strengths diferencial por claves con upsert condicional de campos semánticos, timestamps estables y eliminación solo de claves obsoletas; conservar rechazos/candidates de inputs protegidos diferentes.
+- [ ] Validar replay idéntico sin churn/candidates técnicos, fixture nuevo con dos snapshots reales, OLD/NEW protegido y candidate idempotente; hashes de scores/bonos/etiquetas y rollback del piloto siguen correctos.
+- [ ] Benchmark en clon representativo con triggers activos, suite relevante y SQL real; medir ELO seguido de scoring/bonos y demostrar eliminación de lecturas por fila del manifest/after_image bulk. DDL con writers drenados; replay/cierre compatible con ciclo diez minutos antes de reactivar scheduler. Coordinar try-lock/retry acotado y catch-up de 0057.
+
 ## Prioridad vigente: aplicar piloto real exclusivamente season-2026
 
 Usuario autoriza cambiar posiciones y recalcular, limitado a temporada 2026/27. Esta etapa sustituye la pausa anterior dentro del alcance; no pedir otro opt-in por jugador/SHA. Conservar el ranking 0066 ya desplegado y no tocar otros periodos.

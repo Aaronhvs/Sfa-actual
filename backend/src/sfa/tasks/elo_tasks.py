@@ -8,6 +8,10 @@ logger = logging.getLogger(__name__)
 WORLD_CUP_COMPETITION_ID = 350
 
 
+class EloRecalculationBusyError(RuntimeError):
+    """Retry orchestration later without occupying a worker on a SQL lock."""
+
+
 @celery_app.task(bind=True, max_retries=2, default_retry_delay=300)
 def seed_clubelo_task(self, date_str: str, season: str):
     """One-time seed: download ClubElo and populate team_strengths."""
@@ -80,6 +84,9 @@ def apply_elo_update_then_recalculate_task(
                 initialize_missing_seed_baseline=False,
             )
         )
+    except EloRecalculationBusyError as exc:
+        logger.warning("[apply_elo_update_then_recalculate_task] Deferred season=%s: %s", season, exc)
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
     except Exception as exc:
         logger.error(
             "[apply_elo_update_then_recalculate_task] Failed season=%s "
@@ -117,6 +124,9 @@ def apply_elo_pools_then_recalculate_task(
                 force_recalculate=force_recalculate,
             )
         )
+    except EloRecalculationBusyError as exc:
+        logger.warning("[apply_elo_pools_then_recalculate_task] Deferred season=%s: %s", season, exc)
+        raise self.retry(exc=exc, countdown=60, max_retries=3)
     except Exception as exc:
         logger.error(
             "[apply_elo_pools_then_recalculate_task] Failed season=%s "
@@ -291,7 +301,9 @@ async def _run_elo_update_then_recalculate(
     )
     lock_key = _national_elo_lock_key(season, competition_ids)
     async with AsyncSessionLocal() as lock_session:
-        await lock_session.execute(text("SELECT pg_advisory_lock(:key)"), {"key": lock_key})
+        acquired = await lock_session.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": lock_key})
+        if not acquired:
+            raise EloRecalculationBusyError(f"ELO scope already running: season={season} competitions={competition_ids}")
         try:
             await _run_elo_update(
                 season=season,
@@ -360,7 +372,9 @@ async def _run_elo_pools_then_recalculate(
     )
     lock_key = _national_elo_lock_key(season, all_ids)
     async with AsyncSessionLocal() as lock_session:
-        await lock_session.execute(text("SELECT pg_advisory_lock(:key)"), {"key": lock_key})
+        acquired = await lock_session.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": lock_key})
+        if not acquired:
+            raise EloRecalculationBusyError(f"ELO scope already running: season={season} competitions={all_ids}")
         try:
             if club_competition_ids:
                 await _run_elo_update(

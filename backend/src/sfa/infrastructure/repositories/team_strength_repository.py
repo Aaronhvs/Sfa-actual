@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timezone
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -407,13 +407,16 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
         if not competition_ids:
             return
 
-        await self._session.execute(
-            delete(FixtureTeamStrength).where(
-                FixtureTeamStrength.season == season,
-                FixtureTeamStrength.participant_kind == participant_kind,
-                FixtureTeamStrength.competition_id.in_(competition_ids),
-            )
+        obsolete = delete(FixtureTeamStrength).where(
+            FixtureTeamStrength.season == season,
+            FixtureTeamStrength.participant_kind == participant_kind,
+            FixtureTeamStrength.competition_id.in_(competition_ids),
         )
+        if snapshots:
+            obsolete = obsolete.where(tuple_(FixtureTeamStrength.fixture_id, FixtureTeamStrength.team_id).not_in(
+                [(snapshot.fixture_id, snapshot.team_id) for snapshot in snapshots]
+            ))
+        await self._session.execute(obsolete)
         if snapshots:
             now = datetime.now(timezone.utc)
             values = [
@@ -453,8 +456,11 @@ class TeamStrengthRepository(TeamStrengthRepositoryPort):
                             "post_match_strength": stmt.excluded.post_match_strength,
                             "model_version": stmt.excluded.model_version,
                             "seed_source": stmt.excluded.seed_source,
-                            "created_at": stmt.excluded.created_at,
                         },
+                        where=or_(*(getattr(FixtureTeamStrength, key).is_distinct_from(getattr(stmt.excluded, key))
+                                    for key in ("season", "competition_id", "participant_kind", "pre_match_elo_raw",
+                                                "post_match_elo_raw", "pre_match_strength", "post_match_strength",
+                                                "model_version", "seed_source"))),
                     )
                 )
         await self._session.flush()

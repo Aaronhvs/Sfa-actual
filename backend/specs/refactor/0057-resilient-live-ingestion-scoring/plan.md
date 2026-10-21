@@ -1,5 +1,13 @@
 # Plan: Resilient Live Ingestion And Final Fixture Scoring
 
+## Hotfix de saturación ELO tras a807f7c
+
+- [ ] Sustituir locks bloqueantes de orquestadores ELO+recalc por try-lock; Busy cierra/rollback inmediatamente y reintenta mediante Celery countdown60/máximo3, sin worker esperando SQL; unlock solo del dueño. Probar que Retry no vuelve al catch genérico para duplicarse.
+- [ ] Preservar argumentos/scope de solicitudes Busy y registrar deferred/failed visible al agotar; recuperar raws persistidos mediante catch-up explícito20–21oct después del dueño. Prueba de request con fixture posterior a captura inicial y retry/catch-up que termina puntuándolo, sin introducir Redis/generación nueva.
+- [ ] Coordinar recuperación con hotfix 0065 de lookup de guardas y persistencia ELO diferencial; no quitar protecciones del piloto ni reactivar scheduler antes del benchmark real.
+- [ ] Tras retirar únicamente duplicadas identificadas y confirmar dueño finalizado/rollback, ejecutar un catch-up dirigido de la fecha/fixture afectado con cuota vigente, finales incluidos, un replay y recálculo; no purgar toda la cola ni confiar solo en ventana live de cuatro horas.
+- [ ] Verificar raw/status/cache live por separado de ELO y scores finales; fixture FT dispone de dos snapshots auténticos y puntos únicos; dos ciclos posteriores avanzan sin backlog, con cohorte publicada intacta.
+
 ## Archivos a crear
 
 - [ ] `src/sfa/tasks/reconcile_recent_ingestion_task.py` - catch-up diario y manual de una ventana movil, con recalculacion consolidada.
