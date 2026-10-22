@@ -188,13 +188,26 @@ function placeTeam(lineup: TournamentMatchTeamLineup, side: Side, model: MatchMo
   })
 }
 
+/** Substitution arrow: green up for coming on, red down for going off (the usual football convention). */
+function SubArrow({ dir }: { dir: 'in' | 'out' }) {
+  return (
+    <svg className={`mt-subarrow is-${dir}`} viewBox="0 0 10 12" width="9" height="11" aria-hidden="true">
+      <path d={dir === 'in' ? 'M5 11V2M1.5 5 5 1.5 8.5 5' : 'M5 1v9M1.5 7 5 10.5 8.5 7'} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function PitchPlayer({ player, scope, top, onSelect }: { player: MatchPlayer; scope: string; top: boolean; onSelect?: SelectPlayer }) {
   const pts = player.sfa_points
   const tone = pts == null ? 'is-none' : top ? 'is-top' : pts < 0 ? 'is-neg' : ''
   return (
     <PlayerLink player={player} scope={scope} className="mt-pp" onSelect={onSelect}>
       <span className="mt-pp__badges">
-        {player.marks.off != null && <span className="mt-pp__off" title={`Sustituido en el ${player.marks.off}'`}>{player.marks.off}'</span>}
+        {player.marks.off != null && (
+          <span className="mt-pp__off" title={`Sale en el ${player.marks.off}'${player.marks.swap ? `, entra ${player.marks.swap}` : ''}`}>
+            <SubArrow dir="out" />{player.marks.off}'
+          </span>
+        )}
         {pts != null && <span className={`mt-pp__pts ${tone}`}>{points(pts)}</span>}
       </span>
       <Photo player={player} className="mt-pp__photo" />
@@ -211,19 +224,17 @@ function Bench({ model, side, scope, onSelect }: { model: MatchModel; side: Side
   const used = model.players
     .filter((player) => player.side === side && !player.starter && player.marks.on != null)
     .sort((a, b) => (a.marks.on ?? 0) - (b.marks.on ?? 0))
-  const replaced = (minute: number | null) => model.players.find((player) => player.side === side && player.starter && player.marks.off === minute)
   if (used.length === 0) return <p className="mt-bench__empty">Sin cambios registrados</p>
   return (
     <ul className="mt-bench">
       {used.map((player) => {
-        const out = replaced(player.marks.on)
         return (
           <li key={player.external_id ?? player.name}>
             <PlayerLink player={player} scope={scope} className="mt-bench__row" onSelect={onSelect}>
               <Photo player={player} className="mt-bench__photo" />
               <span className="mt-bench__who">
                 <strong>{player.name}</strong>
-                <small>{player.marks.on}'{out && ` · por ${shortName(out.name)}`}</small>
+                <small><SubArrow dir="in" />Entra en el {player.marks.on}'{player.marks.swap && ` por ${shortName(player.marks.swap)}`}</small>
               </span>
               {player.sfa_points != null && <b>{points(player.sfa_points)}</b>}
             </PlayerLink>
@@ -262,12 +273,24 @@ export function MatchLineups({ detail, model, scope, onSelect }: { detail: Tourn
           <div className="mt-pitch">
             {placed.map(({ player, x, y, key }) => (
               <div className="mt-pitch__slot" style={{ '--x': `${x}%`, '--y': `${y}%` } as CSSProperties} key={key}>
-                <PitchPlayer player={player} scope={scope} top={model.topIds.has(player.external_id)} onSelect={onSelect} />
+                <PitchPlayer
+                  player={player}
+                  scope={scope}
+                  top={model.topIds.has(player.external_id)}
+                  onSelect={onSelect}
+                />
               </div>
             ))}
           </div>
         </div>
       ) : <p className="mt-empty">La disposición táctica todavía no está disponible.</p>}
+
+      {placed.some(({ player }) => player.marks.off != null) && (
+        <p className="mt-sublegend">
+          <span><SubArrow dir="out" /> Minuto en que fue sustituido</span>
+          <span><SubArrow dir="in" /> Quién entró, en la lista de cambios</span>
+        </p>
+      )}
 
       <div className="mt-lineups__bench">
         <div><h3>Cambios · {home?.team.name}</h3><Bench model={model} side="home" scope={scope} onSelect={onSelect} /></div>

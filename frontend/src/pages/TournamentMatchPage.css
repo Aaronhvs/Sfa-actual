@@ -445,14 +445,37 @@ a.mt-pp:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; bor
 .mt-pp__pts.is-neg { background: #3a1d1d; color: #f0a49a; }
 
 .mt-pp__off {
+  /* Hugs the photo's lower-left edge (mirrors goal/card marks on the right) so it can't be read as a neighbour's */
   position: absolute;
-  right: calc(100% + 26px);
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: rgba(229, 72, 77, 0.85);
-  font: 700 0.58rem/1 var(--font-body);
-  color: #fff;
+  top: 44px;
+  right: calc(100% + 8px);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 5px 2px 3px;
+  border: 1px solid rgba(229, 72, 77, 0.55);
+  border-radius: 5px;
+  background: rgba(14, 14, 14, 0.88);
+  font: 700 0.6rem/1 var(--font-body);
+  color: var(--text);
 }
+
+.mt-subarrow { flex: none; }
+.mt-subarrow.is-out { color: #ff6b6f; }
+.mt-subarrow.is-in { color: var(--tp-live); }
+
+.mt-sublegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 10px 20px 0;
+  font: 500 0.72rem/1.3 var(--font-body);
+  color: var(--text-faint);
+}
+
+.mt-sublegend span { display: inline-flex; align-items: center; gap: 6px; }
 
 .mt-pp__marks {
   position: absolute;
@@ -545,7 +568,7 @@ a.mt-bench__row:hover strong { color: var(--gold-light); }
   white-space: nowrap;
 }
 
-.mt-bench__who small { font: 500 0.7rem/1.2 var(--font-body); color: var(--tp-live); }
+.mt-bench__who small { display: inline-flex; align-items: center; gap: 4px; font: 500 0.7rem/1.2 var(--font-body); color: var(--text-dim); }
 .mt-bench__row > b { font: 800 0.95rem/1 var(--font-display); color: var(--gold-light); }
 .mt-bench__empty { margin: 8px 0; font-size: 0.78rem; color: var(--text-faint); }
 

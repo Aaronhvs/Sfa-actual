@@ -16,6 +16,8 @@ export type PlayerMarks = {
   off: number | null
   /** Minute the player came on (substitute). */
   on: number | null
+  /** The other half of his substitution: who replaced him, or whom he replaced. */
+  swap: string | null
 }
 
 export type MatchPlayer = TournamentMatchLineupPlayer & {
@@ -102,7 +104,7 @@ export function buildMatchModel(detail: TournamentMatchDetail) {
       side,
       team: lineup.team,
       starter,
-      marks: { goals: 0, assists: 0, yellow: false, red: false, off: null, on: null },
+      marks: { goals: 0, assists: 0, yellow: false, red: false, off: null, on: null, swap: null },
     })
     return [...lineup.start_xi.map((player) => make(player, true)), ...lineup.substitutes.map((player) => make(player, false))]
   })
@@ -134,8 +136,9 @@ export function buildMatchModel(detail: TournamentMatchDetail) {
     } else if (event.event_type === 'red_card' || event.event_type === 'yellow_red_card') {
       if (actor) actor.marks.red = true
     } else if (isSub) {
-      if (actor) actor.marks.off = event.minute
-      if (secondary) secondary.marks.on = event.minute
+      // Pair the two players from the event itself; matching by minute breaks when two changes share it.
+      if (actor) { actor.marks.off = event.minute; actor.marks.swap = secondary?.name ?? event.assist_name ?? null }
+      if (secondary) { secondary.marks.on = event.minute; secondary.marks.swap = actor?.name ?? event.player_name ?? null }
     }
   }
 
