@@ -207,7 +207,7 @@ export default function PlayerPage() {
         {fixtures.length > 0 && (
           <section className="pf-highlights" aria-labelledby="pf-hl-title">
             <header className="pf-section-head"><h2 id="pf-hl-title">Lo más destacado</h2><p>Sus acciones de más valor y lo mejor de su temporada</p></header>
-            <ProfileMoments fixtures={fixtures} events={events} team={player.team} season={matchSeason} />
+            <ProfileMoments playerId={player.id} scope={season} fixtures={fixtures} events={events} team={player.team} season={matchSeason} />
           </section>
         )}
 

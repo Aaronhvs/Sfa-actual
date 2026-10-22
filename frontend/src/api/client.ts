@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDashboardResponse, TournamentDetailResponse, TournamentMatchDetail, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerLeadsResponse, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDashboardResponse, TournamentDetailResponse, TournamentMatchDetail, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -208,6 +208,21 @@ export async function fetchPlayerSeasonStats(
     const data = await get<PlayerSeasonStats>(
       `/players/${id}/stats?${scope ? `scope=${encodeURIComponent(scope)}` : `season=${season}`}`,
     )
+    setCache(key, data)
+    return data
+  } catch {
+    return null
+  }
+}
+
+/** "Lidera en": podium places of a player. Empty on any error so the profile simply hides the block. */
+export async function fetchPlayerLeads(id: number, scope: string): Promise<PlayerLeadsResponse | null> {
+  if (!scope || scope === 'all') return null
+  const key = `leads:${id}:${scope}`
+  const cached = getCached<PlayerLeadsResponse>(key)
+  if (cached) return cached
+  try {
+    const data = await get<PlayerLeadsResponse>(`/players/${id}/leads?scope=${encodeURIComponent(scope)}`)
     setCache(key, data)
     return data
   } catch {

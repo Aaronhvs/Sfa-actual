@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PlayerEvent, PlayerFixture } from '../../types'
 import { competitionLabel } from '../../utils/footballLabels'
+import ProfileLeads from './ProfileLeads'
 import { Venue, actionReasons, matchHref, rivalOf } from './ProfileView'
 
 /* ── "Lo más destacado": two signature moments + a ledger of season records ── */
@@ -205,7 +206,14 @@ function RecordLedger({ rows, team, season }: { rows: RecordRow[]; team: string;
   )
 }
 
-export default function ProfileMoments({ fixtures, events, team, season }: { fixtures: PlayerFixture[]; events: PlayerEvent[]; team: string; season: string }) {
+export default function ProfileMoments({ playerId, scope, fixtures, events, team, season }: {
+  playerId: number
+  scope: string
+  fixtures: PlayerFixture[]
+  events: PlayerEvent[]
+  team: string
+  season: string
+}) {
   const { moments, records } = useMemo(() => {
     const byId = new Map(fixtures.map((f) => [f.fixture_id, f]))
     const top = (types: string[]) => events
@@ -223,11 +231,14 @@ export default function ProfileMoments({ fixtures, events, team, season }: { fix
 
   return (
     <div className={`pf-moments${moments.length === 0 || records.length === 0 ? ' is-single' : ''}`}>
-      {moments.length > 0 && (
-        <div className="pf-moments__cards">
-          {moments.map((moment) => <MomentCard key={moment.kind} moment={moment} team={team} season={season} />)}
-        </div>
-      )}
+      <div className="pf-moments__main">
+        {moments.length > 0 && (
+          <div className="pf-moments__cards">
+            {moments.map((moment) => <MomentCard key={moment.kind} moment={moment} team={team} season={season} />)}
+          </div>
+        )}
+        <ProfileLeads playerId={playerId} scope={scope} />
+      </div>
       {records.length > 0 && (
         <section className="pf-moments__records" aria-label="Récords de la temporada">
           <h3>Récords de la temporada</h3>

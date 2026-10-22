@@ -532,3 +532,39 @@ export interface PlayerIndividualHonor {
   metric_rate: number | null
   bonus_pts: number
 }
+
+export type PlayerLeadMetric =
+  | 'shot_conversion' | 'goals_per90' | 'goal_contributions_per90' | 'key_passes_per90' | 'dribbles_per90'
+  | 'defensive_actions_per90' | 'duel_win_rate' | 'save_rate' | 'big_game_points_per90'
+
+export interface PlayerLead {
+  metric: PlayerLeadMetric
+  rank: number
+  tied: boolean
+  qualified_count: number
+  percentile: number
+  group: {
+    kind: 'scope' | 'competition' | 'scope_position' | 'competition_position'
+    season: string | null
+    competition_id: number | null
+    competition_name: string | null
+    position: string | null
+  }
+  value: number
+  ranking_value: number
+  method: 'per90' | 'wilson_lower_bound'
+  numerator: number
+  denominator: number
+  minimums: { minutes: number | null; attempts: number | null; attempts_kind: string | null; events: number | null }
+  details: Record<string, number>
+}
+
+export interface PlayerLeadsResponse {
+  player_id: number
+  scope: string | null
+  scope_label: string | null
+  supported: boolean
+  policy_version: string
+  rules_version_id: number | null
+  items: PlayerLead[]
+}
