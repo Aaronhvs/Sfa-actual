@@ -145,3 +145,44 @@ class PlayerIndividualHonorSchema(BaseModel):
     metric_total: int | None = Field(default=None, ge=0)
     metric_rate: float | None = Field(default=None, ge=0, le=1)
     bonus_pts: int = Field(ge=0)
+
+
+class PlayerLeadGroupSchema(BaseModel):
+    kind: str
+    season: str | None
+    competition_id: int | None
+    competition_name: str | None
+    position: str | None
+
+
+class PlayerLeadMinimumsSchema(BaseModel):
+    minutes: int | None
+    attempts: int | None
+    attempts_kind: str | None
+    events: int | None
+
+
+class PlayerLeadSchema(BaseModel):
+    metric: str
+    rank: int = Field(ge=1)
+    tied: bool
+    qualified_count: int = Field(ge=1)
+    percentile: float = Field(ge=0, le=1)
+    group: PlayerLeadGroupSchema
+    value: float
+    ranking_value: float
+    method: str
+    numerator: float
+    denominator: float
+    minimums: PlayerLeadMinimumsSchema
+    details: dict[str, float]
+
+
+class PlayerLeadsResponseSchema(BaseModel):
+    player_id: int
+    scope: str | None
+    scope_label: str | None
+    supported: bool
+    policy_version: str
+    rules_version_id: int | None
+    items: list[PlayerLeadSchema]

@@ -16,6 +16,8 @@ from sfa.infrastructure.repositories import (
     InferAchievementsRepository,
     PlayerEventRepository,
     PlayerEventScoreRepository,
+    PlayerLeadsCache,
+    PlayerLeadsRepository,
     PlayerRepository,
     PlayerTmIdRepository,
     RankingExplanationRepository,
@@ -146,6 +148,7 @@ from sfa.application.use_cases.get_player_fixtures import GetPlayerFixturesUseCa
 from sfa.application.use_cases.get_player_individual_honors import (
     GetPlayerIndividualHonorsUseCase,
 )
+from sfa.application.use_cases.get_player_leads import GetPlayerLeadsUseCase
 from sfa.application.use_cases.get_player_ranking_explanation import (
     GetPlayerRankingExplanationUseCase,
 )
@@ -187,6 +190,7 @@ from sfa.application.use_cases.register_competition_achievement import (
 )
 from sfa.application.use_cases.seed_clubelo import SeedClubEloUseCase
 from sfa.application.use_cases.seed_national_team_elo import SeedNationalTeamEloUseCase
+from sfa.domain.player_leads import PlayerLeadsCalculator
 from sfa.infrastructure.providers.ranking_explanation_writer import (
     DeterministicRankingExplanationWriter,
 )
@@ -305,6 +309,27 @@ async def get_player_season_stats_use_case(
     season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
 ) -> GetPlayerSeasonStatsUseCase:
     return GetPlayerSeasonStatsUseCase(event_repo, season_repo)
+
+
+async def get_player_leads_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> PlayerLeadsRepository:
+    return PlayerLeadsRepository(db)
+
+
+async def get_player_leads_cache(
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+) -> PlayerLeadsCache:
+    return PlayerLeadsCache(redis)
+
+
+async def get_player_leads_use_case(
+    season_repo: Annotated[SeasonRepository, Depends(get_season_repository)],
+    score_repo: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
+    leads_repo: Annotated[PlayerLeadsRepository, Depends(get_player_leads_repository)],
+    cache: Annotated[PlayerLeadsCache, Depends(get_player_leads_cache)],
+) -> GetPlayerLeadsUseCase:
+    return GetPlayerLeadsUseCase(season_repo, score_repo, leads_repo, cache, PlayerLeadsCalculator())
 
 
 async def get_compare_players_use_case(

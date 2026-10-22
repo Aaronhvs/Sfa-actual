@@ -94,3 +94,36 @@ GET http://localhost:8000/api/v1/players/1/fixtures?competition_id=1&competition
 GET http://localhost:8000/api/v1/players/1?season=all
 
 ###
+
+### Lidera en — scope latest (temporada actual)
+GET http://localhost:8000/api/v1/players/35/leads
+
+###
+
+### Lidera en — award period concreto
+GET http://localhost:8000/api/v1/players/35/leads?scope=season-2025
+
+###
+
+### Lidera en — torneo
+GET http://localhost:8000/api/v1/players/35/leads?scope=world-cup-2026
+
+###
+
+### Lidera en — histórico no soportado (200, supported=false)
+GET http://localhost:8000/api/v1/players/35/leads?scope=all
+
+###
+
+### Lidera en — solo #1 y un único item
+GET http://localhost:8000/api/v1/players/35/leads?max_rank=1&limit=1
+
+###
+
+### Lidera en — scope desconocido (404)
+GET http://localhost:8000/api/v1/players/35/leads?scope=season-1900
+
+###
+
+### Lidera en — fuera de rango (422)
+GET http://localhost:8000/api/v1/players/35/leads?max_rank=4

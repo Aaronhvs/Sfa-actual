@@ -9,6 +9,8 @@ from .infer_achievements_repository import InferAchievementsRepository
 from .ingestion_repository import IngestionRepository
 from .player_event_repository import PlayerEventRepository
 from .player_event_score_repository import PlayerEventScoreRepository
+from .player_leads_cache import PlayerLeadsCache
+from .player_leads_repository import PlayerLeadsRepository
 from .player_repository import PlayerRepository
 from .player_tm_id_repository import PlayerTmIdRepository
 from .ranking_explanation_repository import RankingExplanationRepository
@@ -35,6 +37,8 @@ __all__ = [
     "IngestionRepository",
     "PlayerEventRepository",
     "PlayerEventScoreRepository",
+    "PlayerLeadsCache",
+    "PlayerLeadsRepository",
     "PlayerTmIdRepository",
     "RankingExplanationRepository",
     "PlayerRepository",

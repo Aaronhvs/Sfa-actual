@@ -2,7 +2,7 @@ import dataclasses
 import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from sfa.api.v1.schemas.players import (
     BreakdownEntrySchema,
@@ -11,6 +11,10 @@ from sfa.api.v1.schemas.players import (
     PlayerEventSchema,
     PlayerFixtureSchema,
     PlayerIndividualHonorSchema,
+    PlayerLeadGroupSchema,
+    PlayerLeadMinimumsSchema,
+    PlayerLeadSchema,
+    PlayerLeadsResponseSchema,
     PlayerSeasonStatsSchema,
 )
 from sfa.application.use_cases.get_player_achievements import GetPlayerAchievementsUseCase
@@ -23,6 +27,7 @@ from sfa.application.use_cases.get_player_fixtures import GetPlayerFixturesUseCa
 from sfa.application.use_cases.get_player_individual_honors import (
     GetPlayerIndividualHonorsUseCase,
 )
+from sfa.application.use_cases.get_player_leads import GetPlayerLeadsUseCase
 from sfa.application.use_cases.get_player_season_stats import GetPlayerSeasonStatsUseCase
 from sfa.core.dependencies import (
     get_player_achievements_use_case,
@@ -30,6 +35,7 @@ from sfa.core.dependencies import (
     get_player_events_use_case,
     get_player_fixtures_use_case,
     get_player_individual_honors_use_case,
+    get_player_leads_use_case,
     get_player_season_stats_use_case,
 )
 from sfa.domain.season_scope import InconsistentScopeRulesVersionError, ScopeNotFoundError
@@ -129,6 +135,59 @@ async def get_player_season_stats(
     if result is None:
         raise HTTPException(status_code=404, detail="No stats found for this player/competition/season")
     return PlayerSeasonStatsSchema(**dataclasses.asdict(result))
+
+
+@router.get("/players/{player_id}/leads", response_model=PlayerLeadsResponseSchema)
+async def get_player_leads(
+    player_id: int,
+    response: Response,
+    use_case: Annotated[GetPlayerLeadsUseCase, Depends(get_player_leads_use_case)],
+    scope: str | None = Query(default=None),
+    max_rank: int = Query(default=3, ge=1, le=3),
+    limit: int = Query(default=3, ge=1, le=5),
+):
+    try:
+        result = await use_case.execute(player_id, scope, max_rank=max_rank, limit=limit)
+    except ScopeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return PlayerLeadsResponseSchema(
+        player_id=result.player_id,
+        scope=result.scope_key,
+        scope_label=result.scope_label,
+        supported=result.supported,
+        policy_version=result.policy_version,
+        rules_version_id=result.rules_version_id,
+        items=[
+            PlayerLeadSchema(
+                metric=lead.metric.value,
+                rank=lead.rank,
+                tied=lead.tied,
+                qualified_count=lead.qualified_count,
+                percentile=round(lead.percentile, 4),
+                group=PlayerLeadGroupSchema(
+                    kind=lead.group.kind.value,
+                    season=lead.group.season,
+                    competition_id=lead.group.competition_id,
+                    competition_name=lead.group.competition_name,
+                    position=lead.group.position,
+                ),
+                value=round(lead.value, 4),
+                ranking_value=round(lead.ranking_value, 4),
+                method=lead.method.value,
+                numerator=lead.numerator,
+                denominator=lead.denominator,
+                minimums=PlayerLeadMinimumsSchema(
+                    minutes=lead.threshold.min_minutes,
+                    attempts=lead.threshold.min_attempts,
+                    attempts_kind=lead.threshold.attempts_kind,
+                    events=lead.threshold.min_events,
+                ),
+                details={key: float(value) for key, value in lead.details.items()},
+            )
+            for lead in result.items
+        ],
+    )
 
 
 @router.get(
