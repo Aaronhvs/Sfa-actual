@@ -4,7 +4,7 @@ import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFix
 import { fetchPlayer, fetchPlayerAchievements, fetchPlayerEvents, fetchPlayerFixtures, fetchPlayerIndividualHonors, fetchPlayerSeasonStats, fetchSeasons } from '../api/client'
 import SeasonDropdown from '../components/shared/SeasonDropdown'
 import { isWorldCupSeason } from '../utils/season'
-import HighlightsView from '../components/player/HighlightsView'
+import ProfileMoments from '../components/player/ProfileMoments'
 import {
   ProfileCompetitions,
   ProfileContext,
@@ -196,7 +196,7 @@ export default function PlayerPage() {
         <button type="button" className="pf-back" onClick={goBackToRanking}><ArrowIcon direction="left" /> Volver al ranking</button>
       </nav>
 
-      <ProfileHero player={player} fixtures={fixtures} stats={seasonStats} seasonLabel={seasonLabel} seasonPicker={seasonPicker} />
+      <ProfileHero player={player} fixtures={fixtures} stats={seasonStats} seasonLabel={seasonLabel} seasonPicker={seasonPicker} scope={season} />
 
       <div className={`pf-content${seasonChanging ? ' is-changing' : ''}`} aria-busy={seasonChanging}>
         <ProfileKpis player={player} stats={seasonStats} fixtures={fixtures} />
@@ -206,8 +206,8 @@ export default function PlayerPage() {
 
         {fixtures.length > 0 && (
           <section className="pf-highlights" aria-labelledby="pf-hl-title">
-            <header className="pf-section-head"><h2 id="pf-hl-title">Lo más destacado</h2><p>Sus partidos y acciones que más pesan en el ranking</p></header>
-            <HighlightsView fixtures={fixtures} events={events} />
+            <header className="pf-section-head"><h2 id="pf-hl-title">Lo más destacado</h2><p>Sus acciones de más valor y lo mejor de su temporada</p></header>
+            <ProfileMoments fixtures={fixtures} events={events} team={player.team} season={matchSeason} />
           </section>
         )}
 

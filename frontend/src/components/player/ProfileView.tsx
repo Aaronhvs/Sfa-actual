@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { fetchPlayerSeasonStats } from '../../api/client'
+import { fetchPlayerSeasonStats, fetchRanking } from '../../api/client'
 import { Link } from 'react-router-dom'
 import type { PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerSeasonStats } from '../../types'
 import { competitionLabel, phaseBadge, phaseLabel } from '../../utils/footballLabels'
@@ -30,8 +30,13 @@ export function rivalOf(fixture: PlayerFixture, fallbackTeam: string) {
   }
 }
 
-function matchHref(fixture: PlayerFixture, season: string) {
+export function matchHref(fixture: PlayerFixture, season: string) {
   return fixture.fixture_external_id ? `/torneos/partido/${fixture.fixture_external_id}?season=${season}` : null
+}
+
+/** Home/away marker used across the profile: green L for home, outlined V for away. */
+export function Venue({ home }: { home: boolean }) {
+  return <i className={`pf-venue ${home ? 'is-home' : 'is-away'}`} title={home ? 'Local' : 'Visitante'}>{home ? 'L' : 'V'}</i>
 }
 
 function Crest({ src, name, size = 22 }: { src: string | null; name: string; size?: number }) {
@@ -46,17 +51,80 @@ function MaybeLink({ to, className, children, label }: { to: string | null; clas
 
 /* ── Hero ───────────────────────────────────────────────────────────────── */
 
-export function ProfileHero({ player, fixtures, stats, seasonLabel, seasonPicker }: {
+/** Size of the ranked field for the selected period (filters already applied by the API). */
+function useRankedTotal(scope: string) {
+  const [total, setTotal] = useState<number | null>(null)
+  useEffect(() => {
+    let active = true
+    setTotal(null)
+    if (!scope) return undefined
+    fetchRanking({ ...(scope === 'all' ? { season: 'all' } : { scope }), limit: 1 })
+      .then((r) => { if (active) setTotal(r.total) })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [scope])
+  return total
+}
+
+function RankBadge({ player, scope }: { player: PlayerDetail; scope: string }) {
+  const total = useRankedTotal(scope)
+  if (player.global_rank <= 0) return null
+  const podium = player.global_rank <= 3 ? ` is-p${player.global_rank}` : ''
+  return (
+    <div className={`pf-rank${podium}`}>
+      <span className="pf-rank__num" aria-label={`Puesto ${player.global_rank} del ranking SFA`}><small>#</small>{player.global_rank}</span>
+      <span className="pf-rank__copy">
+        <span className="pf-eyebrow">Ranking SFA</span>
+        {total != null && <small>de {total.toLocaleString('es-ES')} jugadores</small>}
+      </span>
+    </div>
+  )
+}
+
+/** Desktop points card: the player's top match of the period, linking to the match page. */
+function BestMatch({ fixture, team, season }: { fixture: PlayerFixture; team: string; season: string }) {
+  const rival = rivalOf(fixture, team)
+  const href = matchHref(fixture, season)
+  const goals = goalsIn(fixture)
+  const assists = assistsIn(fixture)
+  const contributions = [
+    goals > 0 && `${goals} ${goals === 1 ? 'gol' : 'goles'}`,
+    assists > 0 && `${assists} ${assists === 1 ? 'asistencia' : 'asistencias'}`,
+  ].filter(Boolean).join(' y ')
+  const body = (
+    <>
+      <span className="pf-best__label">Su mejor partido</span>
+      <span className="pf-best__row">
+        <Crest src={rival.logo} name={rival.name} size={34} />
+        <span className="pf-best__copy">
+          <strong>
+            <Venue home={rival.home} />
+            {rival.name}
+          </strong>
+          <small>{shortDate(fixture.played_at)} · {competitionLabel(fixture.competition)}</small>
+          {contributions && <small className="pf-best__hits">{contributions}</small>}
+        </span>
+        <b className="pf-best__pts">{pts(fixture.sfa_pts)}<em>pts</em></b>
+      </span>
+    </>
+  )
+  return href ? <Link to={href} className="pf-best">{body}</Link> : <div className="pf-best">{body}</div>
+}
+
+export function ProfileHero({ player, fixtures, stats, seasonLabel, seasonPicker, scope }: {
   player: PlayerDetail
   fixtures: PlayerFixture[]
   stats: PlayerSeasonStats | null
   seasonLabel: string
   seasonPicker: ReactNode
+  scope: string
 }) {
   const minutes = stats?.minutes ?? fixtures.reduce((sum, fixture) => sum + fixture.minutes, 0)
   const perMatch = player.matches > 0 ? player.sfa_pts / player.matches : 0
-  const per90 = minutes > 0 ? (player.sfa_pts / minutes) * 90 : 0
-  const best = fixtures.reduce<PlayerFixture | null>((top, fixture) => (!top || fixture.sfa_pts > top.sfa_pts ? fixture : top), null)
+  // Best match of the period; on a tie the most recent one wins.
+  const best = fixtures.reduce<PlayerFixture | null>((top, fixture) => (
+    !top || fixture.sfa_pts > top.sfa_pts || (fixture.sfa_pts === top.sfa_pts && fixture.played_at > top.played_at) ? fixture : top
+  ), null)
   const teamLogo = fixtures.find((fixture) => fixture.player_team_logo)?.player_team_logo ?? null
 
   return (
@@ -64,35 +132,40 @@ export function ProfileHero({ player, fixtures, stats, seasonLabel, seasonPicker
       <section className="pf-id" aria-label="Jugador">
         <span className="pf-id__rank" aria-hidden="true">{player.global_rank}</span>
         <div className="pf-id__copy">
+          {/* Phones only: the rank leads the card, like the rating corner of a player card. */}
+          {player.global_rank > 0 && (
+            <p className={`pf-id__pos${player.global_rank <= 3 ? ` is-p${player.global_rank}` : ''}`} aria-label={`Puesto ${player.global_rank} del ranking SFA`}>
+              <b><small>#</small>{player.global_rank}</b>
+            </p>
+          )}
           <h1>{player.name}</h1>
           <p className="pf-id__meta">
             {(() => {
               const href = teamHref(player.team, externalIdFromLogo(teamLogo))
-              const body = <><Crest src={teamLogo} name={player.team} size={18} />{player.team}</>
+              const body = <><Crest src={teamLogo} name={player.team} size={18} /><span className="pf-id__club-name">{player.team}</span></>
               return href ? <Link to={href} className="pf-id__club">{body}</Link> : <span>{body}</span>
             })()}
             <span>{POSITION[player.position] ?? player.position}</span>
           </p>
-          {player.competitions.length > 0 && <p className="pf-id__comps">{player.competitions.map((name) => competitionLabel(name)).join(' · ')}</p>}
           <ul className="pf-id__chips">
-            <li className="is-gold">#{player.global_rank} del ranking SFA</li>
+            <li className="is-gold pf-id__rankchip">#{player.global_rank} del ranking SFA</li>
             {player.b1_bonus_label && <li>{player.b1_bonus_label}{player.b1_bonus_pts > 0 && ` · +${pts(player.b1_bonus_pts)} pts`}</li>}
             <li>{seasonLabel}</li>
           </ul>
+        </div>
+        {/* Phones only: points close the card as a footer (the points card is hidden there). */}
+        <div className="pf-id__score" aria-hidden="true">
+          <span className="pf-id__pts">{pts(player.sfa_pts)}<em>pts SFA</em></span>
         </div>
         <PlayerPortrait player={player} className="pf-id__photo" eager allowArtwork />
       </section>
 
       <section className="pf-total" aria-label="Puntos SFA de la temporada">
+        <RankBadge player={player} scope={scope} />
         <span className="pf-eyebrow pf-eyebrow--gold">Puntos SFA · {seasonLabel}</span>
         <strong className="pf-total__value">{pts(player.sfa_pts)}</strong>
-        <span className="pf-total__sub">en {player.matches} partidos y {minutes.toLocaleString('es-ES')} minutos</span>
-        <dl className="pf-total__grid">
-          <div><dt>Por partido</dt><dd>{pts(perMatch)}</dd></div>
-          <div><dt>Por 90 minutos</dt><dd>{pts(per90)}</dd></div>
-          <div><dt>Puesto</dt><dd>#{player.global_rank}</dd></div>
-          <div><dt>Mejor partido</dt><dd>{best ? pts(best.sfa_pts) : '—'}</dd></div>
-        </dl>
+        <span className="pf-total__sub">en {player.matches} partidos y {minutes.toLocaleString('es-ES')} minutos · {pts(perMatch)} de media</span>
+        {best && <BestMatch fixture={best} team={player.team} season={player.season} />}
         {seasonPicker}
       </section>
     </div>
@@ -189,22 +262,25 @@ export function ProfileMatchBars({ fixtures, team, season }: { fixtures: PlayerF
   const current = active != null ? ordered[active] : null
   const currentRival = current ? rivalOf(current, team) : null
   const lastTrend = (trend[n - 1] ? values.slice(-TREND_WINDOW).reduce((sum, value) => sum + value, 0) / Math.min(TREND_WINDOW, n) : 0)
+  // A 10 % band around the season average reads as "in his level", not up or down.
+  const form = n < 3 ? 'is-flat' : lastTrend >= avg * 1.1 ? 'is-up' : lastTrend <= avg * 0.9 ? 'is-down' : 'is-flat'
 
   return (
     <section className="pf-panel" aria-labelledby="pf-bars-title">
-      <header className="pf-panel__head">
+      <header className="pf-panel__head pf-trend-head">
         <div>
-          <h2 id="pf-bars-title">Partido a partido</h2>
-          <p>
-            {n} partidos · media {pts(avg)} pts · últimos {Math.min(TREND_WINDOW, n)}: <b className={lastTrend >= avg ? 'is-up' : 'is-down'}>{pts(lastTrend)} pts</b>
-          </p>
+          <h2 id="pf-bars-title">Su racha partido a partido</h2>
+          <p>Cada punto es un partido y su altura, los puntos SFA que sumó. La línea dorada marca su nivel: si sube, está jugando cada vez mejor.</p>
         </div>
-        <span className="pf-legend">
-          <span><i className="is-trend" />Tendencia (media de 5)</span>
-          <span><i className="is-elite" />Por encima de su media</span>
+        <span className={`pf-trend-verdict ${form}`}>
+          <b>{form === 'is-up' ? 'Viene en racha' : form === 'is-down' ? 'Por debajo de su nivel' : 'En su nivel'}</b>
+          <small>Últimos {Math.min(TREND_WINDOW, n)}: {pts(lastTrend)} pts de media · temporada: {pts(avg)}</small>
         </span>
       </header>
-
+      <div className="pf-legend pf-trend-legend">
+        <span><i className="is-trend" />Su nivel (media de los últimos 5)</span>
+        <span><i className="is-elite" />Partido por encima de lo habitual</span>
+      </div>
       <div
         className={`pf-trend${dense ? ' is-dense' : ''}`}
         ref={plotRef}
@@ -234,7 +310,7 @@ export function ProfileMatchBars({ fixtures, team, season }: { fixtures: PlayerF
               key={fixture.fixture_id}
               to={matchHref(fixture, season)}
               className={`pf-trend__pt${fixture.sfa_pts >= avg ? ' is-elite' : ''}${index === bestIndex ? ' is-best' : ''}${index === active ? ' is-active' : ''}`}
-              label={`${rival.home ? 'vs' : 'en'} ${rival.name}, ${shortDate(fixture.played_at)}: ${pts(fixture.sfa_pts)} puntos SFA`}
+              label={`${rival.name} (${rival.home ? 'local' : 'visitante'}), ${shortDate(fixture.played_at)}: ${pts(fixture.sfa_pts)} puntos SFA`}
             >
               <span className="pf-trend__dot" style={{ left: `${x}%`, top: `${y}%` }} onFocus={() => setActive(index)} onBlur={() => setActive(null)}>
                 {index === bestIndex && <b>{pts(fixture.sfa_pts)}</b>}
@@ -258,7 +334,7 @@ export function ProfileMatchBars({ fixtures, team, season }: { fixtures: PlayerF
           <div className={`pf-tip${raw[active][0] > 70 ? ' is-left' : ''}`} style={{ left: `${raw[active][0]}%` }} role="status">
             <span className="pf-tip__head">
               <Crest src={currentRival.logo} name={currentRival.name} size={20} />
-              <strong>{currentRival.home ? 'vs' : 'en'} {currentRival.name}</strong>
+              <strong><Venue home={currentRival.home} /> {currentRival.name}</strong>
             </span>
             <small>{shortDate(current.played_at)} · {competitionLabel(current.competition)} · {current.minutes}'</small>
             <b>{pts(current.sfa_pts)} <em>pts SFA</em></b>
@@ -594,11 +670,14 @@ const ACTION_NAMES: Record<string, string> = {
 }
 
 /** Plain-language reasons behind an action's value (no raw multipliers). */
-function actionReasons(event: PlayerEvent, ownTeam: string) {
+export function actionReasons(event: PlayerEvent, ownTeam: string) {
   const reasons: Array<{ text: string; up: boolean }> = []
-  const [home = 0, away = 0] = (event.score_before ?? '0:0').split(':').map(Number)
-  const diff = event.home_team === ownTeam ? home - away : away - home
-  if (event.m3 > 1) reasons.push({ text: diff < 0 ? 'Perdiendo' : diff === 0 ? 'Empate' : 'Momento decisivo', up: true })
+  // Without a recorded score the game state is unknown: say "Momento decisivo" rather than guess a draw.
+  const diff = event.score_before ? (() => {
+    const [home = 0, away = 0] = event.score_before.split(':').map(Number)
+    return event.home_team === ownTeam ? home - away : away - home
+  })() : null
+  if (event.m3 > 1) reasons.push({ text: diff == null || diff > 0 ? 'Momento decisivo' : diff < 0 ? 'Perdiendo' : 'Empate', up: true })
   else if (event.m3 < 1) reasons.push({ text: 'Partido resuelto', up: false })
   if (event.m2 > 1) reasons.push({ text: 'Fase de peso', up: true })
   if (event.m1 >= 1) reasons.push({ text: 'Rival de nivel', up: true })
