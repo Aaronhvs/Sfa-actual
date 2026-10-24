@@ -1,6 +1,7 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import type { CompareResponse, PlayerDetail, PlayerEvent, PlayerFixture, PlayerSeasonStats } from '../../types'
+import { fetchPlayerLeads } from '../../api/client'
+import type { CompareResponse, PlayerDetail, PlayerEvent, PlayerFixture, PlayerLead, PlayerSeasonStats } from '../../types'
 import { competitionLabel } from '../../utils/footballLabels'
 import PlayerPortrait from '../shared/PlayerPortrait'
 
@@ -234,6 +235,155 @@ export function ImpactPanel({ data, minutesA, minutesB }: { data: CompareRespons
         <Butterfly metrics={context} nameA={data.player_a.name} nameB={data.player_b.name} />
       </Panel>
     </div>
+  )
+}
+
+/* ── Chapters: context first, raw numbers second ───────────────────────── */
+
+export function ChapterHead({ index, title, text }: { index: number; title: string; text: string }) {
+  return (
+    <header className="cv-chapter">
+      <span className="cv-chapter__index" aria-hidden="true">{index}</span>
+      <div><h2>{title}</h2><p>{text}</p></div>
+    </header>
+  )
+}
+
+/* ── Verdict: resolves "the one behind has better numbers" in plain words ── */
+
+type RawCount = { label: string; a: number; b: number }
+
+function rawCounts(sa: PlayerSeasonStats | null, sb: PlayerSeasonStats | null): RawCount[] {
+  if (!sa || !sb) return []
+  return [
+    { label: 'goles', a: sa.goals, b: sb.goals },
+    { label: 'asistencias', a: sa.assists, b: sb.assists },
+    { label: 'tiros a puerta', a: sa.shots_on, b: sb.shots_on },
+    { label: 'pases clave', a: sa.passes_key, b: sb.passes_key },
+    { label: 'regates', a: sa.dribbles_won, b: sb.dribbles_won },
+    { label: 'duelos ganados', a: sa.duels_won, b: sb.duels_won },
+  ]
+}
+
+export function Verdict({ data, minutesA, minutesB }: { data: CompareResponse; minutesA: number; minutesB: number }) {
+  const leaderSide: Side = data.player_a.sfa_pts >= data.player_b.sfa_pts ? 'a' : 'b'
+  const trailerSide: Side = leaderSide === 'a' ? 'b' : 'a'
+  const players = { a: data.player_a, b: data.player_b }
+  const short = (side: Side) => players[side].name.split(' ').slice(-1)[0]
+  const impact = {
+    a: impactOf(data.player_a, data.player_a_analytics.events, data.player_a_analytics.fixtures, minutesA),
+    b: impactOf(data.player_b, data.player_b_analytics.events, data.player_b_analytics.fixtures, minutesB),
+  }
+  const relative = (ahead: number, behind: number) => (ahead - behind) / Math.max(Math.abs(behind), 1)
+
+  // Raw counts where the player behind is ahead: the source of the "but his numbers are better" doubt.
+  const trailerWins = rawCounts(data.player_a_analytics.stats, data.player_b_analytics.stats)
+    .filter((row) => row[trailerSide] > row[leaderSide])
+    .sort((x, y) => relative(y[trailerSide], y[leaderSide]) - relative(x[trailerSide], x[leaderSide]))
+    .slice(0, 2)
+
+  // What actually moves the SFA total, keeping only the ones where the leader is clearly ahead.
+  const playPts = (side: Side) => players[side].breakdown?.stats?.pts ?? 0
+  const candidates = [
+    { label: 'Cada gol o asistencia vale más', hint: 'puntos de media por acción decisiva', a: impact.a.avgDecisive, b: impact.b.avgDecisive, format: fmt.int },
+    { label: 'Decide con el partido igualado o en contra', hint: '% de sus goles y asistencias', a: impact.a.tight, b: impact.b.tight, format: fmt.pct },
+    { label: 'Lo hace ante rivales de nivel', hint: '% de sus goles y asistencias', a: impact.a.strongRival, b: impact.b.strongRival, format: fmt.pct },
+    { label: 'Más peso en Champions y eliminatorias', hint: '% de sus goles y asistencias', a: impact.a.stage, b: impact.b.stage, format: fmt.pct },
+    { label: 'Aporta más con su juego', hint: 'puntos por pases, regates, duelos…', a: playPts('a'), b: playPts('b'), format: fmt.int },
+    { label: 'Rinde más por minuto', hint: "puntos SFA por 90'", a: impact.a.per90, b: impact.b.per90, format: fmt.int },
+  ]
+  const reasons = candidates
+    .flatMap((row) => (row.a == null || row.b == null ? [] : [{ ...row, lead: row[leaderSide] as number, rest: row[trailerSide] as number }]))
+    .filter((row) => relative(row.lead, row.rest) > 0.08)
+    .sort((x, y) => relative(y.lead, y.rest) - relative(x.lead, x.rest))
+    .slice(0, 3)
+
+  const list = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}` : items[0])
+
+  return (
+    <section className={`pf-panel cv-panel cv-verdict is-${leaderSide}`} aria-labelledby="cv-verdict-title">
+      <span className="pf-eyebrow">El veredicto</span>
+      <h2 id="cv-verdict-title">
+        {trailerWins.length > 0 ? (
+          <>
+            <span className={`is-${trailerSide}`}>{short(trailerSide)}</span> tiene más {list(trailerWins.map((row) => `${row.label} (${row[trailerSide]} frente a ${row[leaderSide]})`))},
+            {' '}pero <span className={`is-${leaderSide}`}>{short(leaderSide)}</span> suma más puntos SFA.
+          </>
+        ) : (
+          <><span className={`is-${leaderSide}`}>{short(leaderSide)}</span> manda también en los números brutos, y además sus acciones pesan más.</>
+        )}
+      </h2>
+      {reasons.length > 0 && (
+        <>
+          <p className="cv-verdict__lead">{trailerWins.length > 0 ? 'Porque SFA no cuenta cuántas veces, sino cuánto vale cada una:' : 'Dónde saca la diferencia:'}</p>
+          <ul className="cv-verdict__reasons">
+            {reasons.map((row) => (
+              <li key={row.label}>
+                <span className="cv-verdict__what"><strong>{row.label}</strong><small>{row.hint}</small></span>
+                <span className="cv-verdict__nums">
+                  <b className={`is-${leaderSide}`}>{row.format(row.lead)}</b>
+                  <small>vs</small>
+                  <b className={`is-${trailerSide}`}>{row.format(row.rest)}</b>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  )
+}
+
+/* ── Distinctions: each player's podium places, side by side ────────────── */
+
+const LEAD_TITLES: Record<PlayerLead['metric'], string> = {
+  shot_conversion: 'Eficacia de cara a puerta',
+  goals_per90: 'Goles por partido',
+  goal_contributions_per90: 'Goles y asistencias',
+  key_passes_per90: 'Pases clave',
+  dribbles_per90: 'Regates completados',
+  defensive_actions_per90: 'Entradas e intercepciones',
+  duel_win_rate: 'Duelos ganados',
+  save_rate: 'Paradas',
+  big_game_points_per90: 'Contra los grandes',
+}
+
+function leadWhere(lead: PlayerLead) {
+  const comp = lead.group.competition_name ? competitionLabel(lead.group.competition_name) : 'Toda la temporada'
+  return lead.group.position ? `${comp} · en su posición` : comp
+}
+
+export function LeadsDuel({ data }: { data: CompareResponse }) {
+  const [leads, setLeads] = useState<{ a: PlayerLead[]; b: PlayerLead[] }>({ a: [], b: [] })
+  const scope = data.scope ?? `season-${data.season}`
+  useEffect(() => {
+    let active = true
+    setLeads({ a: [], b: [] })
+    Promise.all([fetchPlayerLeads(data.player_a.id, scope), fetchPlayerLeads(data.player_b.id, scope)]).then(([a, b]) => {
+      if (active) setLeads({ a: a?.supported ? a.items : [], b: b?.supported ? b.items : [] })
+    })
+    return () => { active = false }
+  }, [data.player_a.id, data.player_b.id, scope])
+  if (!leads.a.length && !leads.b.length) return null
+  const column = (side: Side, player: PlayerDetail) => (
+    <div className={`cv-leads__col is-${side}`}>
+      <span className="cv-leads__who">{player.name}</span>
+      {leads[side].length ? (
+        <ul>
+          {leads[side].map((lead) => (
+            <li key={lead.metric} className={`is-p${lead.rank}`}>
+              <b>#{lead.rank}</b>
+              <span><strong>{LEAD_TITLES[lead.metric]}</strong><small>{leadWhere(lead)}</small></span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="cv-leads__none">No está en el podio de ninguna estadística</p>}
+    </div>
+  )
+  return (
+    <Panel title="Dónde está entre los mejores" sub="Estadísticas en las que es top 3 frente a jugadores comparables">
+      <div className="cv-leads">{column('a', data.player_a)}{column('b', data.player_b)}</div>
+    </Panel>
   )
 }
 

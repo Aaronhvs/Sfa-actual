@@ -1,0 +1,212 @@
+/* ── Jugador de la jornada (competition page) ─────────────────────── */
+.mvp {
+  overflow: hidden;
+  border: 1px solid var(--tp-line);
+  border-radius: 18px;
+  background:
+    radial-gradient(60% 120% at 100% 0%, rgba(201, 168, 76, 0.16), transparent 70%),
+    var(--tp-panel);
+}
+
+.mvp-card {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 26px;
+  padding: 24px 26px;
+}
+
+.mvp-card__photo,
+.mvp-history__photo {
+  display: grid;
+  flex: none;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 50%;
+  background: #ece8df;
+  font: 700 0.8rem/1 var(--font-body);
+  color: #333;
+}
+
+.mvp-card__photo { width: 128px; height: 128px; box-shadow: 0 0 0 3px var(--gold), 0 0 0 9px rgba(201, 168, 76, 0.14); }
+.mvp-card__photo img,
+.mvp-history__photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+
+.mvp-card__copy { display: grid; gap: 10px; min-width: 0; }
+
+.mvp-card__eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.mvp-card__eyebrow span { font: 700 0.68rem/1 var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+.mvp-card__eyebrow b { font: 800 0.86rem/1 var(--font-display); text-transform: uppercase; color: var(--text); }
+
+.mvp-card__eyebrow em {
+  padding: 3px 8px;
+  border: 1px solid rgba(240, 180, 90, 0.4);
+  border-radius: 999px;
+  font: 600 0.66rem/1.2 var(--font-body);
+  font-style: normal;
+  color: #f0c27a;
+}
+
+.mvp-card h2 { margin: 0; font: 800 clamp(1.9rem, 3.6vw, 2.8rem)/0.92 var(--font-display); text-transform: uppercase; }
+.mvp-card h2 a { color: var(--text) !important; text-decoration: none; }
+.mvp-card h2 a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+
+.mvp-match { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font: 500 0.84rem/1.2 var(--font-body); color: var(--text-faint); }
+.mvp-match > span { display: inline-flex; align-items: center; gap: 7px; }
+.mvp-match em { font-style: normal; }
+.mvp-match > span.is-own { font-weight: 700; color: var(--text); }
+.mvp-match .tp-crest { width: 22px; height: 22px; }
+
+.mvp-match b {
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: var(--tp-raise);
+  font: 800 0.95rem/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.mvp-match b i { margin: 0 3px; font-style: normal; color: var(--text-faint); }
+.mvp-card__why { margin: 0; font: 600 0.9rem/1.35 var(--font-body); color: var(--text); }
+
+.mvp-card__tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.mvp-card__tags li { padding: 4px 10px; border-radius: 999px; background: rgba(201, 168, 76, 0.12); font: 600 0.72rem/1.2 var(--font-body); color: var(--text); }
+
+.mvp-card__score { display: grid; justify-items: end; gap: 6px; text-align: right; }
+.mvp-card__score b { font: 800 3.6rem/0.85 var(--font-display); font-variant-numeric: tabular-nums; color: var(--gold-light); }
+.mvp-card__score span { font: 500 0.74rem/1.2 var(--font-body); color: var(--text-faint); }
+
+.mvp-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--tp-line-strong);
+  border-radius: 10px;
+  font: 600 0.78rem/1 var(--font-body);
+  color: var(--text) !important;
+  text-decoration: none;
+  transition: background-color 160ms var(--tp-ease);
+}
+
+.mvp-card__cta:hover { background: rgba(255, 255, 255, 0.06); }
+.mvp-card__cta svg { width: 12px; height: 12px; }
+
+.mvp-history { padding: 14px 26px 18px; border-top: 1px solid var(--tp-line); }
+.mvp-history h3 { margin: 0 0 10px; font: 700 0.66rem/1 var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+.mvp-history__list { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-inline: contain; }
+.mvp-history__list::-webkit-scrollbar { display: none; }
+
+.mvp-history__list button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid var(--tp-line);
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.35);
+  font: inherit;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color 160ms var(--tp-ease), background-color 160ms var(--tp-ease);
+}
+
+.mvp-history__list button:hover { border-color: var(--tp-line-strong); }
+.mvp-history__list button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.mvp-history__list button.is-active { border-color: rgba(201, 168, 76, 0.6); background: rgba(201, 168, 76, 0.1); color: var(--text); }
+.mvp-history__list small { font: 800 0.72rem/1 var(--font-display); color: var(--text-faint); }
+.mvp-history__photo { width: 26px; height: 26px; font-size: 0.55rem; }
+.mvp-history__list span:last-child { display: grid; gap: 2px; text-align: left; }
+.mvp-history__list strong { font: 600 0.76rem/1 var(--font-body); }
+.mvp-history__list em { font: 800 0.72rem/1 var(--font-display); font-style: normal; color: var(--gold-light); }
+
+/* ── /torneos rail: under the competitions list ─────────────────── */
+.mvp-rail { margin-top: 26px; }
+.mvp-rail ol { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+
+.mvp-rail__row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  color: var(--text-dim) !important;
+  text-decoration: none;
+  transition: background-color 180ms var(--tp-ease), color 180ms var(--tp-ease);
+}
+
+.mvp-rail__row:hover { background: var(--tp-panel-2); color: var(--text) !important; }
+.mvp-rail__row:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+
+.mvp-rail__photo { position: relative; width: 36px; height: 36px; }
+.mvp-rail__face {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 50%;
+  background: #ece8df;
+  font: 700 0.6rem/1 var(--font-body);
+  color: #333;
+}
+
+.mvp-rail__face img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+
+.mvp-rail__photo .tp-tile {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px var(--bg, #111);
+}
+
+.mvp-rail__photo .tp-tile img { width: 11px; height: 11px; }
+.mvp-rail__who { display: grid; gap: 3px; min-width: 0; }
+.mvp-rail__who strong { overflow: hidden; font: 600 0.8rem/1.1 var(--font-body); color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.mvp-rail__who small { overflow: hidden; font: 500 0.66rem/1.1 var(--font-body); color: var(--text-faint); text-overflow: ellipsis; white-space: nowrap; }
+.mvp-rail__row b { font: 800 0.92rem/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--gold-light); }
+
+/* Tablet and phone: the rail is a chip row, so MVPs become a swipeable row of cards */
+@media (max-width: 1180px) {
+  .mvp-rail { margin-top: 14px; }
+  .mvp-rail ol {
+    display: flex;
+    gap: 8px;
+    margin: 0 -16px;
+    padding: 0 16px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+
+  .mvp-rail ol::-webkit-scrollbar { display: none; }
+  .mvp-rail li { flex: none; width: min(260px, 78vw); scroll-snap-align: start; }
+  .mvp-rail__row { border: 1px solid var(--tp-line); border-radius: 12px; background: var(--tp-panel); padding: 10px 12px; }
+}
+
+@media (max-width: 720px) {
+  /* Phones: back to a vertical list, shown under the competitions after the matches */
+  .mvp-rail { margin-top: 0; }
+  .mvp-rail ol { display: grid; gap: 2px; margin: 0; padding: 0; overflow: visible; }
+  .mvp-rail li { width: auto; }
+  .mvp-rail__row { padding: 7px 8px; border: 0; border-radius: 9px; background: none; }
+  .mvp-card { grid-template-columns: 84px minmax(0, 1fr); gap: 16px; padding: 18px; }
+  .mvp-card__photo { width: 84px; height: 84px; align-self: start; }
+  .mvp-card__score { grid-column: 1 / -1; grid-template-columns: auto 1fr auto; align-items: end; justify-items: start; text-align: left; }
+  .mvp-card__score b { font-size: 2.6rem; }
+  .mvp-card__cta { margin-top: 0; }
+  .mvp-match em { display: none; }
+  .mvp-match .tp-crest { width: 26px; height: 26px; }
+  .mvp-history { padding: 12px 18px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mvp-rail__row, .mvp-card__cta, .mvp-history__list button { transition: none; }
+}
+.cd-content > .mvp { margin-bottom: 18px; }

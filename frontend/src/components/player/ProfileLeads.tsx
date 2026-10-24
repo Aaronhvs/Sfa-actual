@@ -47,14 +47,15 @@ function copyFor(lead: PlayerLead): Copy {
   }
 }
 
+/** Short "where": the competition (or the whole season) and, for position groups, the peers. */
 function groupLabel(lead: PlayerLead) {
   const { kind, competition_name: name, position } = lead.group
-  const comp = name ? competitionLabel(name) : ''
+  const comp = name ? competitionLabel(name) : 'Temporada'
   const peers = position ? POSITION_PLURAL[position] ?? 'su posición' : ''
-  if (kind === 'competition') return `en ${comp}`
-  if (kind === 'competition_position') return `entre los ${peers} de ${comp}`
-  if (kind === 'scope_position') return `entre los ${peers} de la temporada`
-  return 'en toda la temporada'
+  if (kind === 'competition_position' || kind === 'scope_position') {
+    return { place: comp, peers: `Entre ${peers}` }
+  }
+  return { place: comp, peers: null }
 }
 
 function minimumLabel(lead: PlayerLead) {
@@ -88,21 +89,25 @@ export default function ProfileLeads({ playerId, scope }: { playerId: number; sc
       <ol className="pf-leads__list">
         {leads.map((lead) => {
           const copy = copyFor(lead)
+          const where = groupLabel(lead)
           const logo = lead.group.competition_name ? tournamentCompetitionLogoByName(lead.group.competition_name) : null
           return (
             <li key={lead.metric} className={`pf-lead is-p${lead.rank}`}>
-              <span className="pf-lead__rank" aria-label={`Puesto ${lead.rank}${lead.tied ? ', empatado' : ''}`}>
-                <small>#</small>{lead.rank}
-              </span>
-              <span className="pf-lead__body">
-                <strong>{copy.title}</strong>
+              <span className="pf-lead__top">
+                <span className="pf-lead__medal" aria-label={`Puesto ${lead.rank}${lead.tied ? ', empatado' : ''}`}>
+                  <small>#</small>{lead.rank}
+                </span>
                 <span className="pf-lead__where">
                   {logo && <span className="tp-tile"><img src={logo} alt="" /></span>}
-                  <span>{groupLabel(lead)}{lead.tied && ' (empatado)'} · de {int(lead.qualified_count)} jugadores</span>
+                  <span>{where.place}</span>
                 </span>
-                <small className="pf-lead__context">{copy.context}<em> · {minimumLabel(lead)}</em></small>
               </span>
+              <strong className="pf-lead__title">{copy.title}</strong>
               <span className="pf-lead__figure"><b>{copy.figure}</b>{copy.unit && <em>{copy.unit}</em>}</span>
+              <small className="pf-lead__context">{copy.context}</small>
+              <small className="pf-lead__field">
+                {where.peers ? `${where.peers} · ` : ''}{int(lead.qualified_count)} jugadores{lead.tied ? ' · empatado' : ''} · {minimumLabel(lead)}
+              </small>
             </li>
           )
         })}

@@ -579,8 +579,10 @@
   content: '';
 }
 
-.tp-promo--compare { background-image: url('/images/sfa-method-stadium.jpg'); }
-.tp-promo--method { background-image: url('/images/home-pitch.svg'); }
+.tp-explore-mobile { display: none; }
+
+.tp-promo--compare { background-image: url('/images/promo-compare.webp'); }
+.tp-promo--method { background-image: url('/images/promo-method.webp'); }
 
 .tp-promo:hover { border-color: var(--tp-line-strong); }
 .tp-promo:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
@@ -623,6 +625,10 @@
 /* Season leaders: shared component, restyled to this page's vocabulary */
 .tp-leaders { margin-top: 56px; }
 
+.tp-leaders .trn-leaders__hub-title,
+.tp-leaders .trn-leaders__tabs,
+.tp-leaders .trn-leader-column--hub { display: none; }
+
 .tp-leaders .trn-leaders {
   margin: 0;
   overflow: visible;
@@ -639,7 +645,7 @@
   background: transparent;
 }
 
-.tp-leaders .trn-leaders__header span {
+.tp-leaders .trn-leaders__header > div > span {
   margin-bottom: 8px;
   font: 700 0.66rem/1 var(--font-body);
   letter-spacing: 0.14em;
@@ -883,6 +889,27 @@
 
   .tp-side { grid-template-columns: minmax(0, 1fr); }
   .tp-side .tp-top { grid-row: auto; }
+
+  /* Phones: competitions stay as a chip ribbon above the featured match. Every player list (round MVPs,
+     season top, scorers, assists, positions) lives in one tabbed hub at the end instead of six stacked tops;
+     the promos are already in the menu. */
+  .tp-rail { display: contents; }
+  .tp-rail > .tp-eyebrow,
+  .tp-rail .mvp-rail,
+  .tp-side { display: none; }
+  .tp-rail nav { order: -1; }
+
+  .tp-explore-mobile { display: grid; gap: 10px; margin-top: 28px; }
+
+  .tp-leaders .trn-leaders.is-hub .trn-leaders__title { display: none; }
+  .tp-leaders .trn-leaders.is-hub .trn-leaders__hub-title { display: inline; }
+  .tp-leaders .trn-leaders.is-hub .trn-leaders__header > small { display: none; }
+  .tp-leaders .trn-leaders.is-hub .trn-leaders__tabs { display: flex; margin-bottom: 12px; }
+  .tp-leaders .trn-leaders.is-hub .trn-leader-column { display: none; }
+  .tp-leaders .trn-leaders.is-hub .trn-leader-column.is-tab-active { display: block; }
+  .tp-leaders .trn-leader-column--hub .mvp-rail { margin: 0; }
+  .tp-leaders .trn-leader-column--hub .mvp-rail > h2 { display: none; }
+  .tp-leaders .trn-leader-column--hub .mvp-rail__row { padding: 10px 12px; border-radius: 0; }
 }
 
 @media (max-width: 420px) {

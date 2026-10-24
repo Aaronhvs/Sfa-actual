@@ -568,3 +568,37 @@ export interface PlayerLeadsResponse {
   rules_version_id: number | null
   items: PlayerLead[]
 }
+
+/** Best single-match SFA performance of a competition round (proposed endpoints, see MatchdayMvp.tsx). */
+export interface MatchdayMvp {
+  round_key: string
+  round_label: string
+  matchday: number | null
+  complete: boolean
+  pending_fixtures: number
+  player: { id: number; name: string; team: string; position: string; photo_url: string | null }
+  sfa_pts: number
+  goals: number
+  assists: number
+  reasons: Array<'behind' | 'level' | 'big_rival' | 'away' | 'knockout'>
+  fixture: {
+    external_id: number
+    played_at: string
+    home_team: TournamentTeam
+    away_team: TournamentTeam
+    home_goals: number | null
+    away_goals: number | null
+    player_side: 'home' | 'away'
+  }
+}
+
+export interface MatchdayMvpsResponse {
+  competition_id: number
+  season: string
+  items: MatchdayMvp[]
+}
+
+export interface LatestMvpsResponse {
+  season: string
+  items: Array<{ competition: TournamentCompetition; mvp: MatchdayMvp }>
+}

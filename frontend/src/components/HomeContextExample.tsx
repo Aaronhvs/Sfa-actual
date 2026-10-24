@@ -22,7 +22,6 @@ const SCOPE = 'season-2026'
 const ROTATE_MS = 7000
 
 const points = (value: number) => Math.round(value).toLocaleString('es-ES')
-const factor = (value: number) => value.toLocaleString('es-ES', { maximumFractionDigits: 2 })
 
 async function loadCase(example: Example): Promise<Case> {
   const [available, fixtures] = await Promise.all([
@@ -56,16 +55,20 @@ function useReducedMotion() {
   return reduced
 }
 
-/** Factors that actually differ between the two goals, shown as "×a → ×b". */
-function changedFactors([low, high]: [Goal, Goal]) {
-  const rows: Array<[string, number, number]> = [
-    ['Rival', low.m1, high.m1],
-    ['Fase', low.m2, high.m2],
-    ['Momento', low.m3, high.m3],
-    ['Remate', low.m4, high.m4],
-    ['Visita', low.mvisit, high.mvisit],
+/** What differs between the two goals, in plain words (no multipliers): what pushed the value up, and what held it back. */
+function contextReasons([low, high]: [Goal, Goal]) {
+  const rows: Array<[number, number, string, string]> = [
+    [low.m1, high.m1, 'Rival más fuerte', 'rival más débil'],
+    [low.m2, high.m2, 'Competición de más peso', 'competición de menos peso'],
+    [low.m3, high.m3, 'Momento más decisivo', 'momento menos decisivo'],
+    [low.m4, high.m4, 'Remate más difícil', 'remate más fácil'],
+    [low.mvisit, high.mvisit, 'Fuera de casa', 'jugando en casa'],
   ]
-  return rows.filter(([, a, b]) => Math.abs(a - b) >= 0.01)
+  const changed = rows.filter(([a, b]) => Math.abs(a - b) >= 0.01)
+  return {
+    up: changed.filter(([a, b]) => b > a).map(([, , label]) => label),
+    down: changed.filter(([a, b]) => b < a).map(([, , , label]) => label),
+  }
 }
 
 function TeamBadge({ name, logo }: { name: string; logo: string | null }) {
@@ -222,18 +225,29 @@ export default function HomeContextExample() {
               <span className="hce__delta">+{increase}<small>%</small></span>
             </div>
 
-            <ul className="hce__factors" aria-label="Qué cambia entre los dos goles">
-              {changedFactors(current.goals).map(([label, a, b]) => (
-                <li key={label}>{label} <span>×{factor(a)}</span><ArrowIcon /><b>×{factor(b)}</b></li>
-              ))}
-            </ul>
+            {(() => {
+              const reasons = contextReasons(current.goals)
+              return (
+                <div className="hce__why">
+                  <span>Por qué vale más</span>
+                  <ul aria-label="Qué cambia entre los dos goles">
+                    {reasons.up.map((label) => <li key={label}>{label}</li>)}
+                    {reasons.down.map((label) => <li key={label} className="is-against">aunque {label}</li>)}
+                  </ul>
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
 
       <div className="hce__links">
-        {current && <Link to={`/player/${current.example.playerId}?scope=${SCOPE}`}>Ver sus actuaciones <ArrowIcon /></Link>}
-        <Link to="/metodologia">Ver la fórmula <ArrowIcon /></Link>
+        {current && (
+          <Link className="hce__btn hce__btn--primary" to={`/player/${current.example.playerId}?scope=${SCOPE}`}>
+            Ver los goles de {current.example.name} <ArrowIcon />
+          </Link>
+        )}
+        <Link className="hce__btn" to="/metodologia">Ver la fórmula <ArrowIcon /></Link>
       </div>
     </figure>
   )

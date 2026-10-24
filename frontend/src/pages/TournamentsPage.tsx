@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchRanking, fetchTournamentDashboard, fetchTournaments } from '../api/client'
+import { fetchLatestMvps, fetchRanking, fetchTournamentDashboard, fetchTournaments } from '../api/client'
 import TournamentLeaders from '../components/tournaments/TournamentLeaders'
+import { LatestMvpRail } from '../components/tournaments/MatchdayMvp'
 import {
   ArrowIcon,
   CompetitionTile,
@@ -109,6 +110,7 @@ function CompetitionRail({ competitions, groups, season, isToday }: {
           )
         })}
       </nav>
+      <LatestMvpRail season={season} />
     </aside>
   )
 }
@@ -242,6 +244,26 @@ function MatchGroup({ group, season }: { group: TournamentFixtureGroup; season: 
   )
 }
 
+function ExplorePromos() {
+  return (
+    <>
+      <h2 className="tp-eyebrow">Explora</h2>
+      <Link className="tp-promo tp-promo--compare" to="/compare">
+        <span className="tp-promo__kicker">Comparador</span>
+        <strong>Cara a cara</strong>
+        <span>Enfrenta a dos jugadores con su impacto SFA, rival a rival.</span>
+        <i aria-hidden="true"><ArrowIcon /></i>
+      </Link>
+      <Link className="tp-promo tp-promo--method" to="/metodologia">
+        <span className="tp-promo__kicker">Metodología</span>
+        <strong>Cómo puntúa SFA</strong>
+        <span>Rival, competición y momento del partido: qué pesa en cada acción.</span>
+        <i aria-hidden="true"><ArrowIcon /></i>
+      </Link>
+    </>
+  )
+}
+
 function SidePanel({ players, season }: { players: RankedPlayer[]; season: string }) {
   return (
     <aside className="tp-side" aria-label="Rendimiento SFA">
@@ -269,19 +291,7 @@ function SidePanel({ players, season }: { players: RankedPlayer[]; season: strin
         <Link className="tp-top__cta" to="/ranking">Ver ranking completo <ArrowIcon /></Link>
       </section>
 
-      <h2 className="tp-eyebrow">Explora</h2>
-      <Link className="tp-promo tp-promo--compare" to="/compare">
-        <span className="tp-promo__kicker">Comparador</span>
-        <strong>Cara a cara</strong>
-        <span>Enfrenta a dos jugadores con su impacto SFA, rival a rival.</span>
-        <i aria-hidden="true"><ArrowIcon /></i>
-      </Link>
-      <Link className="tp-promo tp-promo--method" to="/metodologia">
-        <span className="tp-promo__kicker">Metodología</span>
-        <strong>Cómo puntúa SFA</strong>
-        <span>Rival, competición y momento del partido: qué pesa en cada acción.</span>
-        <i aria-hidden="true"><ArrowIcon /></i>
-      </Link>
+      <ExplorePromos />
     </aside>
   )
 }
@@ -307,6 +317,7 @@ export default function TournamentsPage() {
   const [competitions, setCompetitions] = useState<TournamentCompetition[]>([])
   const [dashboard, setDashboard] = useState<TournamentDashboardResponse | null>(null)
   const [topPlayers, setTopPlayers] = useState<RankedPlayer[]>([])
+  const [hasMvps, setHasMvps] = useState(false)
   const [dayCounts, setDayCounts] = useState<Record<string, DayCount>>({})
   const [filter, setFilter] = useState<MatchFilter>('all')
   const [loading, setLoading] = useState(true)
@@ -329,6 +340,13 @@ export default function TournamentsPage() {
 
   const season = dashboard?.season ?? ''
   const selected = dashboard?.selected_date ?? null
+
+  useEffect(() => {
+    let active = true
+    setHasMvps(false)
+    if (season) fetchLatestMvps(season).then((response) => { if (active) setHasMvps(Boolean(response?.items.length)) })
+    return () => { active = false }
+  }, [season])
 
   useEffect(() => {
     if (!dashboard || !selected) return
@@ -446,9 +464,22 @@ export default function TournamentsPage() {
 
       {dashboard && (
         <div className="tp-leaders">
-          <TournamentLeaders season={dashboard.season} contextLabel="la temporada" />
+          <TournamentLeaders
+            season={dashboard.season}
+            contextLabel="la temporada"
+            hubBoards={[
+              // The round tab only exists when there are MVPs to show (the endpoint may not be live yet).
+              ...(hasMvps ? [{ key: 'round', label: 'Jornada', title: 'MVP de la jornada', unit: 'Pts', node: <LatestMvpRail season={dashboard.season} /> }] : []),
+              { key: 'season', label: 'Temporada', title: 'Top SFA de la temporada', unit: 'Pts', players: topPlayers },
+            ]}
+          />
         </div>
       )}
+
+      {/* Phones only: the side column is hidden there, so the promos close the page after the player hub */}
+      <nav className="tp-explore-mobile" aria-label="Explora">
+        <ExplorePromos />
+      </nav>
     </main>
   )
 }

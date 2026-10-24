@@ -6,8 +6,12 @@
   padding: 22px;
   border: 1px solid var(--tp-line);
   border-radius: 16px;
+  overflow: hidden;
+  /* Floodlit stadium fading into the panel: atmosphere at the top, a calm surface for the data below */
   background:
-    radial-gradient(120% 90% at 100% 0%, rgba(201, 168, 76, 0.1), transparent 60%),
+    linear-gradient(180deg, rgba(14, 14, 14, 0.72) 0%, rgba(14, 14, 14, 0.9) 120px, var(--tp-panel) 260px),
+    radial-gradient(120% 90% at 100% 0%, rgba(201, 168, 76, 0.16), transparent 60%),
+    url('/images/sfa-method-stadium.jpg') center top / 100% auto no-repeat,
     var(--tp-panel);
 }
 
@@ -261,7 +265,22 @@
 
 .hce__delta small { font-size: 0.7em; }
 
-.hce__factors {
+.hce__why {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--tp-line);
+}
+
+.hce__why > span {
+  font: 700 0.62rem/1 var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.hce__why ul {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -271,20 +290,15 @@
   list-style: none;
 }
 
-.hce__factors li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: var(--tp-panel-2);
-  font: 500 0.74rem/1 var(--font-body);
-  color: var(--text-faint);
+.hce__why li {
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.14);
+  font: 600 0.76rem/1.1 var(--font-body);
+  color: var(--text);
 }
 
-.hce__factors li span { color: var(--text-dim); }
-.hce__factors li svg { width: 11px; height: 11px; color: var(--text-faint); }
-.hce__factors li b { font-weight: 700; color: var(--gold-light); }
+.hce__why li.is-against { background: var(--tp-panel-2); font-weight: 500; color: var(--text-faint); }
 
 .hce__source {
   margin: 0;
@@ -294,24 +308,32 @@
 }
 
 .hce__links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
 }
 
-.hce__links a {
+.hce__btn {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
-  gap: 6px;
-  font: 600 0.78rem/1 var(--font-body);
-  color: var(--text-dim) !important;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--tp-line-strong);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  font: 600 0.82rem/1 var(--font-body);
+  color: var(--text) !important;
   text-decoration: none;
-  transition: color 180ms var(--tp-ease);
+  transition: background-color 180ms var(--tp-ease), border-color 180ms var(--tp-ease);
 }
 
-.hce__links a:hover { color: var(--text) !important; }
+.hce__btn:hover { border-color: var(--text-faint); background: rgba(255, 255, 255, 0.07); }
+.hce__btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.hce__btn svg { width: 13px; height: 13px; }
+.hce__btn--primary { border-color: rgba(201, 168, 76, 0.7); background: rgba(201, 168, 76, 0.1); color: var(--gold-light) !important; }
+.hce__btn--primary:hover { border-color: var(--gold-light); background: rgba(201, 168, 76, 0.18); }
 
 .hce__skeleton {
   height: 360px;
@@ -354,5 +376,6 @@
   .hce__case,
   .hce__skeleton { animation: none; }
   .hce__bar,
-  .hce__track > strong { transition: none; }
+  .hce__track > strong,
+  .hce__btn { transition: none; }
 }

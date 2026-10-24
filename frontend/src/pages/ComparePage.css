@@ -764,3 +764,95 @@ a.cv-act:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
   .cv-skel { animation: none; }
   .cv-pick__swap:hover:not(:disabled) { transform: none; }
 }
+
+/* ── Chapters: context first, raw numbers second ───────────────── */
+.cv-chapter {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--tp-line);
+}
+
+.cv-chapter__index {
+  display: grid;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--tp-line-strong);
+  border-radius: 50%;
+  font: 800 1.15rem/1 var(--font-display);
+  color: var(--text);
+}
+
+.cv-chapter h2 { margin: 0; font: 800 clamp(1.5rem, 3vw, 2rem)/1 var(--font-display); text-transform: uppercase; }
+.cv-chapter p { margin: 6px 0 0; font: 400 0.84rem/1.4 var(--font-body); color: var(--text-dim); }
+
+/* ── Verdict: the plain-language answer to "why does he lead?" ─── */
+.cv-verdict { display: grid; gap: 12px; padding: 20px 22px; }
+.cv-verdict.is-a { border-color: color-mix(in srgb, var(--cv-a) 40%, transparent); }
+.cv-verdict.is-b { border-color: color-mix(in srgb, var(--cv-b) 40%, transparent); }
+
+.pf-panel.cv-verdict h2 { margin: 0; max-width: 46ch; letter-spacing: 0; text-transform: none; font: 700 clamp(1.05rem, 2.2vw, 1.35rem)/1.35 var(--font-body); text-wrap: balance; }
+.cv-verdict h2 .is-a, .cv-verdict b.is-a { color: var(--cv-a); }
+.cv-verdict h2 .is-b, .cv-verdict b.is-b { color: var(--cv-b); }
+.cv-verdict__lead { margin: 0; font: 500 0.84rem/1.4 var(--font-body); color: var(--text-dim); }
+
+.cv-verdict__reasons { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.cv-verdict__reasons li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--tp-line);
+}
+
+.cv-verdict__what { display: grid; gap: 3px; min-width: 0; }
+.cv-verdict__what strong { font: 600 0.9rem/1.25 var(--font-body); }
+.cv-verdict__what small { font: 500 0.72rem/1.2 var(--font-body); color: var(--text-faint); }
+.cv-verdict__nums { display: flex; flex: none; align-items: baseline; gap: 8px; }
+.cv-verdict__nums b { font: 800 1.3rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.cv-verdict__nums small { font: 600 0.62rem/1 var(--font-body); text-transform: uppercase; color: var(--text-faint); }
+
+/* ── Distinctions side by side ─────────────────────────────────── */
+.cv-leads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 20px 20px; }
+.cv-leads__col { display: grid; align-content: start; gap: 8px; }
+.cv-leads__who { font: 700 0.8rem/1.2 var(--font-body); }
+.cv-leads__col.is-a .cv-leads__who { color: var(--cv-a); }
+.cv-leads__col.is-b .cv-leads__who { color: var(--cv-b); }
+.cv-leads ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+
+.cv-leads li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  background: var(--tp-panel-2);
+}
+
+.cv-leads li > b {
+  flex: none;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--tp-raise);
+  font: 800 0.8rem/1 var(--font-display);
+}
+
+.cv-leads li.is-p1 > b { background: var(--gold); color: #15120a; }
+.cv-leads li.is-p2 > b { background: #d6dbe4; color: #15120a; }
+.cv-leads li.is-p3 > b { background: #d79a6c; color: #15120a; }
+.cv-leads li span { display: grid; gap: 2px; min-width: 0; }
+.cv-leads li strong { font: 600 0.82rem/1.2 var(--font-body); }
+.cv-leads li small { font: 500 0.7rem/1.2 var(--font-body); color: var(--text-faint); }
+.cv-leads__none { margin: 0; font: 500 0.78rem/1.4 var(--font-body); color: var(--text-faint); }
+
+@media (max-width: 640px) {
+  .cv-verdict { padding: 16px; }
+  .cv-verdict__reasons li { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .cv-leads { grid-template-columns: minmax(0, 1fr); padding: 0 16px 16px; }
+}

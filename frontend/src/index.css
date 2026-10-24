@@ -2505,7 +2505,7 @@
   background: #191919;
 }
 
-.trn-leaders__header span {
+.trn-leaders__header > div > span {
   display: block;
   margin-bottom: 5px;
   font: 0.56rem/1.2 var(--font-mono);

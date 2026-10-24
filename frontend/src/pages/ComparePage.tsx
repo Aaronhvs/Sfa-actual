@@ -5,15 +5,18 @@ import { fetchCompare, fetchPlayerAchievements, fetchPlayerIndividualHonors, fet
 import PlayerPicker from '../components/compare/PlayerPicker'
 import {
   BestPanel,
+  ChapterHead,
   DetailPanel,
   DuelHero,
   fmt,
   ImpactPanel,
+  LeadsDuel,
   SourcesAbsolute,
   StyleDuel,
   WhyPanel,
   type Extras,
   TrendPanel,
+  Verdict,
   sideStyle,
   type Metric,
 } from '../components/compare/CompareView'
@@ -291,16 +294,22 @@ function CompareResults({ data }: { data: CompareResponse }) {
   return (
     <div className="cv-results">
       <DuelHero data={data} periodLabel={comparisonPeriodLabel(data.scope, data.season)} minutesA={a.minutes} minutesB={b.minutes} />
+
+      <ChapterHead index={1} title="El contexto" text="Lo que mide SFA: cuánto valió cada acción según el rival, el momento y la competición." />
+      <Verdict data={data} minutesA={a.minutes} minutesB={b.minutes} />
       {ready
         ? <WhyPanel data={data} extrasA={extrasA ?? NO_EXTRAS} extrasB={extrasB ?? NO_EXTRAS} minutesA={a.minutes} minutesB={b.minutes} />
         : <div className="cv-skel cv-skel--why" role="status"><span className="sr-only">Calculando la diferencia</span></div>}
-      <StyleDuel data={data} />
       <ImpactPanel data={data} minutesA={a.minutes} minutesB={b.minutes} />
+      <LeadsDuel data={data} />
       <div className="cv-grid-2">
         {ready && <SourcesAbsolute data={data} extrasA={extrasA ?? NO_EXTRAS} extrasB={extrasB ?? NO_EXTRAS} />}
         <BestPanel data={data} />
       </div>
       <TrendPanel data={data} />
+
+      <ChapterHead index={2} title="Los números brutos" text="Sin contexto: cuántas veces lo hizo, no cuánto valió. Aquí el que va detrás puede ganar en volumen." />
+      <StyleDuel data={data} />
       <DetailPanel groups={groups} nameA={data.player_a.name} nameB={data.player_b.name} />
     </div>
   )

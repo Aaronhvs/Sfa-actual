@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { fetchTournament, fetchTournaments } from '../api/client'
 import TournamentKnockoutBracket from '../components/tournaments/TournamentKnockoutBracket'
 import TournamentLeaders from '../components/tournaments/TournamentLeaders'
+import { CompetitionMvp } from '../components/tournaments/MatchdayMvp'
 import { ArrowIcon, Crest, ScoreRow } from '../components/tournaments/MatchUI'
 import type {
   TournamentDetailResponse,
@@ -265,24 +266,27 @@ function Overview({ detail }: { detail: TournamentDetailResponse }) {
     .sort((a, b) => b.played_at.localeCompare(a.played_at))
     .slice(0, 5)
   return (
-    <div className="cd-overview">
-      <section className="pf-panel" aria-labelledby="cd-table-title">
-        <header className="pf-panel__head"><div><h2 id="cd-table-title">Clasificación</h2><p>Pulsa un equipo para ver su página</p></div></header>
-        <StandingsTable detail={detail} compact />
-      </section>
-      <div className="cd-side">
-        <section aria-labelledby="cd-next-title">
-          <h2 id="cd-next-title" className="tp-eyebrow">Próximos partidos</h2>
-          <FixtureDateGroups fixtures={upcoming} season={detail.competition.season} />
+    <>
+      <CompetitionMvp competitionId={detail.competition.id} season={detail.competition.season} />
+      <div className="cd-overview">
+        <section className="pf-panel" aria-labelledby="cd-table-title">
+          <header className="pf-panel__head"><div><h2 id="cd-table-title">Clasificación</h2><p>Pulsa un equipo para ver su página</p></div></header>
+          <StandingsTable detail={detail} compact />
         </section>
-        {recent.length > 0 && (
-          <section aria-labelledby="cd-last-title">
-            <h2 id="cd-last-title" className="tp-eyebrow">Últimos resultados</h2>
-            <div className="tp-group">{recent.map((fixture) => <ScoreRow fixture={fixture} season={detail.competition.season} key={fixture.id} />)}</div>
+        <div className="cd-side">
+          <section aria-labelledby="cd-next-title">
+            <h2 id="cd-next-title" className="tp-eyebrow">Próximos partidos</h2>
+            <FixtureDateGroups fixtures={upcoming} season={detail.competition.season} />
           </section>
-        )}
+          {recent.length > 0 && (
+            <section aria-labelledby="cd-last-title">
+              <h2 id="cd-last-title" className="tp-eyebrow">Últimos resultados</h2>
+              <div className="tp-group">{recent.map((fixture) => <ScoreRow fixture={fixture} season={detail.competition.season} key={fixture.id} />)}</div>
+            </section>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchRanking } from '../../api/client'
 import type { RankedPlayer } from '../../types'
@@ -25,10 +25,22 @@ interface LeaderData {
   positions: PositionBoard[]
 }
 
+/** Extra lists shown only in the phone hub (on desktop they live elsewhere on the page). */
+export interface LeaderHubBoard {
+  key: string
+  label: string
+  title: string
+  unit?: string
+  node?: ReactNode
+  players?: RankedPlayer[]
+}
+
 interface Props {
   season: string
   competitionId?: number
   contextLabel: string
+  /** When given, phones get one tabbed "Jugadores destacados" block instead of stacked mini-tops. */
+  hubBoards?: LeaderHubBoard[]
 }
 
 function formatPoints(value: number) {
@@ -101,13 +113,22 @@ function LeaderSkeleton() {
   )
 }
 
-export default function TournamentLeaders({ season, competitionId, contextLabel }: Props) {
+export default function TournamentLeaders({ season, competitionId, contextLabel, hubBoards }: Props) {
   const scope = `season-${season}`
   const [data, setData] = useState<LeaderData>({ scorers: [], assisters: [], positions: [] })
   const [positionIndex, setPositionIndex] = useState(0)
   const [cycleRevision, setCycleRevision] = useState(0)
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
+  const hub = Boolean(hubBoards?.length)
+  const tabs = [
+    ...(hubBoards ?? []).map(({ key, label }) => ({ key, label })),
+    { key: 'goals', label: 'Goles' },
+    { key: 'assists', label: 'Asist.' },
+    { key: 'position', label: 'Posición' },
+  ]
+  const [tab, setTab] = useState(tabs[0].key)
+  const tabClass = (key: string, base: string) => `${base}${hub && tab === key ? ' is-tab-active' : ''}`
 
   useEffect(() => {
     let active = true
@@ -167,7 +188,7 @@ export default function TournamentLeaders({ season, competitionId, contextLabel 
 
   return (
     <section
-      className="trn-leaders"
+      className={`trn-leaders${hub ? ' is-hub' : ''}`}
       aria-label={`Líderes de ${contextLabel}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -175,23 +196,46 @@ export default function TournamentLeaders({ season, competitionId, contextLabel 
       onBlurCapture={handleBlur}
     >
       <header className="trn-leaders__header">
-        <div><span>Rendimiento individual</span><h2>Líderes de {contextLabel}</h2></div>
+        <div>
+          <span>Rendimiento individual</span>
+          <h2>
+            <span className="trn-leaders__title">Líderes de {contextLabel}</span>
+            {hub && <span className="trn-leaders__hub-title">Jugadores destacados</span>}
+          </h2>
+        </div>
         <small>Top 3</small>
       </header>
 
+      {hub && (
+        <div className="trn-leaders__tabs tp-segment" role="tablist" aria-label="Tipo de clasificación">
+          {tabs.map(({ key, label }) => (
+            <button type="button" role="tab" key={key} aria-selected={tab === key} className={tab === key ? 'is-active' : undefined} onClick={() => setTab(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? <LeaderSkeleton /> : (
         <div className="trn-leaders__grid">
-          <article className="trn-leader-column">
+          {hubBoards?.map((board) => (
+            <article className={tabClass(board.key, 'trn-leader-column trn-leader-column--hub')} key={board.key}>
+              <header><span>{board.title}</span>{board.unit && <small>{board.unit}</small>}</header>
+              {board.node ?? <LeaderList players={board.players ?? []} scope={scope} metric="points" />}
+            </article>
+          ))}
+
+          <article className={tabClass('goals', 'trn-leader-column')}>
             <header><span>Goleadores</span><small>Goles</small></header>
             <LeaderList players={data.scorers} scope={scope} metric="goals" />
           </article>
 
-          <article className="trn-leader-column">
+          <article className={tabClass('assists', 'trn-leader-column')}>
             <header><span>Asistencias</span><small>Asist.</small></header>
             <LeaderList players={data.assisters} scope={scope} metric="assists" />
           </article>
 
-          <article className="trn-leader-column trn-leader-column--position">
+          <article className={tabClass('position', 'trn-leader-column trn-leader-column--position')}>
             <header>
               <span>Top por posición</span>
               <div className="trn-leader-column__nav">

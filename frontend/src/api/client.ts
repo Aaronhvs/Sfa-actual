@@ -1,4 +1,4 @@
-import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, PlayerIndividualHonor, PlayerLeadsResponse, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDashboardResponse, TournamentDetailResponse, TournamentMatchDetail, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
+import type { Competition, CompareResponse, PlayerCompetitionAchievement, PlayerDetail, PlayerEvent, PlayerFixture, LatestMvpsResponse, MatchdayMvpsResponse, PlayerIndividualHonor, PlayerLeadsResponse, PlayerSeasonStats, RankingExplanationsResponse, RankingPlayerExplanation, RankingResponse, SeasonsResponse, TournamentCatalogResponse, TournamentDashboardResponse, TournamentDetailResponse, TournamentMatchDetail, WcFixtureDetailResponse, WcFixturesResponse, WcLiveResponse, WcStandingsResponse, WcTeamProfileResponse, WcTeamSFARankingResponse } from '../types'
 
 const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api/v1`
 
@@ -223,6 +223,34 @@ export async function fetchPlayerLeads(id: number, scope: string): Promise<Playe
   if (cached) return cached
   try {
     const data = await get<PlayerLeadsResponse>(`/players/${id}/leads?scope=${encodeURIComponent(scope)}`)
+    setCache(key, data)
+    return data
+  } catch {
+    return null
+  }
+}
+
+/** MVP of every round of a competition (oldest first). Null when the endpoint is unavailable. */
+export async function fetchMatchdayMvps(competitionId: number, season: string): Promise<MatchdayMvpsResponse | null> {
+  const key = `mvps:${competitionId}:${season}`
+  const cached = getCached<MatchdayMvpsResponse>(key)
+  if (cached) return cached
+  try {
+    const data = await get<MatchdayMvpsResponse>(`/tournaments/${competitionId}/mvps?season=${encodeURIComponent(season)}`)
+    setCache(key, data)
+    return data
+  } catch {
+    return null
+  }
+}
+
+/** Latest round MVP of each featured competition, for the /torneos strip. */
+export async function fetchLatestMvps(season: string): Promise<LatestMvpsResponse | null> {
+  const key = `mvps:latest:${season}`
+  const cached = getCached<LatestMvpsResponse>(key)
+  if (cached) return cached
+  try {
+    const data = await get<LatestMvpsResponse>(`/tournaments/mvps/latest?season=${encodeURIComponent(season)}`)
     setCache(key, data)
     return data
   } catch {
