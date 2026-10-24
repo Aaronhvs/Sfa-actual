@@ -7,8 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from sfa.domain.player_leads import LeadPolicy, LeadSample, PlayerLeadsRepositoryProtocol
-from sfa.domain.player_position_overrides import position_for_context
-from sfa.domain.season_scope import AwardPeriodScope, ScopeKind
+from sfa.domain.season_scope import AwardPeriodScope, InconsistentScopeRulesVersionError, ScopeKind
 from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.enums import EventType
 from sfa.infrastructure.models.events.models import PlayerEvent
@@ -19,9 +18,11 @@ from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
 from sfa.infrastructure.models.teams.models import Team
+from sfa.infrastructure.repositories.position_projection import scope_position, scope_reference_position
 from sfa.infrastructure.repositories.sfa_score_repository import (
+    SFAScoreRepository,
     _latest_verified_team,
-    _position_value,
+    _legacy_position_expression,
     _scope_filter,
 )
 
@@ -184,7 +185,7 @@ class PlayerLeadsRepository(PlayerLeadsRepositoryProtocol):
         ]
 
     async def _competition_positions(self, scope: AwardPeriodScope) -> dict[tuple[int, str, int], str | None]:
-        """Context position per (player, season, competition): base position + overrides with the latest team."""
+        """Use the deployed ranking's published scope and habitual-role projection."""
         ranked = (
             select(
                 PlayerStats.player_id,
@@ -197,39 +198,67 @@ class PlayerLeadsRepository(PlayerLeadsRepositoryProtocol):
                 ).label("rn"),
             )
             .join(Fixture, Fixture.id == PlayerStats.fixture_id)
-            .where(*_verified_appearance_filters(scope))
+            .where(
+                _scope_filter(Fixture, scope),
+                PlayerStats.team_id.is_not(None),
+                PlayerStats.team_id.in_((Fixture.home_team_id, Fixture.away_team_id)),
+            )
             .subquery()
         )
-        statement = (
-            select(ranked.c.player_id, ranked.c.season, ranked.c.competition_id, Team.name, Player.name,
-                   Player.position)
-            .join(Team, Team.id == ranked.c.team_id)
-            .join(Player, Player.id == ranked.c.player_id)
-            .where(ranked.c.rn == 1)
-        )
-        rows = (await self._session.execute(statement)).all()
-        return {
-            (player_id, season, competition_id): position_for_context(
-                _position_value(position), player_name=player_name, team_name=team_name,
-                competition_id=competition_id,
+        rows = []
+        # A concrete competition matches the ranking helper's contract and
+        # avoids accidentally embedding the outer population in its subquery.
+        for competition_id in sorted({c for source in scope.sources for c in source.competition_ids}):
+            statement = (
+                select(
+                    ranked.c.player_id, ranked.c.season, ranked.c.competition_id,
+                    scope_position(scope, competition_id, scope_reference_position(
+                        scope=scope, season=scope.sources[0].season, team_id=Team.id,
+                        competition_id=competition_id,
+                        fallback=_legacy_position_expression(Team.name, competition_id),
+                    )).label("position"),
+                )
+                .join(Team, Team.id == ranked.c.team_id)
+                .join(Player, Player.id == ranked.c.player_id)
+                .where(ranked.c.rn == 1, ranked.c.competition_id == competition_id)
             )
-            for player_id, season, competition_id, team_name, player_name, position in rows
+            rows.extend((await self._session.execute(statement)).all())
+        return {
+            (player_id, season, competition_id): position
+            for player_id, season, competition_id, position in rows
         }
 
     async def get_scope_positions(self, scope: AwardPeriodScope) -> Mapping[int, str | None]:
         if scope.kind != ScopeKind.AWARD_PERIOD:
             return {}
         latest = _latest_verified_team(scope.sources[0].season, scope=scope)
+        # Match the ranking's highest-scoring club competition fallback context.
+        try:
+            version = await SFAScoreRepository(self._session).resolve_rules_version_id_for_scope(scope)
+        except InconsistentScopeRulesVersionError:
+            version = None
+        score_filters = [_scope_filter(SFASeasonScore, scope)]
+        if version is not None:
+            score_filters.append(SFASeasonScore.rules_version_id == version)
+        best_competition = (
+            select(SFASeasonScore.competition_id)
+            .join(Competition, Competition.id == SFASeasonScore.competition_id)
+            .where(SFASeasonScore.player_id == Player.id, *score_filters)
+            .order_by(case((Competition.participant_kind == "club", 0), else_=1).asc(),
+                      SFASeasonScore.total_pts.desc())
+            .limit(1).correlate(Player).scalar_subquery()
+        )
         statement = (
-            select(latest.c.player_id, Team.name, Player.name, Player.position)
+            select(latest.c.player_id, scope_position(scope, None, scope_reference_position(
+                scope=scope, season=scope.sources[0].season, team_id=Team.id,
+                competition_id=best_competition,
+                fallback=_legacy_position_expression(Team.name, best_competition),
+            )).label("position"))
             .join(Team, Team.id == latest.c.display_team_id)
             .join(Player, Player.id == latest.c.player_id)
         )
         rows = (await self._session.execute(statement)).all()
-        return {
-            player_id: position_for_context(_position_value(position), player_name=player_name, team_name=team_name)
-            for player_id, team_name, player_name, position in rows
-        }
+        return {player_id: position for player_id, position in rows}
 
     async def get_data_stamp(self, scope: AwardPeriodScope, rules_version_id: int | None) -> str:
         score_filters = [_scope_filter(SFASeasonScore, scope)]

@@ -109,7 +109,7 @@ class TestGetPlayerLeadsUseCase:
         result = await _use_case(cache=cache).execute(1)
         assert result.supported and result.scope_key == "season-2025" and result.rules_version_id == 7
         assert 0 < len(result.items) <= 3 and all(item.rank <= 3 for item in result.items)
-        assert cache.snapshots and cache.released == [("leads-v1:season-2025:7:stamp", "token")]
+        assert cache.snapshots and cache.released == [("leads-v2:season-2025:7:stamp", "token")]
 
     @pytest.mark.anyio
     async def test_cache_hit_skips_samples(self):

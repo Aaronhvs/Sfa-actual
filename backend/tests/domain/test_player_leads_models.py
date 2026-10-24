@@ -113,6 +113,6 @@ class TestPlayerLead:
 
     def test_snapshot_for_player(self):
         lead = _lead()
-        snapshot = PlayerLeadsSnapshot("leads-v1", "season-2025", 4, {7: (lead,)})
+        snapshot = PlayerLeadsSnapshot("leads-v2", "season-2025", 4, {7: (lead,)})
         assert snapshot.for_player(7) == (lead,)
         assert snapshot.for_player(8) == ()

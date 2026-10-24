@@ -30,7 +30,7 @@ class FakeUseCase:
         self.calls.append((player_id, scope_key, max_rank, limit))
         if scope_key == "season-1900":
             raise ScopeNotFoundError(scope_key)
-        return GetPlayerLeadsResult(player_id, scope_key, "2025/26", self.supported, "leads-v1", 7,
+        return GetPlayerLeadsResult(player_id, scope_key, "2025/26", self.supported, "leads-v2", 7,
                                     self.items if self.supported else ())
 
 
@@ -49,7 +49,7 @@ async def test_returns_contract_with_items_and_cache_header():
     assert response.status_code == 200
     assert response.headers["cache-control"] == "public, max-age=300"
     body = response.json()
-    assert body["supported"] and body["policy_version"] == "leads-v1" and body["scope"] == "season-2025"
+    assert body["supported"] and body["policy_version"] == "leads-v2" and body["scope"] == "season-2025"
     item = body["items"][0]
     assert item["metric"] == "shot_conversion" and item["rank"] == 1 and item["percentile"] == 1
     assert item["group"] == {"kind": "competition", "season": "2025", "competition_id": 140,

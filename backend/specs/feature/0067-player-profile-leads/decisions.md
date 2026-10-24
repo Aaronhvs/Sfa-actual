@@ -134,3 +134,29 @@ Ninguna nueva. Solo lectura de PostgreSQL (`player_stats`, `player_events`, `fix
 - Precalentado del cache desde Celery tras el scoring (posible mejora si el cálculo en frío se acerca al presupuesto).
 - Diseño visual de la sección del perfil: lo resuelve el frontend con su propio flujo (`frontend/PRODUCT.md`, `frontend/DESIGN.md`, skill `impeccable`); este spec solo fija el contrato y la integración de datos.
 - Cambiar ingesta para guardar penaltis fallados/parados.
+
+
+## Published position correction (2026-10-24, leads-v2)
+
+The deployed ranking uses `scope_position` over `scope_reference_position`, with the existing
+legacy expression only as a fallback. Leads now reuses that exact projection in its two
+position-resolution methods. Calling only `sfa_current_position` would miss the published
+scope classifications (including C. Casseres). No scoring, domain grouping, use-case or API
+contract changes are required.
+
+Competition groups resolve the position using that competition and the ranking's latest
+verified team context. Season groups use the latest verified club team and highest-scoring
+club competition under the resolved rules version, matching the unfiltered scope ranking.
+Latest scopes evaluate habitual roles at `now()`; historical scopes evaluate them at the
+maximum fixture date across all scope sources, exactly as the shared ranking helper does.
+The appearance/statistics population remains finished fixtures with positive minutes.
+
+`LeadPolicy.policy_version` is `leads-v2`, so Redis cannot reuse a v1 snapshot. Only obsolete
+`player-leads:leads-v1:*` keys may be removed after deployment; no Redis database is flushed.
+
+Main was missing the already deployed position projection and its ORM dependency. The
+committed dependency snapshot comes from deployed commit `f4874e8`, including migrations
+0052/0053 and 0054 (the latter defines scope classifications). These migrations are already
+applied in production and must not be rerun there. The PostgreSQL regression fixture installs
+them only in the explicitly isolated `leads_test` database when their schema markers are absent.
+No uncommitted position redesign or ingestion changes are included.

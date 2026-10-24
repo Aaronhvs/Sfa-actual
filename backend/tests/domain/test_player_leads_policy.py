@@ -28,7 +28,7 @@ class TestLeadPolicy:
         assert POLICY.min_group_size(by_position=True) == 6
         assert POLICY.min_big_matches(tournament=False) == 3
         assert POLICY.min_big_matches(tournament=True) == 2
-        assert POLICY.policy_version == "leads-v1"
+        assert POLICY.policy_version == "leads-v2"
 
     @pytest.mark.parametrize("max_rank,limit", [(0, 3), (4, 3), (3, 0), (3, 6)])
     def test_validate_request_rejects_out_of_range(self, max_rank, limit):

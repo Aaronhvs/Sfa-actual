@@ -6,10 +6,12 @@ The session creates tables only there; each test rolls its data back.
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import text, update
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -22,6 +24,7 @@ from sfa.infrastructure.models.events.models import PlayerEvent
 from sfa.infrastructure.models.fixture_team_strengths.models import FixtureTeamStrength
 from sfa.infrastructure.models.fixtures.models import Fixture
 from sfa.infrastructure.models.player_event_scores.models import PlayerEventScore
+from sfa.infrastructure.models.player_positions.models import PlayerPositionAssignment
 from sfa.infrastructure.models.player_stats.models import PlayerStats
 from sfa.infrastructure.models.players.models import Player
 from sfa.infrastructure.models.scores.models import SFASeasonScore
@@ -46,6 +49,19 @@ def leads_database():
         async with engine.begin() as connection:
             await connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
             await connection.run_sync(Base.metadata.create_all)
+            # Execute the actual deployed migrations, not test substitutes for
+            # position functions. This database is explicitly isolated above.
+            raw = await connection.get_raw_connection()
+            migrations = Path(__file__).resolve().parents[2] / "migrations"
+            for filename, marker in (
+                ("0052_durable_position_evidence.sql", "ix_position_assignment_lookup"),
+                ("0053_position_correction_publication.sql", "position_correction_batches"),
+                ("0054_season_position_pilot.sql", "position_scope_classifications"),
+            ):
+                if not await connection.scalar(text("SELECT to_regclass(:marker)"), {"marker": marker}):
+                    sql = (migrations / filename).read_text(encoding="utf-8").strip()
+                    assert sql.startswith("BEGIN;") and sql.endswith("COMMIT;")
+                    await raw.driver_connection.execute(sql[6:-7])
         await engine.dispose()
 
     asyncio.run(initialize())
@@ -181,3 +197,111 @@ async def test_stamp_changes_with_new_scores(leads_database):
         await session.flush()
         assert await repo.get_data_stamp(SCOPE, 7) != first
         assert await repo.get_data_stamp(SCOPE, None) != first
+
+
+async def publish_role(db, *, competition_id=None, effective_from=None, effective_until=None,
+                       position="MC", batch_status="published"):
+    await db.execute(text("SET LOCAL sfa.position_publication = 'on'"))
+    await db.execute(text("""
+        INSERT INTO position_correction_batches
+            (batch_id, manifest_hash, manifest, before_image, after_image, status, actor)
+        VALUES ('leads-regression', 'test', '{}', '{}', '{}', :status, 'test')
+    """), {"status": batch_status})
+    db.add(PlayerPositionAssignment(
+        player_id=1, team_id=1, competition_id=competition_id, season=SEASON, position=position,
+        status="accepted", effective_from=effective_from or NOW - timedelta(days=365),
+        effective_until=effective_until, revision_id="leads-regression", source_kind="manual",
+        reason="Regression: stored DC must not override the published role", actor="test", created_at=NOW,
+        publication_batch_id="leads-regression",
+    ))
+    await db.flush()
+
+
+async def test_stored_dc_uses_published_mc_in_samples_and_scope(leads_database):
+    async with rolled_back_session(leads_database) as session:
+        repo = await seed(session)
+        player = await session.get(Player, 1)
+        player.position = "DC"
+        await session.flush()
+        await publish_role(session)
+        samples = await repo.get_competition_samples(SCOPE, 7)
+        assert next(s for s in samples if s.player_id == 1).position == "MC"
+        assert (await repo.get_scope_positions(SCOPE))[1] == "MC"
+        assert player.position == "DC"  # Read projection does not rewrite the catalog.
+
+
+async def test_published_scope_classification_overrides_legacy_dc(leads_database):
+    async with rolled_back_session(leads_database) as session:
+        repo = await seed(session)
+        player = await session.get(Player, 1)
+        player.position = "DC"
+        await session.flush()
+        await db_scope_classification(session)
+        samples = await repo.get_competition_samples(SCOPE, 7)
+        assert next(s for s in samples if s.player_id == 1).position == "MC"
+        assert (await repo.get_scope_positions(SCOPE))[1] == "MC"
+
+
+async def db_scope_classification(db):
+    await db.execute(text("SET LOCAL sfa.position_publication = 'on'"))
+    await db.execute(text("""
+        INSERT INTO position_correction_batches
+            (batch_id, manifest_hash, manifest, before_image, after_image, status, actor)
+        VALUES ('scope-regression', 'test', '{}', '{}', '{}', 'published', 'test')
+    """))
+    await db.execute(text("""
+        INSERT INTO position_scope_classifications
+            (player_id, team_id, scope_key, position, competition_ids, scope_competition_ids,
+             decision_id, definition, batch_id)
+        VALUES (1, 1, 'season-2025', 'MC', ARRAY[140], ARRAY[2,140,350], 'test', '{}', 'scope-regression')
+    """))
+
+
+async def test_historical_scope_uses_scope_as_of_instead_of_now(leads_database):
+    async with rolled_back_session(leads_database) as session:
+        repo = await seed(session)
+        await session.execute(update(Fixture).values(played_at=datetime(2000, 1, 1, tzinfo=timezone.utc)))
+        await publish_role(session, effective_from=datetime(1999, 1, 1, tzinfo=timezone.utc),
+                           effective_until=datetime(2001, 1, 1, tzinfo=timezone.utc))
+        historical = replace(SCOPE, is_latest=False)
+        assert next(s for s in await repo.get_competition_samples(historical, 7) if s.player_id == 1).position == "MC"
+        assert (await repo.get_scope_positions(historical))[1] == "MC"
+        assert (await repo.get_scope_positions(SCOPE))[1] == "EXT"
+
+
+async def test_competition_specific_role_does_not_leak_to_other_competitions(leads_database):
+    async with rolled_back_session(leads_database) as session:
+        repo = await seed(session)
+        await publish_role(session, competition_id=2)
+        assert next(s for s in await repo.get_competition_samples(SCOPE, 7) if s.player_id == 1).position == "EXT"
+        assert (await repo.get_scope_positions(SCOPE))[1] == "EXT"
+
+
+async def test_reverted_publication_does_not_override_legacy_position(leads_database):
+    async with rolled_back_session(leads_database) as session:
+        repo = await seed(session)
+        await publish_role(session, batch_status="reverted")
+        assert next(s for s in await repo.get_competition_samples(SCOPE, 7) if s.player_id == 1).position == "EXT"
+        assert (await repo.get_scope_positions(SCOPE))[1] == "EXT"
+
+
+async def test_scope_fallback_uses_highest_scoring_club_competition(leads_database):
+    async with rolled_back_session(leads_database) as session:
+        repo = await seed(session)
+        await publish_role(session, competition_id=140)
+        session.add(Fixture(id=30, external_id=30, competition_id=2, home_team_id=1, away_team_id=2,
+                            season=SEASON, stage="Group", played_at=NOW + timedelta(days=30), status="FT"))
+        await session.flush()
+        session.add(PlayerStats(player_id=1, fixture_id=30, team_id=1, season=SEASON, minutes=90))
+        # Latest appearance is in Champions, but the highest scoring competition
+        # remains La Liga, exactly as in the ranking's aggregate.
+        score = SFASeasonScore(player_id=1, competition_id=2, team_id=1, season=SEASON, rules_version_id=7,
+                               total_pts=10, matches_played=1, last_updated=NOW)
+        session.add(score)
+        await session.flush()
+        samples = {s.competition_id: s for s in await repo.get_competition_samples(SCOPE, 7) if s.player_id == 1}
+        assert samples[140].position == "MC" and samples[2].position == "EXT"
+        assert (await repo.get_scope_positions(SCOPE))[1] == "MC"
+        score.total_pts = 1000
+        await session.flush()
+        assert (await repo.get_scope_positions(SCOPE))[1] == "EXT"

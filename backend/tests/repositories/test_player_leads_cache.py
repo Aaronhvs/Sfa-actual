@@ -62,7 +62,7 @@ LEAD = PlayerLead(
     0.737, 0.512, LeadMethod.WILSON_LOWER_BOUND, 14, 19, LeadThreshold(1026, 8, "shots_on_target", 3),
     {"penalty_goals_excluded": 0},
 )
-SNAPSHOT = PlayerLeadsSnapshot("leads-v1", "season-2025", 7, {35: (LEAD,)})
+SNAPSHOT = PlayerLeadsSnapshot("leads-v2", "season-2025", 7, {35: (LEAD,)})
 
 
 def test_serialization_round_trip():

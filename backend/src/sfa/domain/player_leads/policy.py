@@ -13,9 +13,9 @@ GOALKEEPER_POSITIONS = frozenset({"GK"})
 
 @dataclass(frozen=True)
 class LeadPolicy:
-    """Constants of `leads-v1`. Minimums scale with how far the period has progressed (same idea as 0066)."""
+    """Constants of `leads-v2`. Minimums scale with how far the period has progressed (same idea as 0066)."""
 
-    policy_version: str = "leads-v1"
+    policy_version: str = "leads-v2"
     award_minutes_floor: int = 270
     tournament_minutes_floor: int = 180
     minutes_fraction: float = 0.30
