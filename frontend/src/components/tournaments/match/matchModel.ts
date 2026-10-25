@@ -66,6 +66,12 @@ function tokens(value: string) {
   return normalize(value).split(/[\s.\-']+/).filter((token) => token.length >= 3)
 }
 
+// Los eventos pueden traer el nombre legal y las alineaciones, el nombre deportivo.
+// Estos alias exactos se vinculan al ID del proveedor para evitar coincidencias ambiguas.
+const PLAYER_EVENT_ALIASES: Readonly<Record<number, readonly string[]>> = {
+  1496: ['Raphael Dias Belloli', 'Rafael Dias Belloli'],
+}
+
 /**
  * Events use full names ("Rodrigo Hernandez Cascante") while lineups use short ones ("Rodri").
  * Match within the same team by shared tokens, allowing a short token to prefix a longer one.
@@ -75,6 +81,10 @@ function tokens(value: string) {
 export function findPlayer(name: string | null, candidates: MatchPlayer[], loose = false) {
   if (!name) return null
   const eventTokens = tokens(name)
+  const aliasMatches = candidates.filter((player) => player.external_id != null && (
+    PLAYER_EVENT_ALIASES[player.external_id]?.some((alias) => tokens(alias).join(' ') === eventTokens.join(' '))
+  ))
+  if (aliasMatches.length > 0) return aliasMatches.length === 1 ? aliasMatches[0] : null
   // `loose` also accepts a shared 4-letter stem ("Raphinha" ~ "Raphael"); only safe on a small candidate set.
   const hit = (token: string) => eventTokens.some((other) => (
     other === token || (token.length >= 4 && other.startsWith(token)) || (other.length >= 4 && token.startsWith(other))
