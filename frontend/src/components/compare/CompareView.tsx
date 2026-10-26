@@ -260,7 +260,7 @@ function rawCounts(sa: PlayerSeasonStats | null, sb: PlayerSeasonStats | null): 
     { label: 'asistencias', a: sa.assists, b: sb.assists },
     { label: 'tiros a puerta', a: sa.shots_on, b: sb.shots_on },
     { label: 'pases clave', a: sa.passes_key, b: sb.passes_key },
-    { label: 'regates', a: sa.dribbles_won, b: sb.dribbles_won },
+    { label: 'regates completados', a: sa.dribbles_won, b: sb.dribbles_won },
     { label: 'duelos ganados', a: sa.duels_won, b: sb.duels_won },
   ]
 }
@@ -423,7 +423,7 @@ function PlayDrivers({ data, minutesA, minutesB }: { data: CompareResponse; minu
   if (!sa || !sb) return null
   const p90 = (value: number, minutes: number) => (minutes > 0 ? (value / minutes) * 90 : 0)
   const drivers = [
-    { label: 'Regates', a: p90(sa.dribbles_won, minutesA), b: p90(sb.dribbles_won, minutesB) },
+    { label: 'Regates completados', a: p90(sa.dribbles_won, minutesA), b: p90(sb.dribbles_won, minutesB) },
     { label: 'Duelos ganados', a: p90(sa.duels_won, minutesA), b: p90(sb.duels_won, minutesB) },
     { label: 'Faltas recibidas', a: p90(sa.fouls_drawn, minutesA), b: p90(sb.fouls_drawn, minutesB) },
     { label: 'Pases clave', a: p90(sa.passes_key, minutesA), b: p90(sb.passes_key, minutesB) },
@@ -685,6 +685,22 @@ function Funnel({ stats, side, name }: { stats: PlayerSeasonStats; side: Side; n
   )
 }
 
+/** Attempted vs completed dribbles: the gap between the two bars is the failure rate. */
+function DribbleFunnel({ stats, side, name }: { stats: PlayerSeasonStats; side: Side; name: string }) {
+  const tries = Math.max(stats.dribbles_attempts, stats.dribbles_won)
+  const pct = tries ? Math.round((stats.dribbles_won / tries) * 100) : null
+  return (
+    <div className={`cv-funnel is-${side}`}>
+      <span className="cv-funnel__name">{name}</span>
+      <ul>
+        <li style={{ '--w': 1 } as CSSProperties}><b>{tries}</b> intentados</li>
+        <li className="is-top" style={{ '--w': Math.max(stats.dribbles_won / Math.max(tries, 1), 0.22) } as CSSProperties}><b>{stats.dribbles_won}</b> completados</li>
+      </ul>
+      <small>{pct != null ? `${pct} % de acierto · ${fmt.dec((stats.dribbles_won / stats.minutes) * 90)} por 90'` : 'Sin regates'}</small>
+    </div>
+  )
+}
+
 function Dial({ value, side, label }: { value: number; side: Side; label: string }) {
   return (
     <span className={`cv-dial is-${side}`} style={{ '--p': Math.min(Math.max(value, 0), 100) / 100 } as CSSProperties} aria-label={`${label}: ${Math.round(value)} %`}>
@@ -702,7 +718,7 @@ export function StyleDuel({ data }: { data: CompareResponse }) {
   const p90 = (value: number, minutes: number) => (value / minutes) * 90
   const creation = [
     { label: 'Pases clave', a: p90(sa.passes_key, sa.minutes), b: p90(sb.passes_key, sb.minutes) },
-    { label: 'Regates', a: p90(sa.dribbles_won, sa.minutes), b: p90(sb.dribbles_won, sb.minutes) },
+    { label: 'Regates completados', a: p90(sa.dribbles_won, sa.minutes), b: p90(sb.dribbles_won, sb.minutes) },
     { label: 'Faltas recibidas', a: p90(sa.fouls_drawn, sa.minutes), b: p90(sb.fouls_drawn, sb.minutes) },
     { label: 'Asistencias', a: p90(sa.assists, sa.minutes), b: p90(sb.assists, sb.minutes) },
   ]
@@ -718,6 +734,16 @@ export function StyleDuel({ data }: { data: CompareResponse }) {
           <Funnel stats={sb} side="b" name={nameB} />
         </div>
         <small className="cv-style__note">Tiros y goles de todos sus partidos según la fuente, también los que SFA no puntúa.</small>
+      </article>
+
+      <article className="pf-panel cv-style__card">
+        <span className="pf-eyebrow">Regate</span>
+        <h3>¿Quién regatea mejor?</h3>
+        <div className="cv-style__pair">
+          <DribbleFunnel stats={sa} side="a" name={nameA} />
+          <DribbleFunnel stats={sb} side="b" name={nameB} />
+        </div>
+        <small className="cv-style__note">Intentar mucho no es lo mismo que completar: la diferencia entre las dos barras son los regates fallados.</small>
       </article>
 
       <article className="pf-panel cv-style__card">

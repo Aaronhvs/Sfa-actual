@@ -586,7 +586,7 @@ a.cv-act:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .cv-trend__legend small { font-weight: 500; color: var(--text-faint); }
 
 /* ── Style duel cards ─────────────────────────────────── */
-.cv-style { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.cv-style { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .cv-style > * { min-width: 0; }
 .cv-style__card { display: grid; align-content: start; gap: 12px; padding: 18px 20px; }
 .cv-style__card h3 { margin: 0; font: 800 1.2rem/1.05 var(--font-display); text-transform: uppercase; }

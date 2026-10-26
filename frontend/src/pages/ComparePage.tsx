@@ -234,9 +234,10 @@ function buildGroups(a: DerivedStats, b: DerivedStats) {
       m('Pases clave', a.keyPasses, b.keyPasses, fmt.int),
       m('Precisión de pase', a.passAccuracy, b.passAccuracy, fmt.pct),
       m('Pases', a.passesTotal, b.passesTotal, fmt.int),
-      m('Regates ganados', a.dribblesWon, b.dribblesWon, fmt.int),
+      m('Regates intentados', a.dribblesAttempted, b.dribblesAttempted, fmt.int),
+      m('Regates completados', a.dribblesWon, b.dribblesWon, fmt.int),
       m('Éxito en regate', a.dribbleSuccess, b.dribbleSuccess, fmt.pct),
-      m("Regates por 90'", a.dribblesPer90, b.dribblesPer90, fmt.two),
+      m("Regates completados por 90'", a.dribblesPer90, b.dribblesPer90, fmt.two),
       m('Faltas recibidas', a.foulsDrawn, b.foulsDrawn, fmt.int),
     ] },
     { id: 'defense', label: 'Defensa', metrics: [

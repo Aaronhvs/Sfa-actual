@@ -11,6 +11,8 @@ const PLAYER_ARTWORK: Record<number, string> = {
   35: '/images/players/raphinha-cutout.png',
   7568: '/images/players/vitinha-cutout.png',
   888: '/images/players/kylian-mbappe-cutout.png',
+  7660: '/images/players/harry-kane-cutout.png',
+  29: '/images/players/pau-cubarsi-cutout.png',
 }
 
 export default function PlayerPortrait({ player, className, eager = false, allowArtwork = false }: {

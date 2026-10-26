@@ -577,13 +577,15 @@ export function ProfileStyle({ playerId, scope, available, stats, matches }: {
   const funnelMax = Math.max(s.shots_total, 1)
   const creation = [
     { label: 'Pases clave', value: s.passes_key },
-    { label: 'Regates', value: s.dribbles_won },
+    { label: 'Regates completados', value: s.dribbles_won },
     { label: 'Faltas recibidas', value: s.fouls_drawn },
     { label: 'Asistencias', value: s.assists },
   ]
   const creationMax = Math.max(...creation.map((item) => item.value), 1)
   const duelPct = s.duel_win_rate != null ? Math.round(s.duel_win_rate * 100) : s.duels_total ? Math.round((s.duels_won / s.duels_total) * 100) : 0
   const passPct = Math.round(s.passes_accuracy_avg)
+  const dribbleTries = Math.max(s.dribbles_attempts, s.dribbles_won)
+  const dribblePct = dribbleTries ? Math.round((s.dribbles_won / dribbleTries) * 100) : null
   const currentLabel = scope.startsWith('season-') ? seasonLabel(scope.slice(7)) : 'Periodo actual'
 
   return (
@@ -646,6 +648,16 @@ export function ProfileStyle({ playerId, scope, available, stats, matches }: {
         </article>
 
         <article className="pf-panel pf-focus">
+          <span className="pf-eyebrow">Regate</span>
+          <h3>{dribblePct != null ? `Completa ${Math.round(dribblePct / 10)} de cada 10` : 'Sin regates intentados'}</h3>
+          <ul className="pf-funnel">
+            <li style={{ '--w': 1 } as CSSProperties}><b>{dribbleTries}</b> intentados</li>
+            <li className="is-top" style={{ '--w': Math.max(s.dribbles_won / Math.max(dribbleTries, 1), 0.18) } as CSSProperties}><b>{s.dribbles_won}</b> completados</li>
+          </ul>
+          <small>{dribblePct != null ? `${dribblePct} % de acierto · ${one(per90(s.dribbles_won, s))} completados por 90'` : 'Todavía sin regates'}</small>
+        </article>
+
+        <article className="pf-panel pf-focus">
           <span className="pf-eyebrow">Con balón</span>
           <h3>{Math.round(per90(s.passes_total, s))} pases cada 90'</h3>
           <div className="pf-dials">
@@ -703,7 +715,7 @@ function FixtureSummary({ fixture, events, team }: { fixture: PlayerFixture; eve
     { label: 'Remates', value: `${fixture.shots_total} (${fixture.shots_on} a puerta)` },
     { label: 'Pases', value: `${fixture.passes_accurate}/${fixture.passes_total}${passPct != null ? ` · ${passPct} %` : ''}` },
     { label: 'Pases clave', value: fixture.passes_key },
-    { label: 'Regates', value: fixture.dribbles_won },
+    { label: 'Regates completados', value: fixture.dribbles_won },
     { label: 'Duelos ganados', value: fixture.duels_won },
     { label: 'Entradas + intercep.', value: fixture.tackles_won + fixture.interceptions },
   ]

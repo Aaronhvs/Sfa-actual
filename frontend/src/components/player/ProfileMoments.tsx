@@ -113,7 +113,7 @@ function buildRecords(fixtures: PlayerFixture[]): RecordRow[] {
 
   const topDribbles = fixtures.reduce((best, f) => (f.dribbles_won > best.dribbles_won ? f : best), fixtures[0])
   if (topDribbles.dribbles_won >= 5) {
-    rows.push({ key: 'dribbles', value: topDribbles.dribbles_won, label: 'Regates en un partido, su récord', items: [{ fixture: topDribbles, extra: `${topDribbles.dribbles_won} regates` }] })
+    rows.push({ key: 'dribbles', value: topDribbles.dribbles_won, label: 'Regates completados en un partido, su récord', items: [{ fixture: topDribbles, extra: `${topDribbles.dribbles_won} regates completados` }] })
   }
 
   const defence = (f: PlayerFixture) => f.tackles_won + f.interceptions + f.blocks
