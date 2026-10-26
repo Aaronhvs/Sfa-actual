@@ -130,7 +130,7 @@ class PlayerLeadsRepository(PlayerLeadsRepositoryProtocol):
             ))
 
         rows = (await self._session.execute(statement)).mappings().all()
-        positions = await self._competition_positions(scope)
+        positions = await self.get_competition_positions(scope)
         corrected = sum(int(row["corrected_rows"] or 0) for row in rows)
         if corrected:
             logger.info(
@@ -184,7 +184,9 @@ class PlayerLeadsRepository(PlayerLeadsRepositoryProtocol):
             func.sum(case((elite, 1), else_=0)).label("elite_matches"),
         ]
 
-    async def _competition_positions(self, scope: AwardPeriodScope) -> dict[tuple[int, str, int], str | None]:
+    async def get_competition_positions(
+        self, scope: AwardPeriodScope, competition_id: int | None = None,
+    ) -> dict[tuple[int, str, int], str | None]:
         """Use the deployed ranking's published scope and habitual-role projection."""
         ranked = (
             select(
@@ -208,7 +210,10 @@ class PlayerLeadsRepository(PlayerLeadsRepositoryProtocol):
         rows = []
         # A concrete competition matches the ranking helper's contract and
         # avoids accidentally embedding the outer population in its subquery.
-        for competition_id in sorted({c for source in scope.sources for c in source.competition_ids}):
+        competition_ids = sorted({c for source in scope.sources for c in source.competition_ids})
+        if competition_id is not None:
+            competition_ids = [c for c in competition_ids if c == competition_id]
+        for competition_id in competition_ids:
             statement = (
                 select(
                     ranked.c.player_id, ranked.c.season, ranked.c.competition_id,

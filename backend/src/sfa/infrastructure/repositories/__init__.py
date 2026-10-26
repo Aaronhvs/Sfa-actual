@@ -7,6 +7,8 @@ from .fixture_detail_repository import FixtureDetailRepository
 from .individual_honor_repository import IndividualHonorRepository
 from .infer_achievements_repository import InferAchievementsRepository
 from .ingestion_repository import IngestionRepository
+from .matchday_mvp_cache import MatchdayMvpCache
+from .matchday_mvp_repository import MatchdayMvpRepository
 from .player_event_repository import PlayerEventRepository
 from .player_event_score_repository import PlayerEventScoreRepository
 from .player_leads_cache import PlayerLeadsCache
@@ -35,6 +37,8 @@ __all__ = [
     "EnrichPositionRepository",
     "EnrichmentRepository",
     "IngestionRepository",
+    "MatchdayMvpCache",
+    "MatchdayMvpRepository",
     "PlayerEventRepository",
     "PlayerEventScoreRepository",
     "PlayerLeadsCache",

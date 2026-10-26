@@ -1,8 +1,9 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
+from sfa.api.v1.schemas.matchday_mvps import LatestTournamentMvpsResponseSchema, TournamentMvpsResponseSchema
 from sfa.api.v1.schemas.tournaments import (
     TournamentCatalogResponseSchema,
     TournamentCompetitionSchema,
@@ -18,24 +19,56 @@ from sfa.api.v1.schemas.tournaments import (
     TournamentMatchTeamSchema,
     TournamentMatchVenueSchema,
 )
+from sfa.application.use_cases.get_latest_tournament_mvps import GetLatestTournamentMvpsUseCase
 from sfa.application.use_cases.get_tournament_fixture_detail import (
     GetTournamentFixtureDetailUseCase,
 )
+from sfa.application.use_cases.get_tournament_mvps import GetTournamentMvpsUseCase
 from sfa.application.use_cases.get_tournaments import (
     GetTournamentDashboardUseCase,
     GetTournamentUseCase,
     ListTournamentsUseCase,
 )
 from sfa.core.dependencies import (
+    get_latest_tournament_mvps_use_case,
     get_tournament_dashboard_use_case,
     get_tournament_fixture_detail_use_case,
+    get_tournament_mvps_use_case,
     get_tournament_use_case,
     get_tournaments_use_case,
 )
+from sfa.domain.season_scope import InconsistentScopeRulesVersionError
 
 router = APIRouter()
 
 LIVE_STATUSES = {"1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"}
+
+
+@router.get("/tournaments/mvps/latest", response_model=LatestTournamentMvpsResponseSchema)
+async def get_latest_tournament_mvps(
+    use_case: Annotated[GetLatestTournamentMvpsUseCase, Depends(get_latest_tournament_mvps_use_case)],
+    season: str | None = Query(default=None, pattern=r"^\d{4}$"),
+) -> LatestTournamentMvpsResponseSchema:
+    try:
+        result = await use_case.execute(season)
+    except InconsistentScopeRulesVersionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return LatestTournamentMvpsResponseSchema.model_validate(result)
+
+
+@router.get("/tournaments/{competition_id}/mvps", response_model=TournamentMvpsResponseSchema)
+async def get_tournament_mvps(
+    competition_id: Annotated[int, Path(gt=0)],
+    use_case: Annotated[GetTournamentMvpsUseCase, Depends(get_tournament_mvps_use_case)],
+    season: str | None = Query(default=None, pattern=r"^\d{4}$"),
+) -> TournamentMvpsResponseSchema:
+    try:
+        result = await use_case.execute(competition_id, season)
+    except InconsistentScopeRulesVersionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return TournamentMvpsResponseSchema.model_validate(result)
 
 
 def _match_team_schema(external_id: int, name: str) -> TournamentMatchTeamSchema:

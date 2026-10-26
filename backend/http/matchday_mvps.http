@@ -1,0 +1,20 @@
+### Every scored La Liga round (oldest first)
+GET http://localhost:8000/api/v1/tournaments/1/mvps?season=2026
+
+### Latest round from each featured competition
+GET http://localhost:8000/api/v1/tournaments/mvps/latest?season=2026
+
+### Resolve the latest club season
+GET http://localhost:8000/api/v1/tournaments/mvps/latest
+
+### Existing competition without data: 200, items []
+GET http://localhost:8000/api/v1/tournaments/1/mvps?season=1900
+
+### Unknown competition: 404
+GET http://localhost:8000/api/v1/tournaments/999999/mvps?season=2026
+
+### Invalid season: 422
+GET http://localhost:8000/api/v1/tournaments/mvps/latest?season=invalid
+
+### Inconsistent published scope rules: 409 (requires inconsistent test data)
+GET http://localhost:8000/api/v1/tournaments/1/mvps?season=2025

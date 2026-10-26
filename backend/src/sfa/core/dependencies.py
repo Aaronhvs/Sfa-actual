@@ -14,6 +14,8 @@ from sfa.infrastructure.repositories import (
     FixtureDetailRepository,
     IndividualHonorRepository,
     InferAchievementsRepository,
+    MatchdayMvpCache,
+    MatchdayMvpRepository,
     PlayerEventRepository,
     PlayerEventScoreRepository,
     PlayerLeadsCache,
@@ -138,6 +140,7 @@ from sfa.application.use_cases.enrich_player_birth_dates import EnrichPlayerBirt
 from sfa.application.use_cases.enrich_player_positions import EnrichPlayerPositionsUseCase
 from sfa.application.use_cases.fix_player_positions import FixPlayerPositionsUseCase
 from sfa.application.use_cases.get_ingestion_status import GetIngestionStatusUseCase
+from sfa.application.use_cases.get_latest_tournament_mvps import GetLatestTournamentMvpsUseCase
 from sfa.application.use_cases.get_national_team_elo_coverage import (
     GetNationalTeamEloCoverageUseCase,
 )
@@ -162,6 +165,7 @@ from sfa.application.use_cases.get_team_ranking import GetTeamRankingUseCase
 from sfa.application.use_cases.get_tournament_fixture_detail import (
     GetTournamentFixtureDetailUseCase,
 )
+from sfa.application.use_cases.get_tournament_mvps import GetTournamentMvpsUseCase
 from sfa.application.use_cases.get_tournaments import (
     GetTournamentDashboardUseCase,
     GetTournamentUseCase,
@@ -330,6 +334,38 @@ async def get_player_leads_use_case(
     cache: Annotated[PlayerLeadsCache, Depends(get_player_leads_cache)],
 ) -> GetPlayerLeadsUseCase:
     return GetPlayerLeadsUseCase(season_repo, score_repo, leads_repo, cache, PlayerLeadsCalculator())
+
+
+async def get_matchday_mvp_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    positions: Annotated[PlayerLeadsRepository, Depends(get_player_leads_repository)],
+) -> MatchdayMvpRepository:
+    return MatchdayMvpRepository(db, positions)
+
+
+async def get_matchday_mvp_cache(
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+) -> MatchdayMvpCache:
+    return MatchdayMvpCache(redis)
+
+
+async def get_tournament_mvps_use_case(
+    repository: Annotated[MatchdayMvpRepository, Depends(get_matchday_mvp_repository)],
+    tournaments: Annotated[TournamentRepository, Depends(get_tournament_repository)],
+    seasons: Annotated[SeasonRepository, Depends(get_season_repository)],
+    rules: Annotated[SFAScoreRepository, Depends(get_sfa_score_repository)],
+    cache: Annotated[MatchdayMvpCache, Depends(get_matchday_mvp_cache)],
+    versions: Annotated[ScoringRulesVersionRepository, Depends(get_scoring_rules_version_repository)],
+) -> GetTournamentMvpsUseCase:
+    active = await versions.get_active_version()
+    return GetTournamentMvpsUseCase(repository, tournaments, seasons, rules, cache, active.id if active else None)
+
+
+async def get_latest_tournament_mvps_use_case(
+    tournaments: Annotated[TournamentRepository, Depends(get_tournament_repository)],
+    mvps: Annotated[GetTournamentMvpsUseCase, Depends(get_tournament_mvps_use_case)],
+) -> GetLatestTournamentMvpsUseCase:
+    return GetLatestTournamentMvpsUseCase(tournaments, mvps)
 
 
 async def get_compare_players_use_case(
