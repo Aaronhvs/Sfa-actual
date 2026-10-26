@@ -23,7 +23,7 @@
 - [x] Cache detecta updateinplace y redistribución con suma constante, finalización/reversión de fixture, reglas/policy/posición; fallo Redis sigue respondiendo. No COUNT/MAXsolo ni manifiestos enormes por fila.
 - [x] Tests unit/use case con Fakes completos y todos los casos del contrato; integración PostgreSQL de sumas/joins/versiones/proyección/huellas, esquema y rutas HTTP. Sin nueva ingesta/recalc para preparar pruebas productivas.
 - [x] Suite baseline worktree760/20skip registrada; suite final sin fallos, cobertura nuevo/diff≥80 %, lint/isort y deuda global explícita; benchmark frío/caliente y EXPLAIN sin N+1 porfixture/jugador.
-- [ ] Commit exclusivo desde worktree limpio y patch sobre release productiva real c8e4ca0/sfa-leads-positions preservando extras existentes, no main completo. Smoke endpoints/frontend live, ganador contra SQL y enlaces external_id; reportar fases omitidas por datos ambiguos. No cargar cambios de otros worktrees.
+- [x] Commit exclusivo desde worktree limpio y patch sobre release productiva real c8e4ca0/sfa-leads-positions preservando extras existentes, no main completo. Smoke endpoints/frontend live, ganador contra SQL y enlaces external_id; reportar fases omitidas por datos ambiguos. No cargar cambios de otros worktrees.
 
 ## Agent Routing Brief
 
@@ -40,3 +40,7 @@ DDD ya consultado para RoundKey y reglas de clasificación/cobertura, sin entida
 - Latest includes eight competitions in the requested order. Read-only benchmark: cold 3.42s / warm 0.81s; 52 / 9 queries, bounded per competition.
 - EXPLAIN: fingerprint 104.85ms, performance aggregation 81.68ms. No additional index/migration justified.
 - Changed files pass lint/isort. No pending files from the primary workspace included.
+
+## Deployment complete
+
+Final release: 1218 passed, 28 skipped, zero failures. Both public endpoints and desktop/mobile history verified. See verification.md for release IDs, evidence and data limits.
