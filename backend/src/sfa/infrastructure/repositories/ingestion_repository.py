@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.ingestion_ports import (
@@ -188,14 +189,24 @@ class IngestionRepository(IngestionRepositoryPort):
                     "status": status,
                     "home_goals": home_goals,
                     "away_goals": away_goals,
-                    "score_source": score_source,
+                    "score_source": case(
+                        (Fixture.score_source == "sfa_integrity_v1", Fixture.score_source),
+                        else_=score_source,
+                    ),
                 },
+                where=Fixture.score_source.is_distinct_from("sfa_integrity_v1"),
             )
             .returning(Fixture.id)
         )
         result = await self._session.execute(stmt)
         await self._session.flush()
-        return result.scalar_one()
+        try:
+            fixture_id = result.scalar_one()
+        except NoResultFound:
+            fixture_id = await self._session.scalar(select(Fixture.id).where(Fixture.external_id == external_id))
+        if fixture_id is None:
+            raise ValueError("Fixture write did not produce an identity")
+        return fixture_id
 
     async def get_completed_fixture_ids(
         self, competition_id: int, season: str,
@@ -286,6 +297,9 @@ class IngestionRepository(IngestionRepositoryPort):
     async def upsert_player_stats(
         self, player_id: int, fixture_id: int, team_id: int, season: str, stats: dict,
     ) -> None:
+        source = await self._session.scalar(select(Fixture.score_source).where(Fixture.id == fixture_id))
+        if source == "sfa_integrity_v1":
+            raise ValueError("Verified fixture requires the integrity workflow, not destructive reingestion")
         values = dict(
             player_id=player_id,
             fixture_id=fixture_id,
@@ -412,6 +426,9 @@ class IngestionRepository(IngestionRepositoryPort):
     async def delete_player_events_for_fixture(
         self, player_id: int, fixture_id: int,
     ) -> None:
+        source = await self._session.scalar(select(Fixture.score_source).where(Fixture.id == fixture_id))
+        if source == "sfa_integrity_v1":
+            raise ValueError("Verified fixture requires the integrity workflow, not destructive reingestion")
         await self._session.execute(
             delete(PlayerEvent).where(
                 PlayerEvent.player_id == player_id,

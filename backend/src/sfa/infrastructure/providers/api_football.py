@@ -96,7 +96,7 @@ class APIFootballProvider:
                         logger.warning("Rate limit hit, waiting 65s before retry")
                         await asyncio.sleep(65)
                         continue
-                    logger.warning("API errors for %s: %s", endpoint, errors)
+                    raise RuntimeError(f"API-Football returned errors for {endpoint}: {errors}")
 
                 return data
 
@@ -544,7 +544,7 @@ class APIFootballProvider:
                     )
                 )
             except (KeyError, TypeError) as exc:
-                logger.warning("Skipping malformed event: %s", exc)
+                raise ValueError("Malformed fixture event; refusing a partial event timeline") from exc
         return result
 
     async def fetch_fixture_players(

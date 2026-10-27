@@ -166,7 +166,7 @@ class ReingestPlayerUseCase:
                     evt.type == "Goal"
                     and evt.detail not in ("Missed Penalty", "Own Goal")
                     and not is_shootout_attempt_event(evt)
-                    and evt.assist_name is not None
+                    and (evt.assist_external_id is not None or evt.assist_name is not None)
                     and event_matches_player(
                         evt.assist_external_id,
                         evt.assist_name,

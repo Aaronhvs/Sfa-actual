@@ -1,0 +1,143 @@
+# Integridad de eventos del periodo 2025/2026
+
+## Revisión vigente: recálculo completo con la versión actual
+
+El usuario aclaró expresamente: «no importa si recalculamos con la versión actual, la meta es que todos los datos que teníamos que puntuar los puntuemos». Esta revisión sustituye las exigencias anteriores de reproducción histórica de v3: reparar los datos demostrables y recalcular **todo el scope season-2025 con v4**, no solo sus acciones corregidas. No se incorpora historical_m1, no se intenta reconstruir el motor antiguo ni se bloquea por falta de paridad v3. La paridad previa de v4 sirve como diagnóstico del adaptador, no como obligación de mantener importes anteriores cuando los datos o el cálculo autorizado cambien.
+
+## Contexto de negocio
+
+La comparación de estadísticas con acciones revela omisiones, sobreconteos e identidades incorrectas. Mbappé tiene 52 goles en PlayerStats y 35 en acciones; Dembélé, 26 y 17. La auditoría global detectó 813 discrepancias de goles y 749 de asistencias, incluyendo sobreconteos. Estos números son señales de revisión, no instrucciones para fabricar acciones hasta igualar estadísticas.
+
+Se confirmó una omisión de dos penaltis de Mbappé en el fixture externo 1451024 y una atribución incorrecta por homónimo en 1390856: el actor externo 146751 fue asociado a 46658. El flujo actual omite encuentros antiguos finalizados por estado, usa fallback por nombre cuando faltan IDs, exige nombre para algunas asistencias y elimina acciones antes de reconstruirlas. La captura normalizada de fixture_events pierde los IDs de actor y asistente. La reparación debe contrastar el archivo original completo y corregir identidades, no ajustar el algoritmo para reproducir premios externos.
+
+## Restricciones
+
+- Únicamente `SeasonRepository.resolve_scope("season-2025")`: pares exactos de competición/temporada, incluidos los del Mundial físico 2026 cuando pertenezcan al periodo. Clubes season-2026 quedan fuera. Congelar el resultado real en el manifiesto, no codificar la lista ni filtrar solo por año.
+- Se verificaron puntuaciones de versiones 3 y 4 en este periodo. El destino autorizado es v4 completa con su configuración actual, contexto temporal de fuerza/ELO existente y posición publicada actualmente resuelta por los mecanismos de producción. Registrar esas decisiones por fixture; no actualizar posiciones ni fabricar snapshots de fuerza.
+- No modificar ELO, fuerza previa, configuración v4, posiciones publicadas, fecha de nacimiento ni datos de otros periodos. No reemplazar PlayerStats con datos actuales del proveedor como efecto secundario. El usuario autoriza los cambios numéricos derivados del recálculo completo v4 y de sus bonos dependientes.
+- Archivos y clon primero. Este spec no ejecuta escrituras ni despliegues. La fuente productiva contiene extras ausentes de main: cualquier implementación debe conservarlos y los protocolos de publicación/guardas existentes.
+- API: 7.500 solicitudes diarias compartidas. Reutilizar y ampliar el manifiesto de adquisición secuencial a los 2.840 fixtures inventariados del periodo: conteos iguales no prueban minutos ni atribuciones correctos. Las 123 consultas de jugadores sin Stats se inventarían aparte y solo se ejecutan si resultan necesarias dentro del presupuesto real actualizado. Estos son tamaños del corte, no constantes de código. No repetir llamadas en simulación o aplicación. No ingestas paralelas. Cuota y servicios pausados/restaurados pertenecen al registro operativo de adquisición.
+
+## Decisiones tomadas
+
+| Decisión | Alternativa descartada | Razón |
+| --- | --- | --- |
+| Reconciliar por fixture y por IDs de proveedor verificados | Reparar jugadores por nombre o copiar totales Stats | Evita homónimos y permite reconstruir el contexto completo |
+| Archivo original inmutable + diff explícito de la proyección PE | Reingest destructivo delete/insert por jugador | Conserva IDs, psxg y puntuaciones/versiones existentes |
+| Recalcular todo el periodo con v4 y archivar la proyección antigua | Reconstruir M1 y semántica histórica de v3 | La instrucción vigente prioriza datos completos y un resultado actual coherente |
+| Journal durable de archivos y transacción por fixture | Nueva plataforma, endpoint o tabla de reconciliación | El lote operativo no necesita otro modelo persistente |
+| Bloqueo por fixture/componente sin evidencia suficiente | Bloquear todo el catálogo por un caso irresoluble | Permite aplicar reparaciones demostrables y reportar pendientes |
+
+## Domain Model
+
+DDD-Designer fue consultado: identidad de acción, revisión y cobertura temporal son invariantes; se reutilizan conceptos de manifiesto/corrección sin crear otro agregado de scoring. Proponer DTOs/VO frozen en `domain/event_integrity.py` y puertos en `domain/event_integrity_ports.py`.
+
+- `SourceActionIdentity`: fixture y proveedor; ID de evento estable cuando exista. Sin ID, correspondencia explícita y única entre ocurrencias del timeline completo y PE existente. `source_sequence` identifica una ocurrencia dentro de una captura, no una identidad estable entre capturas. Minuto y actor pueden corregirse y no constituyen por sí solos la identidad.
+- `ActionRevision`: referencia a captura/hash, operación, actor/asistente/equipo verificados, antes/después, justificación y versión del parser. Dos goles del mismo jugador en el mismo minuto siguen siendo dos ocurrencias.
+- `TimelineCoverage`: estado completo/ambiguo/incompleto y motivos. No inferir cobertura del número de goles ni del estado FT.
+
+### Autoridad y diff
+
+El inventario incluye todos los jugadores/fixtures del scope, sin mínimos de ranking. Separar omisión raw, puntuación ausente por versión, actor equivocado, duplicado/sobreconteo, conflicto de fuentes y exclusión esperada. La ausencia de PES para STATS de un portero no es una omisión de scoring. Un portero sí puede tener un gol/asistencia raw real, como Trubin, sin cambiar su exclusión de puntuación en esa versión.
+
+Verificar que la respuesta pertenece al fixture esperado, carece de errores del proveedor y contiene el timeline completo; retener errores del parser en lugar de omitir filas silenciosamente. Actor y asistente se resuelven por external_id y equipo del encuentro. Un ID de asistencia válido no requiere nombre. ID ausente/ambiguo no autoriza fuzzy-match para publicar; queda pendiente.
+
+Reutilizar ScoreTimeline y ShootoutDecider con su semántica existente y contrastar transiciones con el marcador final. Distinguir gol, penalti convertido/fallado, autogol, anulación y tanda. Un autogol puede incrementar al beneficiario sin ser un gol ofensivo del actor; la tanda no es un gol ordinario. Si VAR, orden o marcador no pueden explicarse, no inventar minuto ni score_before ni diferencia.
+
+Operaciones permitidas: insertar una acción ausente probada; corregir actor/contexto manteniendo PE.id; retirar una ocurrencia duplicada o errónea solo si la fuente completa demuestra su ausencia y la correspondencia es inequívoca. PE es la proyección operativa, no el archivo de evidencia. Una retirada elimina explícitamente sus PES incluidos en el plan y luego PE, con imágenes completas en journal; nunca confiar en ON DELETE CASCADE ni borrar/reinsertar acciones válidas. El archivo original y la revisión quedan conservados. Un actor incorrecto puede corregirse sobre el mismo ID; no añadir un segundo gol para compensar.
+
+Conservar STATS y psxg existentes cuando la identidad/acción son correctas. Si la corrección altera transiciones de marcador, revisar todas las acciones contextuales afectadas del fixture, no solo las del goleador. No modificar datos válidos para forzar igualdad de Stats; diferencias semánticas o Stats dudosas quedan explicadas en el informe.
+
+### Reparación parcial con componentes independientes
+
+DDD validó que una discrepancia localizada no obliga a bloquear todo el fixture. Primero validar participantes, cronología y timeline de goles contra el marcador. Un contexto de marcador no fiable bloquea todas las acciones que dependan de él; un desacuerdo aislado de asistencia puede quedar pendiente mientras se reparan goles u otras asistencias acreditadas.
+
+Por actor y rol de acción, contrastar contadores de PlayerStats fresco de API-Football con las ocurrencias del timeline. Si ambas fuentes concuerdan y la identidad/contexto están probados, corregir únicamente esos componentes y campos sustentados. Una nueva aparición, sus minutos o sus contadores necesitan su propia evidencia: no importar una fila fresca completa y arrastrar por ella campos controvertidos. Preservar los valores anteriores de componentes pendientes. Esta revisión permite cambios selectivos de PlayerStats sustentados; sustituye la prohibición anterior de cualquier actualización, pero mantiene prohibido su reemplazo ciego.
+
+Ejemplo de regresión, no regla por nombre: el desacuerdo Trincão/Vagiannidis se conserva con warning si las fuentes no acreditan la misma asistencia, mientras pueden recuperarse goles válidos y la asistencia concordante de Dembélé en el minuto 79. Si el asistente antiguo conflictivo ocupa la misma ocurrencia de gol, no añadir un segundo asistente: proteger el conjunto hasta resolver la identidad. IDs no resueltos compatibles con el mismo rol/minuto impiden retirar esa ocurrencia sin prueba positiva. Una captura `[]` no demuestra cero acciones cuando las estadísticas indican que existen.
+
+Clasificar incidencias como `pending` (local e independiente), `blocking_component` (identidad/acción sin prueba), `blocking_fixture_context` (timeline/marcador/participantes no fiables) o `blocking_publication` (CAS, captura inconsistente o cierre de cálculo incompleto). El manifiesto registra evidencia y campos modificados/preservados por componente y sus dependencias reales del motor. B1, bonos y honores forman parte del cierre autorizado. El recálculo v4 completo puede usar raw reparado y raw pendiente preservado; si quedan incidencias, declarar **recalculado con incidencias pendientes**, nunca plenamente reconciliado.
+
+### Versiones, dependencias y resultado final
+
+Inventariar y archivar antes de corregir raw todas las versiones y sus referencias: PES, rollups, bonos, contexto y metadatos/journals asociados. Validar la integridad de esas imágenes y su procedencia; no exigir reproducción numérica del motor v3. Se observó que v3 persistió M1/stage históricos distintos de los actuales: esa diferencia queda documentada en el archivo, sin adaptación del motor.
+
+La reparación de PE compartida no puede dejar v3 visible como un cálculo histórico válido sobre actores nuevos. Exportar íntegramente la proyección v3 del scope con hash y referencias, conservar su versión/origen y retirarla del serving de ese scope al completar la publicación. No renumerar sus scores a v4 ni destruir la única copia. Puede eliminarse la proyección SQL v3 de ese scope después de verificar archivo/backup restaurable, incluyendo sus rollups y bonos exclusivamente v3 del mismo periodo; las otras temporadas/versiones no se tocan. Si una ruta expone explícitamente v3, devolver ausencia/no disponibilidad para ese periodo en lugar de un ranking parcial. El manifiesto registra este retiro y permite restauración exacta junto a raw original. No hace falta una migración ni plataforma de versiones archivadas.
+
+El cálculo destino comprende todas las acciones elegibles del periodo, no solo las nuevas: goles, asistencias y STATS/B1 según configuración v4, con posición publicada actual resuelta y contexto temporal de fuerza/ELO existente. Registrar la fuente de posición y configuración en el manifiesto. Un dato realmente ausente sigue siendo pendiente explícito; no se usa un M1 histórico inventado ni una fuerza neutra para completar artificialmente. Los porteros siguen teniendo raw legítimo aunque la versión excluya su puntuación.
+
+Reutilizar CalculateScoresForRulesVersionUseCase y los use cases existentes de bonos/honores para ejecutar la configuración v4 sobre los pares exactos del scope, con repositorios acotados y cierre completo de pares/rangos. Está autorizado reconstruir los rollups y bonos dependientes de v4 de todo ese periodo; preservar e inventariar los honores independientes y no duplicarlos. No ejecutar un comando por año físico que incluya clubes season-2026. Main conserva el scorer monolítico y producción EventScoringEngine: no importar un módulo ausente de main ni extraer mil líneas. Si la simulación necesita un scorer acotado, componer el callable `_score_event` y helper B1 en core como port de dominio. No alterar ELO ni recalcular pools.
+
+La aplicación raw puede ser transaccional por fixture y reanudable, pero el periodo reparado no se declara listo ni se expone como v4 completo hasta cerrar scores, rollups, bonos y ranking en un corte coherente. Durante mantenimiento suspender serving de ese scope o conservar el snapshot anterior, sin servir mezclas parciales. La publicación final verifica cobertura elegible y totales; casos sin evidencia suficiente quedan enumerados y preservados, sin impedir cambios independientes demostrables. El cálculo puede estar completo y conservar incidencias de datos pendientes explícitas. Mantener la exclusión de escritores hasta completar el cierre o restaurar el corte anterior.
+
+### Aplicación, idempotencia y recuperación
+
+Dos use cases bastan: `PrepareSeasonEventIntegrityUseCase` produce auditoría/diff/simulación y `ApplySeasonEventIntegrityUseCase` aplica un plan verificable. Adaptador CLI sin endpoint ni task nueva. Repository SQL devuelve DTOs; adaptador de archivo conserva fuentes y journal; wiring en core/dependencies.py. No migración inicial.
+
+El manifiesto registra scope exacto, fuentes/hash, parser, identidades, versiones/configuraciones, posiciones/contextos, diff, cierres, exclusiones, before/after completos y fingerprint del conjunto leído (también ausencia de filas y referencias). Ningún HTTP durante apply. Orden determinista por fixture/ID y checkpoints permiten reanudar; una misma captura ya reconciliada produce diff vacío.
+
+Usar exclusión operativa de ingestas y el protocolo transaccional compartido/exclusivo existente, exclusivo try-only sin espera ni upgrade. Leer y validar CAS bajo esa exclusión antes de escribir. No desactivar guardas ni usar privilegios globales para saltarlas. Si una protección publicada impide una corrección, integrar su revisión/journal o dejar la unidad pendiente.
+
+Journal fuera de git: escritura atómica, hash, fsync y copia segura. Antes de la transacción guardar intención y before; después de ejecutar y verificar las imágenes reales (incluidos nuevos IDs), guardar after durable **antes del commit**. Tras commit marcar aplicada. No hay atomicidad distribuida archivo/DB: ante caída, comparar DB con before/after exactos; before implica no aplicada, after aplicada, otro estado implica revisión. No ejecutar de nuevo a ciegas. Lock local del journal evita dos operadores.
+
+Verificar filas/rowcounts y valores reales tras cada escritura: una guarda que conserva silenciosamente la fila anterior debe provocar rollback. La reversión comprueba CAS de after y restaura before de todas las versiones y dependencias; referencias o cambios posteriores bloquean la reversión. Nunca eliminar efectos legítimos posteriores.
+
+### Prevención mínima en los escritores
+
+Reutilizar la reconciliación por IDs y equipo en el flujo autorizado en lugar de delete/reinsert. Separar captura raw de elegibilidad de scoring (GK), permitir asistencia por ID sin nombre y no certificar completitud únicamente por FT antiguo. Registrar completitud a partir de evidencia/plan archivados para este flujo, sin fingir que todo FT ya fue verificado. Las rutas legacy destructivas no deben volver a sobrescribir fixtures reparados. No habilitar una reparación masiva de season-2026 como efecto de este parche.
+
+## Integraciones externas y límites
+
+Solo API-Football existente y archivos ya adquiridos. No otro proveedor ni envío a Claude u otro servicio. El manifiesto de adquisición distingue solicitudes realizadas, inciertas y respuestas inválidas; no reintentar una solicitud incierta automáticamente. Faltantes de fuente, identidad, contexto de versión o cierre de bonos son pendientes explícitos, no eventos sintéticos. La liberación de servicios al finalizar debe quedar verificada por el operador.
+
+## Marcador, prórroga y consistencia local/visitante
+
+DDD aprobó normalizar el marcador persistido cuando el resumen del proveedor representa solo el resultado reglamentario y la evidencia completa acredita otro resultado antes de la tanda. Caso de regresión 1378959: estado PEN, resumen/fulltime 3:3 y goles de prórroga en 92 y 104 compatibles con 4:4 antes de penaltis. No basta el minuto numérico: `90+12` es descuento reglamentario y no demuestra prórroga. Requerir timeline completa, autores/equipos, exclusión de goles anulados y tanda, y concordancia con estadísticas frescas por actor. Los autogoles incrementan exactamente una vez al beneficiario, sin acreditarlos como gol ordinario del atacante. Para PEN el resultado previo a tanda debe estar empatado; AET no exige por sí solo ganador.
+
+Guardar el marcador original y el normalizado como derivación reconciliada, no como un valor explícito `extratime` cuando ese campo falta. `Plan.fixture_goals` es opcional: su cambio participa en before/after, CAS y journal del fixture y en el cierre de resultados/bonos/honores. Una atribución o dirección de autogol no resuelta bloquea la normalización dependiente. ELO permanece intacto.
+
+Verificar `is_away` contra `PlayerEvent.team_id` y los equipos del fixture, nunca contra el club actual del jugador. Derivar `score_diff` desde su equipo y el marcador válido **anterior** a la acción; no interpretar un cero de fallback sin contexto como empate. Las correcciones sustentadas de orientación/contexto incluyen STATS cuando corresponda y pasan por el mismo journal y recálculo v4; no alteran por arrastre otras temporadas.
+
+## Evidencia del ensayo en clon y gate del corte final
+
+El operador reportó un ensayo aislado con 2.071 revisiones en 957 fixtures y 160 correcciones de is_away/score_diff (148 STATS y 12 goles/asistencias), seguido del recálculo v4 y bonos de las 21 competiciones del scope. QA reportó cero acciones raw elegibles sin PES v4 (4.005 exclusiones GK previstas), cero divergencias de actor/fixture desnormalizados, cero descuadres de rollups/bonos y cero cambios de ELO, reglas o achievements. Mbappé quedó Stats/PE/PES 52/52/52 y Dembélé 26/26/26. Son resultados del ensayo, no prueba de publicación productiva ni garantía de que todas las incidencias de fuente estén resueltas.
+
+Existe before completo del objetivo en `integrity_before_2025` y un dump completo de aproximadamente 72 MB restaurado en clon. La salida final debe regenerarse desde ese before con el parser v2 cerrado y sus hashes; no publicar resultados intermedios de experimentos anteriores. Preparar el cierre completo v4 y bonos en clon, verificar CAS contra el scope vivo y publicar un corte atómico coherente. Archivar v3 con before completo/hash verificado antes de retirarla del serving. Preservar clubes season-2026 sin recalcularlos. Una diferencia nueva en el CAS invalida el corte preparado y requiere regenerar las dependencias afectadas, no sobrescribir el estado vivo.
+
+## Promoción atómica de la proyección preparada y restauración
+
+El código actual ApplySeasonEventIntegrityUseCase/SeasonEventIntegrityRepository aplica un plan raw por fixture y escribe imágenes en journal; no constituye un publicador de scores/rollups/bonos del periodo. Conservarlo para preparar el clon. Añadir dos use cases pequeños `PromoteSeasonIntegrityProjectionUseCase` y `RevertSeasonIntegrityProjectionUseCase` y un `SeasonIntegrityPublicationRepositoryPort`, implementado por un adaptador SQL específico. No alterar el motor ni reutilizar apply por fixture para simular una publicación atómica del periodo.
+
+El contrato mínimo del port ofrece validar staging y manifiesto, adquirir exclusivo try-only, leer fingerprint completo del target/dependencias, promover con remapeo, verificar after y restaurar con CAS. Retorna DTOs frozen de hashes/conteos/mapas, nunca modelos SQL. El adaptador de entrada delimita una sola transacción y commit, y usa el journal de archivos existente; wiring solo en core. El repositorio no ejecuta HTTP ni commits.
+
+Preparar esquemas de staging aislados before/after en producción desde el clon, con permisos restringidos y nombres controlados, sin triggers de tablas live ni invocaciones de scoring. Validar schema, tipos, conteos, hashes y FKs lógicas antes de la ventana; no incluir secretos. El manifiesto cierra el conjunto de los 2.840 fixtures del corte por pares scope, PE, PlayerStats, PES de versiones objetivo/archivadas, rollups, bonos y honores relacionados, más reglas, etapas, fuerzas y posición publicada resuelta. Incluir ausencias, nuevas filas y vínculos/referencias: COUNT/MAXID o sumas no son CAS suficientes. Toda modificación de columnas Fixture (por ejemplo marcador) es selectiva; no reemplazar filas completas ni metadata ajena.
+
+Durante el cutover pausar beat y escritores, drenar transacciones y adquirir el mismo exclusivo transaccional **try-only antes de la primera lectura live**. Si Busy, rollback sin reservar IDs ni hacer cambios y reintentar en una nueva transacción tras drenar; no encolar un exclusivo que bloquee sesiones anidadas. Ejecutar CAS before completo y dependencias congeladas dentro de esa transacción. Los lectores deben conservar MVCC coherente y cachés no deben exponer partes de la proyección en momentos diferentes.
+
+### Modo transaccional de publicación existente
+
+La inspección de 0053/0055 y SeasonPositionCorrectionRepository confirma un mecanismo ya utilizado por 0065: `set_config('sfa.position_publication','on',true)`. Se permite reutilizarlo en la sesión dedicada de promote/revert **después** de adquirir exclusivo try-only, validar staging, dependencias, identidades/posiciones y CAS completo, y guardar intención durable. Es el modo explícito del publicador existente, no permiso para deshabilitar triggers ni cambiar su definición. Sustituye únicamente la interpretación anterior que prohibiera este mecanismo local; siguen prohibidos privilegios/global flags y cambios de reglas/posiciones fuera del plan.
+
+Mantener los triggers instalados y activos. Activar el GUC solo con alcance LOCAL a la transacción y exclusivamente alrededor de las escrituras exactas del manifiesto; devolverlo a `off` antes de la verificación final y no reutilizar esa sesión para trabajos ajenos. Commit o rollback debe eliminar el ajuste local; comprobarlo en una transacción nueva sobre la misma conexión en las pruebas. No usar SET de sesión, ALTER SYSTEM, session_replication_role ni DISABLE TRIGGER. La autorización la sustenta el protocolo completo del publicador; el GUC por sí solo no es una comprobación de seguridad.
+
+Hay una excepción explícita en el código existente: validate_curated_season_aggregate procesa DELETE antes de consultar el GUC. Conservarla. Si una retirada de rollup está protegida, el publicador debe detectar la fila preservada mediante rowcount/after y abortar, no ampliar el bypass ni borrar asignaciones para permitirla. Verificar antes de la ventana que ese caso no afecta al scope 2025; si lo afecta, resolver el cierre conforme al journal protegido. Las dependencias y posiciones deben quedar idénticas antes/después aunque su trigger también reconozca el modo de publicación.
+
+Ensayar en clon compatible con las mismas guardas, promoviendo y revirtiendo la proyección completa bajo el GUC local; comparar after exacta y tablas fuera de scope, probar CAS fallido sin activación del modo, rollback por failpoint y ausencia de fuga del GUC. Medir duración real del exclusivo antes del cutover. La alternativa sin este modo es conservar la ruta diferencial normal y aceptar su coste; no ejecutar recálculo ni eliminar protecciones para reducir la ventana.
+
+### Renovación acotada de metadata antes del CAS final
+
+El gate readonly encontró 999 filas sfa_season_scores del Mundial (competition_id 350, season 2026, v4) con únicamente `last_updated` renovado: 1.998 diferencias simétricas, sin altas/bajas ni cambios de IDs, puntos, bonos, partidos o desglose. Es metadata operativa y no una entrada del cálculo. Se permite adoptar esa metadata para el before **operativo**, sin relajar el CAS ni recalcular after, con estas condiciones:
+
+- Conservar before original, su hash y backup inmutables. Crear una copia operativa separada; no sobrescribir la única evidencia original ni presentar su hash como si correspondiera al snapshot renovado.
+- Pausar beat, drenar escritores y adquirir exclusivo try-only antes de comprobar/adoptar. Verificar claves y conjuntos idénticos y igualdad exacta de cada fila quitando **solo** `last_updated`; no usar una lista parcial de campos materiales ni ignorar otras tablas. La excepción se limita a esas filas/version/scope identificados en el manifiesto.
+- Si existe cualquier alta/baja, modificación de otra columna o dependencia, abortar y regenerar el cierre afectado. No adoptar de forma genérica timestamps de otras tablas ni valores calculados.
+- Copiar exclusivamente `last_updated` live al before operativo y registrar un delta de metadata con IDs, valores originales/adoptados, motivo, hashes original/operativo y fecha. Reflejar ese delta en el artefacto del clon/manifiesto para reproducir el corte. El after calculado no deriva de ese campo; verificar esta independencia y no alterar sus números.
+- Ejecutar después el CAS íntegro, **incluido last_updated**, contra ese before operativo bajo el mismo exclusivo. Solo entonces activar el modo local de publicación y promover. Ninguna modificación live se realiza como parte de la adopción de metadata; únicamente cambia la copia de staging operativa.
+
+El journal y la reversión usarán como before de publicación la imagen operativa realmente validada, preservando el timestamp más reciente anterior al corte. La imagen original sigue disponible como evidencia, no como una restauración ciega sobre metadata posterior. Preparar el delta antes de escribir live y conservarlo aun si la promoción aborta; un retry debe volver a verificar las mismas condiciones.
+
+Preservar IDs de PE existentes y psxg. Para PE nuevas reservar IDs mediante la secuencia/identity de producción, construir un mapa durable `clone_event_id -> production_event_id` y remapear **todas** las referencias en PES, JSON de detalles/journal que contenga IDs y cualquier FK incluida. Nunca copiar IDs nuevos de PES, rollups o bonos del clon: actualizar filas existentes por su clave lógica y mantener sus IDs; insertar claves nuevas con IDs generados en producción; retirar únicamente claves before ausentes en after dentro del target. Enumerar claves únicas/FKs del schema real antes de promover. Si hay referencias externas al cierre no remapeables, bloquear publicación, no deshabilitar FKs. Las secuencias no son transaccionales: huecos tras rollback son normales; no rebobinarlas ni usar MAX(id)+1.
+
+Después del remapeo verificar la after real contra la proyección esperada normalizada por el mapa, incluidos totales v4/bonos/honores y retiro archivado v3. Guardar imágenes after reales y mapa durable antes del commit; luego marcar committed como en el protocolo de crash recovery existente. La transacción no ejecuta recalculado: publica las filas ya preparadas y verificadas. Solo tras commit invalidar caches de ranking/jugadores/torneos relacionadas mediante los mecanismos existentes; si falla la invalidación, mantener mantenimiento o reintentar, sin fingir rollback DB. Reanudar servicios y comprobar salud/catch-up, sin reconstruir ELO ni ingestar en paralelo durante la ventana.
+
+Revertir usa el mismo protocolo exclusivo y compara after real completo y dependencias/referencias posteriores. Si coincide, restaurar before de las filas target, proyecciones v3 archivadas y marcadores, retirando solo nuevas filas introducidas por este lote sin referencias posteriores. No restaurar secuencias ni un dump sobre la base viva, ni tocar actividad de clubes season-2026. Cualquier cambio posterior obliga a una reversión reconciliada nueva; no eliminarlo para que encaje el before. Conservar staging/archivos hasta superar la verificación final y el plazo operativo de restauración.

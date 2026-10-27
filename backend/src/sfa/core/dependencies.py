@@ -793,3 +793,48 @@ async def require_admin_key(
 
 
 __all__ = ["get_db", "get_redis", "require_admin_key"]
+
+
+def get_season_event_integrity_use_cases(session, journal_directory):
+    from pathlib import Path
+
+    from sfa.application.use_cases.apply_season_event_integrity import ApplySeasonEventIntegrityUseCase
+    from sfa.application.use_cases.prepare_season_event_integrity import PrepareSeasonEventIntegrityUseCase
+    from sfa.infrastructure.repositories.file_integrity_journal import FileIntegrityJournal
+    from sfa.infrastructure.repositories.season_event_integrity_repository import SeasonEventIntegrityRepository
+
+    repository = SeasonEventIntegrityRepository(session)
+    journal = FileIntegrityJournal(Path(journal_directory))
+    return PrepareSeasonEventIntegrityUseCase(repository), ApplySeasonEventIntegrityUseCase(repository, journal)
+
+
+def get_season_event_integrity_recalculation_use_cases(session):
+    from sfa.application.use_cases.calculate_achievement_bonuses import CalculateAchievementBonusesUseCase
+    from sfa.application.use_cases.infer_individual_honors import InferIndividualHonorsUseCase
+    from sfa.infrastructure.repositories.competition_achievement_repository import CompetitionAchievementRepository
+    from sfa.infrastructure.repositories.individual_honor_repository import IndividualHonorRepository
+
+    rules = ScoringRulesVersionRepository(session)
+    return (
+        CalculateScoresForRulesVersionUseCase(rules, PlayerEventScoreRepository(session)),
+        CalculateAchievementBonusesUseCase(CompetitionAchievementRepository(session), rules),
+        InferIndividualHonorsUseCase(IndividualHonorRepository(session), SeasonRepository(session), rules),
+    )
+
+
+def get_season_integrity_publication_use_cases(session, journal_directory):
+    from pathlib import Path
+
+    from sfa.application.use_cases.promote_season_integrity_projection import (
+        PromoteSeasonIntegrityProjectionUseCase,
+        RevertSeasonIntegrityProjectionUseCase,
+    )
+    from sfa.infrastructure.repositories.file_integrity_journal import FileIntegrityJournal
+    from sfa.infrastructure.repositories.season_integrity_publication_repository import SeasonIntegrityPublicationRepository
+
+    repository = SeasonIntegrityPublicationRepository(session)
+    journal = FileIntegrityJournal(Path(journal_directory))
+    return (
+        PromoteSeasonIntegrityProjectionUseCase(repository, journal),
+        RevertSeasonIntegrityProjectionUseCase(repository, journal),
+    )

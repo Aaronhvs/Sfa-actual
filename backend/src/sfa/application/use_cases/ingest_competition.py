@@ -375,7 +375,7 @@ class IngestCompetitionUseCase:
                                 if e.type == "Goal"
                                 and e.detail not in ("Missed Penalty", "Own Goal")
                                 and not is_shootout_attempt_event(e)
-                                and e.assist_name is not None
+                                and (e.assist_external_id is not None or e.assist_name is not None)
                                 and _event_matches_player(
                                     e.assist_external_id,
                                     e.assist_name,
