@@ -60,4 +60,14 @@ Revertir usa `--revert` y el mismo protocolo: CAS contra after publicado, restau
 - Se conservan 250 bonos de porteros sin rollup de puntuación: exclusión existente del motor. El validador acepta exclusivamente ese caso; una entrada equivalente de un jugador de campo bloquea la publicación.
 - Preflight productivo: solo cambiaron last_updated de 999 rollups Mundial350/2026/v4, cero cambios materiales. El archivo original se conserva en integrity_before_initial_2025; integrity_before_2025 es una copia operativa separada. Tras pausar escritores se admite únicamente ese delta de timestamps bajo exclusivo y comparación exacta de todo el resto, con journal; después se repite el CAS completo. Cualquier cambio material aborta el corte.
 
-Completar el informe final con hashes, recuentos definitivos, suite del runtime real, duración del corte, replay, reversión y verificación pública. Este documento no certifica un despliegue aún no ejecutado.
+## Cierre productivo: 28 de octubre de 2026
+
+Publicado y verificado por HTTPS. Código main f587460; release operativo baf739d, imagen `sfa-season-integrity:20261026-baf739d`, construida sobre la imagen probada para conservar exactamente Python y dependencias. API, worker y beat reanudados y saludables.
+
+La copia operativa adoptó 459 nombres sin cambios de identidad, posición, edad ni rol efectivo; 32 identificadores de logros y sus 711 bonos se reconciliaron por claves naturales con equivalencia semántica completa. Solo se modificó staging durante esa preparación. Se conservaron original inmutable, mapa y journal; los importes de after no cambiaron. La simulación de adopción terminó en rollback y pasó el CAS completo antes del corte real.
+
+El corte atómico tardó 127,47 segundos. Journal de publicación: `season-2025-publish-f45318a208854be1b73b00981750e327`. Después del commit: 93.256 puntuaciones v4, suma de eventos 37.571.653,97; cero eventos elegibles sin puntuar, cero divergencias de identidad, cero descuadres de rollups y bonos. El top 10 de season-2026 conserva jugadores y puntos respecto al instante anterior al corte. Los ocho MVP destacados siguen respondiendo. La petición explícita de v3 para season-2025 devuelve indisponibilidad 409, sin ranking parcial; el archivo permanece disponible para restauración.
+
+Comprobación pública: Mbappé puesto 4, 91.571,08 puntos y 52 goles; Dembélé puesto 26, 60.464,88 puntos y 26 goles. No se cambiaron reglas ni se intentó ajustar el resultado al Balón de Oro.
+
+Artefactos definitivos en el directorio operativo: `production-data-final.json`, `public-verification-final.json`, `deployment.jsonl`, `top50-before-after.csv`, `pending-evidence.csv`, snapshots y journals. Quedan incidencias de evidencia: 19 diferencias Stats/raw de goles y 219 de asistencias; 123 fixtures sin PlayerStats del proveedor, cinco correspondencias ambiguas y cinco timelines bloqueados. El estado es **recalculado y publicado con incidencias pendientes**, no reconciliación absoluta del proveedor.

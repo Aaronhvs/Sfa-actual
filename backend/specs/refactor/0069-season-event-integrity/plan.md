@@ -1,5 +1,11 @@
 # Plan: integridad de eventos del periodo 2025/2026
 
+## Estado de entrega
+
+Reparación, recálculo y publicación completados el 28 de octubre de 2026. Véase `runbook.md`, sección Cierre productivo, para resultado, hashes, journals y límites. Suite completa del runtime: 1.253 passed, 43 skipped; cobertura nueva 89,65 %. Replay sin revisiones nuevas; promoción y reversión completas ensayadas en la copia. HTTPS y SQL productivos verifican el corte v4 íntegro, sin eventos elegibles sin puntuar ni descuadres. Las incidencias de proveedor se conservan explícitas en `pending-evidence.csv`.
+
+El checklist siguiente conserva el contrato y las comprobaciones de diseño; el registro de ejecución y las pruebas concretamente realizadas están en el runbook y artefactos, sin afirmar cobertura exhaustiva de todas las combinaciones negativas enumeradas.
+
 La revisión vigente autoriza reparar los datos y recalcular **todo season-2025 con v4 actual**. La reproducción histórica de v3 y cualquier M1override quedan fuera; prevalece esta revisión sobre restricciones de versiones anteriores.
 
 ## Archivos a crear
@@ -42,6 +48,8 @@ La revisión vigente autoriza reparar los datos y recalcular **todo season-2025 
 - [ ] Crear Promote/RevertSeasonIntegrityProjectionUseCase, port de publicación y adaptador SQL con DTOs frozen y DI; reutilizar journal. El apply raw por fixture actual sigue siendo una herramienta de preparación del clon, no el publicador completo.
 - [ ] Preparar staging before/after con esquema validado, manifiesto exacto de filas/ausencias y dependencias (posición publicada, fuerzas, etapas, reglas); verificar backup restaurado y hashes antes del cutover.
 - [ ] Si solo difiere last_updated de los rollups Mundial 350/2026/v4 inventariados, conservar before original inmutable y adoptar únicamente esa metadata en copia operativa bajo exclusivo, tras igualdad de conjuntos y JSON de filas excluyendo solo ese campo. Registrar delta/hashes, repetir CAS íntegro y usar la imagen operativa para revert. Probar que puntos, nuevas filas u otra columna distinta abortan sin adopción material.
+- [ ] Para el refresco físico CA/PAB del Mundial, probar correspondencias naturales únicas/biyectivas y equivalencia de todas las columnas salvo IDs/created_at expresamente permitidos. Conservar initial, registrar mapas, renovar solo staging before y dependencias after, remapear FK de after.PAB sin cambiar números, cerrar referencias FK/JSON y repetir CAS completo bajo el mismo exclusivo. Probar rechazo de puntos/participación/detalles distintos, clave nueva, duplicada o referencia externa; promote/revert conserva los padres live adoptados y restaura before operativo.
+- [ ] Admitir renovación privada de players.name solo con restantes campos del CAS iguales y cero diferencias del resolver efectivo desplegado en todos los contextos de actores before/after. Registrar mapa/contextos/hashes y repetir CAS; probar que un nombre que activa otro override, otra posición/DOB/external_id o una asignación distinta aborta. No alterar nombres live ni evidencias históricas, y conservar nombres adoptados al revertir scores.
 - [ ] Implementar CAS bajo exclusivo try-only adquirido antes de leer live y transacción única sin recálculo. Probar Busy, inserción concurrente y cambio de dependencia sin escrituras parciales.
 - [ ] Reutilizar GUC de publicación existente mediante set_config LOCAL solo tras lock/CAS/journal, restablecer off antes de verificar y probar limpieza tras commit/rollback en conexión reutilizada. Mantener todos los triggers, incluida la protección DELETE de rollups; ninguna fila preservada puede pasar la comparación after. Medir promote/revert completo con guardas productivas en clon antes del cutover.
 - [ ] Implementar remapeo de PE nuevas con secuencia productiva y referencias completas; actualizar PES/rollups/bonos por claves lógicas, conservar IDs existentes y generar nuevos IDs localmente. Probar colisiones entre IDs nuevos del clon y actividad 2026, JSON con event_id, FKs fuera del cierre y huecos de secuencia tras rollback.
