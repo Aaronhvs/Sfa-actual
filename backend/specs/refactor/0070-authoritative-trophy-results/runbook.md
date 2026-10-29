@@ -62,3 +62,32 @@ require `TITLE_TEST_DATABASE_URL` ending in `/sfa_psg_titles_2025_test` and
 `TITLE_TEST_EVIDENCE_DIR`; they always roll back. Do not point those variables at
 production. Final validation and live results are recorded alongside the source
 evidence and deployment manifest.
+
+## Publication completed
+
+- Main source commit: `cefb4d9`; production source with preserved runtime extras:
+  `9b2d230d428fa94957b7291baefbce0755d14e3c`.
+- Active API, worker and beat image: `sfa-psg-titles:20261028-9b2d230`.
+- Complete runtime suite: **1282 passed, 48 skipped**, new-code coverage **92.77%**.
+  Final provider regression module after its last refinement: **3 passed**.
+  Clean-main local suite: **863 passed, 32 skipped**. Lint/import checks passed.
+- PostgreSQL clone verified exact repeat, bonus-only rebuild, strict-CAS revert,
+  stale-cut rejection, publication lock contention, preserved IDs and full closure.
+- Fresh live backup: `production-before-publication.dump` (174779238 bytes).
+- Committed journal: `psg-titles-2025-e1c679e2c2b8466491cc4e1f9112e390`.
+- Before fingerprint: `ee28c27309a386c99d415bd522303977b1bf52954a612eea580ec8dee2ce73e1`.
+- After fingerprint: `52e6ceebe6e2a6c19d2359e7a6a092aa890f53e103f753049a07512639fd7d41`.
+- Guard checks compare count and two independently seeded, typed PostgreSQL record
+  checksums, then SHA-256 the cut. Target rows are captured in full. This avoids
+  repeatedly serializing/sorting every large score-details JSON for dependency CAS.
+- Public player/achievement endpoints return HTTP200. Demb?l? now has all five PSG
+  winning titles; his total changes from **60464.88 to 70731.30**: Ligue1 +7776.42,
+  UEFA Super Cup +945, Intercontinental +1545. Champions/Troph?e bonuses unchanged.
+- All unchanged-table/dependency guards passed: event scores/raw events, positions,
+  strengths/ELO and rule configuration; the season-2026 top50 also matched exactly.
+- Health: database/Redis connected. MVP endpoint still returns eight featured
+  competitions. Worker/beat resumed; two season-2025 cache entries invalidated.
+
+Intercontinental participation/raw stats and the title bonus are published. Its
+individual performances remain unevaluated until legitimate scoring context is
+available; no synthetic player events, M1, performance rank or scored match was added.
