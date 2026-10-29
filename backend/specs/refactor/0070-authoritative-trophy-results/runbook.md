@@ -80,9 +80,9 @@ evidence and deployment manifest.
 - Guard checks compare count and two independently seeded, typed PostgreSQL record
   checksums, then SHA-256 the cut. Target rows are captured in full. This avoids
   repeatedly serializing/sorting every large score-details JSON for dependency CAS.
-- Public player/achievement endpoints return HTTP200. Demb?l? now has all five PSG
+- Public player/achievement endpoints return HTTP200. Dembélé now has all five PSG
   winning titles; his total changes from **60464.88 to 70731.30**: Ligue1 +7776.42,
-  UEFA Super Cup +945, Intercontinental +1545. Champions/Troph?e bonuses unchanged.
+  UEFA Super Cup +945, Intercontinental +1545. Champions/Trophée bonuses unchanged.
 - All unchanged-table/dependency guards passed: event scores/raw events, positions,
   strengths/ELO and rule configuration; the season-2026 top50 also matched exactly.
 - Health: database/Redis connected. MVP endpoint still returns eight featured

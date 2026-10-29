@@ -37,6 +37,6 @@ PSG conserva Champions/Trophée y obtiene los títulos acreditados con bonos cal
 
 **DDD Designer needed:** yes; ya consultado para esta solicitud. Dictamen: reutilizar CompetitionAchievement y DTO frozen de resultado/procedencia; invariantes de tanda, fases de liga y baremo versionado están incorporadas. No requiere otro agregado/plataforma. La implementación debe aplicar esos invariantes y consultar de nuevo solo si amplía el modelo o metodología.
 
-## Cierre de ejecuci?n
+## Cierre de ejecución
 
-Implementado y desplegado el 29-10-2026 00:58 UTC. Evidencias, resultados y l?mites en `runbook.md`. La skill sfa-scoring no estaba instalada tras buscarla; se leyeron las dem?s skills requeridas y no se modific? el algoritmo de puntuaci?n de eventos. No se modific? ninguna tarea Celery, por lo que su skill no aplicaba.
+Implementado y desplegado el 29-10-2026 00:58 UTC. Evidencias, resultados y límites en `runbook.md`. La skill sfa-scoring no estaba instalada tras buscarla; se leyeron las demás skills requeridas y no se modificó el algoritmo de puntuación de eventos. No se modificó ninguna tarea Celery, por lo que su skill no aplicaba.
