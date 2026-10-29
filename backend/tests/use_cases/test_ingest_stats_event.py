@@ -185,6 +185,9 @@ class FakeIngestionRepository:
         home_goals: int | None = None,
         away_goals: int | None = None,
         score_source: str | None = None,
+        home_penalty_goals: int | None = None,
+        away_penalty_goals: int | None = None,
+        result_provenance: dict | None = None,
     ) -> int:
         if external_id not in self._fixture_ids:
             self._fixture_counter += 1

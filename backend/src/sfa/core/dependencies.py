@@ -830,11 +830,41 @@ def get_season_integrity_publication_use_cases(session, journal_directory):
         RevertSeasonIntegrityProjectionUseCase,
     )
     from sfa.infrastructure.repositories.file_integrity_journal import FileIntegrityJournal
-    from sfa.infrastructure.repositories.season_integrity_publication_repository import SeasonIntegrityPublicationRepository
+    from sfa.infrastructure.repositories.season_integrity_publication_repository import (
+        SeasonIntegrityPublicationRepository,
+    )
 
     repository = SeasonIntegrityPublicationRepository(session)
     journal = FileIntegrityJournal(Path(journal_directory))
     return (
         PromoteSeasonIntegrityProjectionUseCase(repository, journal),
         RevertSeasonIntegrityProjectionUseCase(repository, journal),
+    )
+
+
+def get_competition_title_correction_use_cases(session, journal_directory):
+    from pathlib import Path
+
+    from sfa.application.use_cases.apply_competition_title_correction import ApplyCompetitionTitleCorrectionUseCase
+    from sfa.application.use_cases.infer_individual_honors import InferIndividualHonorsUseCase
+    from sfa.application.use_cases.infer_league_champions import InferLeagueChampionsUseCase
+    from sfa.application.use_cases.prepare_competition_title_correction import PrepareCompetitionTitleCorrectionUseCase
+    from sfa.infrastructure.repositories.competition_title_correction_repository import (
+        CompetitionTitleCorrectionRepository,
+    )
+    from sfa.infrastructure.repositories.file_integrity_journal import FileIntegrityJournal
+    from sfa.infrastructure.repositories.individual_honor_repository import IndividualHonorRepository
+
+    achievements = CompetitionAchievementRepository(session)
+    rules = ScoringRulesVersionRepository(session)
+    repository = CompetitionTitleCorrectionRepository(session, achievements)
+    journal = FileIntegrityJournal(Path(journal_directory))
+    return (
+        PrepareCompetitionTitleCorrectionUseCase(repository),
+        ApplyCompetitionTitleCorrectionUseCase(
+            repository, journal, InferLeagueChampionsUseCase(achievements, rules),
+            InferCompetitionAchievementsUseCase(InferAchievementsRepository(session), achievements, rules),
+            CalculateAchievementBonusesUseCase(achievements, rules),
+            InferIndividualHonorsUseCase(IndividualHonorRepository(session), SeasonRepository(session), rules),
+        ),
     )

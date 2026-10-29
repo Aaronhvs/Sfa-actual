@@ -49,6 +49,7 @@ class InferLeagueChampionsUseCase:
         self,
         season: str,
         rules_version_id: int,
+        competition_id: int | None = None,
     ) -> InferLeagueChampionsResult:
         rules_version = await self._rules_version_repo.get_version_by_id(rules_version_id)
         if rules_version is None:
@@ -87,6 +88,8 @@ class InferLeagueChampionsUseCase:
         inferred = 0
         skipped = 0
         for candidate in candidates:
+            if competition_id is not None and candidate.competition_id != competition_id:
+                continue
             expected_matchday = 2 * (candidate.team_count - 1)
             expected_fixtures = candidate.team_count * (candidate.team_count - 1)
             incomplete = (

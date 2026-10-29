@@ -212,7 +212,14 @@ class IngestCompetitionUseCase:
                         home_goals=fixture.home_goals,
                         away_goals=fixture.away_goals,
                         score_source="api_football",
+                        home_penalty_goals=fixture.home_penalty_goals,
+                        away_penalty_goals=fixture.away_penalty_goals,
+                        result_provenance=fixture.result_provenance,
                     )
+
+                    if fixture.status in {"AWD", "WO"}:
+                        fixtures_processed += 1
+                        continue
 
                     if (
                         target_fixture_external_ids is not None

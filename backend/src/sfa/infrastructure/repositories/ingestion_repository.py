@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import case, delete, func, select, update
+from sqlalchemy import and_, case, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -159,6 +159,9 @@ class IngestionRepository(IngestionRepositoryPort):
         home_goals: int | None = None,
         away_goals: int | None = None,
         score_source: str | None = None,
+        home_penalty_goals: int | None = None,
+        away_penalty_goals: int | None = None,
+        result_provenance: dict | None = None,
     ) -> int:
         stmt = (
             pg_insert(Fixture)
@@ -175,6 +178,9 @@ class IngestionRepository(IngestionRepositoryPort):
                 home_goals=home_goals,
                 away_goals=away_goals,
                 score_source=score_source,
+                home_penalty_goals=home_penalty_goals,
+                away_penalty_goals=away_penalty_goals,
+                result_provenance=result_provenance,
             )
             .on_conflict_do_update(
                 index_elements=["external_id"],
@@ -193,8 +199,25 @@ class IngestionRepository(IngestionRepositoryPort):
                         (Fixture.score_source == "sfa_integrity_v1", Fixture.score_source),
                         else_=score_source,
                     ),
+                    **({
+                        "home_penalty_goals": home_penalty_goals,
+                        "away_penalty_goals": away_penalty_goals,
+                        "result_provenance": result_provenance,
+                    } if result_provenance and result_provenance.get("verified") else {}),
                 },
-                where=Fixture.score_source.is_distinct_from("sfa_integrity_v1"),
+                # Published results require an explicit correction when source
+                # scores change; incomplete refreshes cannot erase a shootout.
+                where=and_(
+                    Fixture.score_source.is_distinct_from("sfa_integrity_v1"),
+                    or_(Fixture.result_provenance.is_(None), and_(
+                        Fixture.home_goals == home_goals, Fixture.away_goals == away_goals,
+                        Fixture.status == status,
+                        *([
+                            Fixture.home_penalty_goals == home_penalty_goals,
+                            Fixture.away_penalty_goals == away_penalty_goals,
+                        ] if result_provenance and result_provenance.get("verified") else []),
+                    )),
+                ),
             )
             .returning(Fixture.id)
         )

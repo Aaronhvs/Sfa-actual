@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, SmallInteger, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from sfa.infrastructure.database import Base
@@ -24,3 +25,6 @@ class Fixture(Base):
     home_goals: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     away_goals: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     score_source: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    home_penalty_goals: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    away_penalty_goals: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    result_provenance: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import distinct, select
+from sqlalchemy import distinct, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -8,6 +8,8 @@ from sfa.domain.infer_achievements_ports import (
     InferAchievementsRepositoryPort,
     KnockoutFixtureDTO,
 )
+from sfa.domain.scoring.achievement_categories import COMPETITION_CATEGORY_MAP
+from sfa.domain.trophy_results import FINAL_STATUSES, AuthoritativeFixtureResultDTO
 from sfa.infrastructure.models.competitions.models import Competition
 from sfa.infrastructure.models.enums import EventType
 from sfa.infrastructure.models.events.models import PlayerEvent
@@ -20,6 +22,26 @@ class InferAchievementsRepository(InferAchievementsRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def get_authoritative_result(self, fixture_id: int) -> AuthoritativeFixtureResultDTO | None:
+        row = (await self._session.execute(select(
+            Fixture.id, Fixture.home_team_id, Fixture.away_team_id, Fixture.status,
+            Fixture.home_goals, Fixture.away_goals, Fixture.home_penalty_goals,
+            Fixture.away_penalty_goals, Fixture.result_provenance, Fixture.score_source,
+        ).where(Fixture.id == fixture_id))).mappings().one_or_none()
+        if row is None:
+            return None
+        data = dict(row)
+        provenance = data.pop("result_provenance") or {}
+        source = data.pop("score_source")
+        data["fixture_id"] = data.pop("id")
+        verified = source in {"api_football", "api_football_backfill", "sfa_integrity_v1"}
+        if data["status"] == "PEN":
+            verified = provenance.get("verified") is True and bool(provenance.get("source_hash"))
+            verified = verified and provenance.get("ordinary_score") == [data["home_goals"], data["away_goals"]]
+            verified = verified and provenance.get("penalty_score") == [
+                data["home_penalty_goals"], data["away_penalty_goals"]]
+        return AuthoritativeFixtureResultDTO(**data, verified=verified)
+
     async def get_knockout_stage_fixtures(
         self, competition_id: int, season: str
     ) -> list[KnockoutFixtureDTO]:
@@ -30,11 +52,15 @@ class InferAchievementsRepository(InferAchievementsRepositoryPort):
                 Fixture.home_team_id,
                 Fixture.away_team_id,
             )
+            .join(Competition, Competition.id == Fixture.competition_id)
             .where(
                 Fixture.competition_id == competition_id,
                 Fixture.season == season,
                 Fixture.stage != "regular",
+                or_(Fixture.status.in_(FINAL_STATUSES), Fixture.stage.in_(["final", "third_place"])),
+                Competition.name.notin_([n for n, c in COMPETITION_CATEGORY_MAP.items() if c == "domestic_league"]),
             )
+            .order_by(Fixture.played_at, Fixture.id)
         )
         rows = (await self._session.execute(stmt)).mappings().all()
         return [
@@ -131,9 +157,12 @@ class InferAchievementsRepository(InferAchievementsRepositoryPort):
     async def get_all_knockout_competition_ids(self, season: str) -> list[int]:
         stmt = (
             select(distinct(Fixture.competition_id))
+            .join(Competition, Competition.id == Fixture.competition_id)
             .where(
                 Fixture.season == season,
                 Fixture.stage != "regular",
+                Fixture.status.in_(FINAL_STATUSES),
+                Competition.name.notin_([n for n, c in COMPETITION_CATEGORY_MAP.items() if c == "domestic_league"]),
             )
         )
         rows = (await self._session.execute(stmt)).all()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from sfa.domain.scoring.entities import PlayerAchievementBonus
 from sfa.domain.scoring.value_objects import ScoringConfig
@@ -9,6 +9,7 @@ from sfa.domain.scoring_ports import (
     CompetitionAchievementRepositoryPort,
     ScoringRulesVersionRepositoryPort,
 )
+from sfa.domain.trophy_results import INTERCONTINENTAL_POLICY
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,11 @@ class CalculateAchievementBonusesUseCase:
             )
 
         config = rules_version.config
+        title_only_policy = await self._achievement_repo.get_title_policy_version(competition_id)
+        if title_only_policy == INTERCONTINENTAL_POLICY:
+            # This policy credits verified participation, without inventing a
+            # performance rank for a competition whose events were not scored.
+            config = replace(config, enable_performance_based_achievement_bonus=False)
         await self._achievement_repo.clear_achievement_bonuses(
             competition_id=competition_id,
             season=season,
@@ -141,6 +147,11 @@ class CalculateAchievementBonusesUseCase:
                     rules_version_id=rules_version_id,
                     config=config,
                 )
+                if title_only_policy == INTERCONTINENTAL_POLICY:
+                    details.update(
+                        policy_version=title_only_policy, title_only=True,
+                        performance_not_evaluated=True, performance_factor=1.0,
+                    )
 
                 try:
                     bonus = PlayerAchievementBonus(

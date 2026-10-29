@@ -33,6 +33,9 @@ class FixtureRawDTO:
     home_goals: int
     away_goals: int
     status: str = "FT"
+    home_penalty_goals: int | None = None
+    away_penalty_goals: int | None = None
+    result_provenance: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -233,6 +236,9 @@ class IngestionRepositoryPort(Protocol):
         home_goals: int | None = None,
         away_goals: int | None = None,
         score_source: str | None = None,
+        home_penalty_goals: int | None = None,
+        away_penalty_goals: int | None = None,
+        result_provenance: dict | None = None,
     ) -> int: ...
 
     async def upsert_standing_snapshot(

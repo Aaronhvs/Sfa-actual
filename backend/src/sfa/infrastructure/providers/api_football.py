@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 from datetime import date, datetime
 
@@ -422,7 +424,7 @@ class APIFootballProvider:
         data = await self._get(
             "fixtures",
             # FT = full time, AET = after extra time, PEN = after penalties
-            {"team": team_id, "league": league_id, "season": season, "status": "FT-AET-PEN"},
+            {"team": team_id, "league": league_id, "season": season, "status": "FT-AET-PEN-AWD-WO"},
         )
         result: list[FixtureRawDTO] = []
         for f in data.get("response", []):
@@ -440,6 +442,8 @@ class APIFootballProvider:
                         played_at=played_at,
                         home_goals=f["goals"]["home"] or 0,
                         away_goals=f["goals"]["away"] or 0,
+                        status=f["fixture"]["status"].get("short") or "NS",
+                        **self._result_fields(f),
                     )
                 )
             except (KeyError, TypeError, ValueError) as exc:
@@ -467,11 +471,36 @@ class APIFootballProvider:
                         home_goals=f["goals"].get("home") or 0,
                         away_goals=f["goals"].get("away") or 0,
                         status=f["fixture"]["status"].get("short") or "NS",
+                        **self._result_fields(f),
                     )
                 )
             except (KeyError, TypeError, ValueError) as exc:
                 logger.warning("[fetch_league_fixtures] Skipping malformed fixture: %s", exc)
         return result
+
+    @staticmethod
+    def _result_fields(fixture: dict) -> dict:
+        penalty = (fixture.get("score") or {}).get("penalty") or {}
+        goals = fixture.get("goals") or {}
+        home, away = penalty.get("home"), penalty.get("away")
+        complete = all(isinstance(value, int) and value >= 0 for value in (home, away))
+        if not complete:
+            return {}
+        verified = home != away and (fixture.get("fixture") or {}).get("status", {}).get("short") == "PEN"
+        for side, expected in (("home", home > away), ("away", away > home)):
+            flag = ((fixture.get("teams") or {}).get(side) or {}).get("winner")
+            if flag is not None and flag is not expected:
+                verified = False
+        return {
+            "home_penalty_goals": home,
+            "away_penalty_goals": away,
+            "result_provenance": {
+                "provider": "api-football", "verified": verified,
+                "source_hash": hashlib.sha256(json.dumps(fixture, sort_keys=True).encode()).hexdigest(),
+                "ordinary_score": [goals.get("home"), goals.get("away")],
+                "penalty_score": [home, away],
+            },
+        }
 
     async def fetch_fixture_scores(
         self,

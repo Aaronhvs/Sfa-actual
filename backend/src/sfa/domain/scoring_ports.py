@@ -415,6 +415,10 @@ class TeamStrengthRepositoryPort(Protocol):
 
 @runtime_checkable
 class CompetitionAchievementRepositoryPort(Protocol):
+    async def retire_achievement(self, achievement_id: int) -> None: ...
+
+    async def get_title_policy_version(self, competition_id: int) -> str | None: ...
+
     async def upsert_achievement(self, achievement: CompetitionAchievement) -> int: ...
 
     async def clear_achievement_bonuses(

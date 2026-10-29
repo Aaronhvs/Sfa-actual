@@ -14,6 +14,7 @@ from sfa.domain.infer_achievements_ports import (
 from sfa.domain.scoring.entities import CompetitionAchievement, ScoringRulesVersion
 from sfa.domain.scoring.value_objects import ScoringConfig
 from sfa.domain.scoring_ports import CompetitionAchievementRepositoryPort, ScoringRulesVersionRepositoryPort
+from sfa.domain.trophy_results import AuthoritativeFixtureResultDTO
 
 # ─── Fakes ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,18 @@ class FakeInferAchievementsRepository(InferAchievementsRepositoryPort):
     async def get_knockout_stage_fixtures(self, competition_id: int, season: str) -> list[KnockoutFixtureDTO]:
         return self._fixtures
 
+    async def get_authoritative_result(self, fixture_id: int):
+        fixture = next(f for f in self._fixtures if f.fixture_id == fixture_id)
+        scores, penalty = self._goals.get(fixture_id), self._shootout_goals.get(fixture_id)
+        if scores is None and penalty is None:
+            return None
+        return AuthoritativeFixtureResultDTO(
+            fixture_id, fixture.home_team_id, fixture.away_team_id, "PEN" if penalty else "FT",
+            (scores or {}).get(fixture.home_team_id, 0), (scores or {}).get(fixture.away_team_id, 0),
+            penalty.get(fixture.home_team_id, 0) if penalty else None,
+            penalty.get(fixture.away_team_id, 0) if penalty else None, verified=True,
+        )
+
     async def get_goals_for_fixture(self, fixture_id: int) -> dict[int, int]:
         return self._goals.get(fixture_id, {})
 
@@ -50,6 +63,11 @@ class FakeInferAchievementsRepository(InferAchievementsRepositoryPort):
 
 
 class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
+    async def retire_achievement(self, achievement_id: int) -> None:
+        self.existing = [a for a in self.existing if a.id != achievement_id]
+
+    async def get_title_policy_version(self, competition_id: int):
+        return None
     def __init__(
         self,
         existing: list[CompetitionAchievement] | None = None,
@@ -143,6 +161,46 @@ def _make_use_case(
     return uc, achievement_repo
 
 
+@pytest.mark.anyio
+async def test_league_relegation_playoff_never_awards_a_league_title():
+    fixtures = [KnockoutFixtureDTO(1, "final", 10, 20)]
+    uc, repo = _make_use_case(fixtures=fixtures, goals={1: {10: 4, 20: 1}}, competition_name="Ligue 1")
+    result = await uc.execute(9, "2025", 4)
+    assert result.skipped and repo.upserted == [] and repo.deleted == []
+
+
+@pytest.mark.anyio
+async def test_verified_shootout_does_not_require_any_shooter_events():
+    class ResultOnlyRepository(FakeInferAchievementsRepository):
+        async def get_authoritative_result(self, fixture_id):
+            return AuthoritativeFixtureResultDTO(fixture_id, 99, 57, "PEN", 2, 2, 4, 3, True)
+
+        async def get_goals_for_fixture(self, fixture_id):
+            raise AssertionError("Do not reconstruct final scores from events")
+
+        async def get_shootout_goals_for_fixture(self, fixture_id):
+            raise AssertionError("Do not count partial shooter events")
+
+    fixtures = [KnockoutFixtureDTO(37409, "final", 99, 57)]
+    repo = FakeCompetitionAchievementRepository()
+    uc = InferCompetitionAchievementsUseCase(
+        ResultOnlyRepository(fixtures=fixtures, competition_name="UEFA Super Cup"),
+        repo, FakeScoringRulesVersionRepository(),
+    )
+    await uc.execute(255, "2025", 4)
+    assert {(a.team_id, a.phase) for a in repo.upserted} == {(99, "winner"), (57, "runner_up")}
+
+
+@pytest.mark.anyio
+async def test_intercontinental_policy_survives_future_inference():
+    fixtures = [KnockoutFixtureDTO(1, "final", 99, 57)]
+    uc, repo = _make_use_case(fixtures=fixtures, goals={1: {99: 2, 57: 1}},
+                              competition_name="FIFA Intercontinental Cup")
+    await uc.execute(351, "2025", 4)
+    winner = next(a for a in repo.upserted if a.phase == "winner")
+    assert winner.bonus_points == 4000 and winner.weight == .5
+
+
 # ─── Tests ───────────────────────────────────────────────────────────────────
 
 
@@ -187,8 +245,8 @@ async def test_final_winner_skips_winner_runner_up_when_all_tied():
     uc, repo = _make_use_case(fixtures=fixtures, goals=goals, shootout_goals=shootout)
     result = await uc.execute(competition_id=10, season="2025", rules_version_id=3)
     assert result.skipped is False
-    assert {a.phase for a in repo.upserted} == {"semi_final"}
-    assert {a.team_id for a in repo.upserted} == {10, 20}
+    assert repo.upserted == []
+    assert repo.deleted == []
 
 
 @pytest.mark.anyio
@@ -259,8 +317,8 @@ async def test_indeterminate_final_does_not_preserve_non_finalist_achievements()
 
     await uc.execute(competition_id=10, season="2025", rules_version_id=3)
 
-    assert {achievement.phase for achievement in repo.upserted} == {"semi_final"}
-    assert {achievement.team_id for achievement in repo.upserted} == {42, 99}
+    assert repo.upserted == []
+    assert repo.deleted == []
 
 
 @pytest.mark.anyio

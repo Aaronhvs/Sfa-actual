@@ -13,6 +13,7 @@ from sfa.domain.scoring_ports import (
     PlayerCompetitionAchievementDTO,
 )
 from sfa.domain.season_scope import AwardPeriodScope
+from sfa.domain.trophy_results import INTERCONTINENTAL_NAME, INTERCONTINENTAL_POLICY
 from sfa.infrastructure.models.competition_achievements.models import (
     CompetitionAchievementModel,
     PlayerAchievementBonusModel,
@@ -30,6 +31,34 @@ _COMPLETED_FIXTURE_STATUSES = {"FT", "AET", "PEN", "AWD", "WO"}
 class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get_title_policy_version(self, competition_id: int) -> str | None:
+        name = await self._session.scalar(select(Competition.name).where(Competition.id == competition_id))
+        return INTERCONTINENTAL_POLICY if name == INTERCONTINENTAL_NAME else None
+
+    async def retire_achievement(self, achievement_id: int) -> None:
+        # Close dependants explicitly; never rely on a cascading deletion to
+        # leave season totals consistent.
+        old = await self._session.get(CompetitionAchievementModel, achievement_id)
+        if old is None:
+            return
+        await self._session.execute(delete(PlayerAchievementBonusModel).where(
+            PlayerAchievementBonusModel.achievement_id == achievement_id,
+        ))
+        await self._session.execute(delete(CompetitionAchievementModel).where(
+            CompetitionAchievementModel.id == achievement_id,
+        ))
+        remaining = select(func.coalesce(func.sum(PlayerAchievementBonusModel.final_bonus), 0)).where(
+            PlayerAchievementBonusModel.player_id == SFASeasonScore.player_id,
+            PlayerAchievementBonusModel.competition_id == SFASeasonScore.competition_id,
+            PlayerAchievementBonusModel.season == SFASeasonScore.season,
+            PlayerAchievementBonusModel.rules_version_id == SFASeasonScore.rules_version_id,
+        ).correlate(SFASeasonScore).scalar_subquery()
+        await self._session.execute(update(SFASeasonScore).where(
+            SFASeasonScore.competition_id == old.competition_id,
+            SFASeasonScore.season == old.season,
+        ).values(achievement_bonus_pts=remaining))
+        await self._session.flush()
 
     async def upsert_achievement(self, achievement: CompetitionAchievement) -> int:
         stmt = (
@@ -63,11 +92,11 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         rules_version_id: int,
     ) -> None:
         await self._session.execute(
-            delete(PlayerAchievementBonusModel).where(
+            update(PlayerAchievementBonusModel).where(
                 PlayerAchievementBonusModel.competition_id == competition_id,
                 PlayerAchievementBonusModel.season == season,
                 PlayerAchievementBonusModel.rules_version_id == rules_version_id,
-            )
+            ).values(final_bonus=0)
         )
         await self._session.execute(
             update(SFASeasonScore)
@@ -155,6 +184,18 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
     async def get_team_total_minutes(
         self, team_id: int, competition_id: int, season: str
     ) -> int:
+        if await self.get_title_policy_version(competition_id) == INTERCONTINENTAL_POLICY:
+            fixtures = select(Fixture.id, Fixture.result_provenance).join(
+                PlayerStats, PlayerStats.fixture_id == Fixture.id
+            ).where(
+                PlayerStats.team_id == team_id, Fixture.competition_id == competition_id,
+                Fixture.season == season,
+            ).distinct()
+            rows = (await self._session.execute(fixtures)).all()
+            durations = [(row.result_provenance or {}).get("duration_minutes") for row in rows]
+            if any(value not in {90, 120} for value in durations):
+                raise ValueError("Title-only participation requires a verified fixture duration")
+            return sum(durations)
         # Returns fixtures_played × 90 so participation_ratio represents fraction
         # of full-time availability, not fraction of total squad minutes.
         stmt = (
@@ -210,6 +251,26 @@ class CompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
         rules_version_id: int,
         bonus_pts: float,
     ) -> None:
+        if await self.get_title_policy_version(competition_id) == INTERCONTINENTAL_POLICY:
+            team_id = await self._session.scalar(select(PlayerAchievementBonusModel.team_id).where(
+                PlayerAchievementBonusModel.player_id == player_id,
+                PlayerAchievementBonusModel.competition_id == competition_id,
+                PlayerAchievementBonusModel.season == season,
+                PlayerAchievementBonusModel.rules_version_id == rules_version_id,
+            ).limit(1))
+            stmt = pg_insert(SFASeasonScore).values(
+                player_id=player_id, team_id=team_id, competition_id=competition_id, season=season,
+                rules_version_id=rules_version_id, total_pts=0, matches_played=0,
+                achievement_bonus_pts=bonus_pts, last_updated=datetime.now(timezone.utc),
+                breakdown={"title_only": True, "policy_version": INTERCONTINENTAL_POLICY},
+            ).on_conflict_do_update(
+                index_elements=["player_id", "competition_id", "season", "rules_version_id"],
+                index_where=SFASeasonScore.rules_version_id.is_not(None),
+                set_={"achievement_bonus_pts": bonus_pts},
+            )
+            await self._session.execute(stmt)
+            await self._session.flush()
+            return
         stmt = (
             update(SFASeasonScore)
             .where(

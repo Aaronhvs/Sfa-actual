@@ -50,6 +50,12 @@ class FakePlayerEventScoreRepositoryWithMap(FakePlayerEventScoreRepository):
 
 
 class FakeCompetitionAchievementRepository(CompetitionAchievementRepositoryPort):
+    async def get_title_policy_version(self, competition_id):
+        return None
+
+    async def retire_achievement(self, achievement_id):
+        self._achievements = [a for a in self._achievements if a.id != achievement_id]
+
     def __init__(
         self,
         achievements=None,
@@ -468,6 +474,33 @@ async def test_achievement_bonus_rebuild_clears_stale_totals_first():
         "season": "2024",
         "rules_version_id": 3,
     }]
+
+
+@pytest.mark.anyio
+async def test_title_only_policy_uses_actual_extra_time_minutes_without_invented_performance():
+    class TitleOnlyRepository(FakeCompetitionAchievementRepository):
+        async def get_title_policy_version(self, competition_id):
+            return "intercontinental-title-v1" if competition_id == 351 else None
+
+        async def get_player_rank_in_team(self, *args):
+            raise AssertionError("A missing performance rank is not rank 12")
+
+        async def get_player_avg_rating(self, *args):
+            raise AssertionError("Title-only must not score performance")
+
+    config = replace(ScoringConfig.default_v2(), enable_performance_based_achievement_bonus=True)
+    rv = replace(_make_v2_rv(), config=config)
+    achievement = replace(_make_achievement(bonus_points=4000, weight=.5), competition_id=351)
+    repo = TitleOnlyRepository(achievements=[achievement], team_minutes=120, player_minutes=42, player_ids=[99])
+    use_case = CalculateAchievementBonusesUseCase(repo, FakeScoringRulesVersionRepository(version=rv))
+    await use_case.execute(season="2024", competition_id=351, rules_version_id=3)
+    bonus = repo.upserted_bonuses[0]
+    assert bonus.final_bonus == 1545
+    assert bonus.participation_ratio == .35
+    assert bonus.calculation_details["title_only"] is True
+    assert bonus.calculation_details["performance_not_evaluated"] is True
+    assert bonus.calculation_details["performance_factor"] == 1
+    assert config.enable_performance_based_achievement_bonus is True
 
 
 @pytest.mark.anyio

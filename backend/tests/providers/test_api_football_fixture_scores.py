@@ -49,3 +49,27 @@ async def test_fetch_fixture_scores_rejects_more_than_twenty_ids() -> None:
 
     with pytest.raises(ValueError, match="at most 20"):
         await provider.fetch_fixture_scores(list(range(21)))
+
+
+@pytest.mark.anyio
+async def test_ingestion_keeps_penalty_status_and_complete_tally_without_player_events():
+    source = {
+        "fixture": {"id": 1377400, "date": "2025-08-13T19:00:00+00:00", "status": {"short": "PEN"}},
+        "league": {"round": "Final", "name": "UEFA Super Cup"},
+        "teams": {"home": {"id": 85, "name": "PSG", "winner": True},
+                  "away": {"id": 47, "name": "Tottenham", "winner": False}},
+        "goals": {"home": 2, "away": 2}, "score": {"penalty": {"home": 4, "away": 3}},
+    }
+    provider = FixtureScoreProvider({"response": [source]})
+    fixtures = await provider.fetch_team_fixtures(85, 531, 2025)
+    assert len(fixtures) == 1
+    result = fixtures[0]
+    assert result.status == "PEN" and (result.home_goals, result.away_goals) == (2, 2)
+    assert (result.home_penalty_goals, result.away_penalty_goals) == (4, 3)
+    assert result.result_provenance["verified"] is True
+    assert len(result.result_provenance["source_hash"]) == 64
+    assert provider.calls[0][0] == "fixtures"
+    source["teams"]["home"]["winner"] = False
+    assert provider._result_fields(source)["result_provenance"]["verified"] is False
+    source["score"]["penalty"]["home"] = None
+    assert provider._result_fields(source) == {}

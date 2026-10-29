@@ -17,6 +17,7 @@ from sfa.domain.scoring_ports import (
     CompetitionAchievementRepositoryPort,
     ScoringRulesVersionRepositoryPort,
 )
+from sfa.domain.trophy_results import FINAL_STATUSES, title_policy
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,12 @@ class InferCompetitionAchievementsUseCase:
 
         competition_name = await self._infer_repo.get_competition_name(competition_id)
         category = get_competition_category(competition_name)
-        if category is None:
+        if category == "domestic_league":
+            return InferAchievementsResult(
+                competition_id=competition_id, season=season,
+                skipped=True, achievements_upserted=0, phases_found=[],
+            )
+        if category is None and title_policy(competition_name, "winner") is None:
             logger.warning(
                 "[InferCompetitionAchievementsUseCase] competition '%s' not in "
                 "COMPETITION_CATEGORY_MAP, bonus_points will be 0",
@@ -162,6 +168,8 @@ class InferCompetitionAchievementsUseCase:
                 for fixture in final_fixtures
                 for team_id in (fixture.home_team_id, fixture.away_team_id)
             }
+            # An unresolved final is pending, never proof of a semi-final exit.
+            terminal_phase_team_ids.update(final_team_ids)
             winner_id, runner_up_id = await self._resolve_final_winner(final_fixtures)
             if winner_id is not None and runner_up_id is not None:
                 phase_teams["winner"] = {winner_id}
@@ -220,6 +228,7 @@ class InferCompetitionAchievementsUseCase:
 
         if "third_place" in teams_at_stage:
             for fx in [fx for fx in fixtures if fx.stage == "third_place"]:
+                terminal_phase_team_ids.update({fx.home_team_id, fx.away_team_id})
                 winner_id, fourth_place_id = await self._resolve_fixture_winner(fx)
                 if winner_id is not None and fourth_place_id is not None:
                     phase_teams.setdefault("third_place", set()).add(winner_id)
@@ -233,9 +242,17 @@ class InferCompetitionAchievementsUseCase:
             if phase is not None:
                 phase_teams.setdefault(phase, set()).add(team_id)
 
-        await self._achievement_repo.delete_achievements_for_competition_season(
-            competition_id, season
-        )
+        # Reconcile only teams with a newly determined phase. Pending results and
+        # identical natural keys retain their facts, IDs and dependent bonuses.
+        proposed = {(team_id, phase) for phase, teams in phase_teams.items() for team_id in teams}
+        resolved_teams = {team_id for team_id, _ in proposed}
+        for old in await self._achievement_repo.get_achievements_for_season(competition_id, season):
+            terminal_replaced = old.phase in {"winner", "runner_up"} and {
+                "winner", "runner_up"
+            }.issubset(phase_teams)
+            if ((old.team_id in resolved_teams or terminal_replaced)
+                    and (old.team_id, old.phase) not in proposed):
+                await self._achievement_repo.retire_achievement(old.id)
 
         achievements_upserted = 0
         phases_found: list[str] = []
@@ -249,6 +266,9 @@ class InferCompetitionAchievementsUseCase:
                     category_bonuses = config.achievement_phase_bonuses.get(category, {})
                     bonus_points = category_bonuses.get(phase, 0)
                     weight = config.competition_bonus_weights.get(competition_name, 1.0)
+                policy = title_policy(competition_name, phase)
+                if policy is not None:
+                    bonus_points, weight, _ = policy
 
                 try:
                     achievement = CompetitionAchievement(
@@ -291,87 +311,50 @@ class InferCompetitionAchievementsUseCase:
         self,
         fixture: KnockoutFixtureDTO,
     ) -> tuple[int | None, int | None]:
-        team_a = fixture.home_team_id
-        team_b = fixture.away_team_id
-        scores: dict[int, int] = {team_a: 0, team_b: 0}
-
-        goals = await self._infer_repo.get_goals_for_fixture(fixture.fixture_id)
-        for team_id, count in goals.items():
-            if team_id in scores:
-                scores[team_id] = scores[team_id] + count
-
-        if scores[team_a] != scores[team_b]:
-            winner = team_a if scores[team_a] > scores[team_b] else team_b
-            loser = team_b if winner == team_a else team_a
-            return winner, loser
-
-        shootout: dict[int, int] = {team_a: 0, team_b: 0}
-        shootout_goals = await self._infer_repo.get_shootout_goals_for_fixture(
-            fixture.fixture_id
-        )
-        for team_id, count in shootout_goals.items():
-            if team_id in shootout:
-                shootout[team_id] = shootout[team_id] + count
-
-        if shootout[team_a] != shootout[team_b]:
-            winner = team_a if shootout[team_a] > shootout[team_b] else team_b
-            loser = team_b if winner == team_a else team_a
-            return winner, loser
-
-        return None, None
+        result = await self._infer_repo.get_authoritative_result(fixture.fixture_id)
+        if result is None or (result.home_team_id, result.away_team_id) != (
+            fixture.home_team_id, fixture.away_team_id
+        ):
+            return None, None
+        return result.winner()
 
     async def _resolve_final_winner(
         self, final_fixtures: list[KnockoutFixtureDTO]
     ) -> tuple[int | None, int | None]:
-        home_ids: set[int] = set()
-        away_ids: set[int] = set()
-        for fx in final_fixtures:
-            home_ids.add(fx.home_team_id)
-            away_ids.add(fx.away_team_id)
-
-        all_teams = home_ids | away_ids
-        if len(all_teams) != 2:
-            logger.warning(
-                "[InferCompetitionAchievementsUseCase] final has unexpected teams %s, skipping",
-                all_teams,
-            )
+        if len(final_fixtures) not in {1, 2}:
             return None, None
-
-        team_a, team_b = sorted(all_teams)
-        scores: dict[int, int] = {team_a: 0, team_b: 0}
-
-        for fx in final_fixtures:
-            goals = await self._infer_repo.get_goals_for_fixture(fx.fixture_id)
-            for team_id, count in goals.items():
-                if team_id in scores:
-                    scores[team_id] = scores[team_id] + count
-
-        if scores[team_a] != scores[team_b]:
-            winner = team_a if scores[team_a] > scores[team_b] else team_b
-            runner_up = team_b if winner == team_a else team_a
-            return winner, runner_up
-
-        # Tiebreaker: shootout goals
-        shootout: dict[int, int] = {team_a: 0, team_b: 0}
-        for fx in final_fixtures:
-            sg = await self._infer_repo.get_shootout_goals_for_fixture(fx.fixture_id)
-            for team_id, count in sg.items():
-                if team_id in shootout:
-                    shootout[team_id] = shootout[team_id] + count
-
-        if shootout[team_a] != shootout[team_b]:
-            winner = team_a if shootout[team_a] > shootout[team_b] else team_b
-            runner_up = team_b if winner == team_a else team_a
-            return winner, runner_up
-
-        # No goal data available — cannot determine winner, skip to preserve manual entries
-        logger.warning(
-            "[InferCompetitionAchievementsUseCase] Cannot determine final winner "
-            "from goals or shootout (all 0). Skipping winner/runner_up — "
-            "manual achievements preserved. teams=%s",
-            all_teams,
-        )
-        return None, None
+        if len(final_fixtures) == 1:
+            return await self._resolve_fixture_winner(final_fixtures[0])
+        first, last = final_fixtures
+        if (first.home_team_id, first.away_team_id) != (last.away_team_id, last.home_team_id):
+            return None, None
+        results = []
+        for fixture in final_fixtures:
+            result = await self._infer_repo.get_authoritative_result(fixture.fixture_id)
+            if (result is None or not result.verified or result.status not in FINAL_STATUSES
+                    or result.home_goals is None or result.away_goals is None
+                    or min(result.home_goals, result.away_goals) < 0
+                    or (result.home_team_id, result.away_team_id) != (
+                        fixture.home_team_id, fixture.away_team_id)):
+                return None, None
+            results.append(result)
+        if results[0].status == "PEN":
+            return None, None
+        a, b = first.home_team_id, first.away_team_id
+        a_goals = results[0].home_goals + results[1].away_goals
+        b_goals = results[0].away_goals + results[1].home_goals
+        if a_goals != b_goals:
+            if results[1].status == "PEN":
+                return None, None
+            return (a, b) if a_goals > b_goals else (b, a)
+        # Only the return leg's verified shootout breaks an aggregate tie.
+        last_result = results[1]
+        if last_result.status != "PEN":
+            return None, None
+        h, v = last_result.home_penalty_goals, last_result.away_penalty_goals
+        if h is None or v is None or min(h, v) < 0 or h == v:
+            return None, None
+        return (last.home_team_id, last.away_team_id) if h > v else (last.away_team_id, last.home_team_id)
 
 
 class InferAllCompetitionAchievementsUseCase:

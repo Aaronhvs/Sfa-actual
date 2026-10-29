@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sfa.domain.individual_honors import (
@@ -104,29 +107,21 @@ class IndividualHonorRepository(IndividualHonorRepositoryPort):
             delete(IndividualHonorModel).where(
                 IndividualHonorModel.scope_key == scope_key,
                 IndividualHonorModel.rules_version_id == rules_version_id,
+                ~or_(*[
+                    and_(IndividualHonorModel.context_key == honor.context_key,
+                         IndividualHonorModel.honor_type == honor.honor_type.value)
+                    for honor in honors
+                ]) if honors else True,
             )
         )
-        self._session.add_all([
-            IndividualHonorModel(
-                player_id=honor.player_id,
-                scope_key=honor.scope_key,
-                scope_label=honor.scope_label,
-                context_key=honor.context_key,
-                context_label=honor.context_label,
-                scope_category=honor.scope_category.value,
-                honor_type=honor.honor_type.value,
-                source_season=honor.source_season,
-                competition_id=honor.competition_id,
-                rules_version_id=honor.rules_version_id,
-                metric_value=honor.metric_value,
-                metric_total=honor.metric_total,
-                metric_rate=honor.metric_rate,
-                raw_bonus_pts=honor.raw_bonus_pts,
-                awarded_bonus_pts=honor.awarded_bonus_pts,
-                calculation_details=honor.calculation_details,
-            )
-            for honor in honors
-        ])
+        for honor in honors:
+            values = asdict(honor)
+            values.pop("id")
+            values.update(scope_category=honor.scope_category.value, honor_type=honor.honor_type.value)
+            await self._session.execute(pg_insert(IndividualHonorModel).values(**values).on_conflict_do_update(
+                index_elements=["scope_key", "context_key", "honor_type", "rules_version_id"],
+                set_=values,
+            ))
         await self._session.flush()
 
     async def get_player_honors(

@@ -95,7 +95,7 @@ async def test_replace_achievement_for_phase_deletes_stale_team_before_upsert():
 
 
 @pytest.mark.anyio
-async def test_clear_achievement_bonuses_deletes_details_and_resets_score_totals():
+async def test_clear_achievement_bonuses_preserves_ids_and_resets_score_totals():
     session = FakeSession([FakeResult(), FakeResult()])
 
     await CompetitionAchievementRepository(session).clear_achievement_bonuses(
@@ -105,7 +105,8 @@ async def test_clear_achievement_bonuses_deletes_details_and_resets_score_totals
     )
 
     assert len(session.statements) == 2
-    assert "DELETE FROM player_achievement_bonuses" in str(session.statements[0])
+    assert "UPDATE player_achievement_bonuses" in str(session.statements[0])
+    assert "final_bonus" in str(session.statements[0])
     update_statement = str(session.statements[1])
     assert "UPDATE sfa_season_scores" in update_statement
     assert "achievement_bonus_pts" in update_statement

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from sfa.domain.trophy_results import AuthoritativeFixtureResultDTO
+
 
 @dataclass(frozen=True)
 class KnockoutFixtureDTO:
@@ -31,6 +33,8 @@ class InferAllAchievementsResult:
 
 @runtime_checkable
 class InferAchievementsRepositoryPort(Protocol):
+    async def get_authoritative_result(self, fixture_id: int) -> AuthoritativeFixtureResultDTO | None: ...
+
     async def get_knockout_stage_fixtures(
         self, competition_id: int, season: str
     ) -> list[KnockoutFixtureDTO]: ...
