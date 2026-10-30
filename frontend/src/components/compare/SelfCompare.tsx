@@ -118,8 +118,27 @@ function PaceChart({ now, before, labelNow, labelBefore }: { now: PlayerFixture[
   const path = (values: number[]) => values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
   const area = (values: number[]) => (values.length ? `${path(values)} L${x(values.length - 1).toFixed(1)},${y(0)} L${x(0)},${y(0)} Z` : '')
   const ticks = [0.5, 1].map((t) => max * t)
+
+  // Pace headline: compare both seasons at the same point (last match both have).
+  const m = Math.min(a.length, b.length)
+  const at = m > 0 ? { a: a[m - 1], b: b[m - 1] } : null
+  const ahead = at != null && at.a >= at.b
+  const pctDiff = at && at.b > 0 ? Math.round((Math.abs(at.a - at.b) / at.b) * 100) : null
+  let since = 0
+  for (let i = 0; i < m; i += 1) if ((a[i] > b[i]) !== ahead || a[i] === b[i]) since = i + 1
+  const sinceText = since >= m ? null : since === 0 ? 'desde el primer partido' : `desde el partido ${since + 1}`
+
   return (
     <figure className="sc-chart" ref={ref}>
+      {at && at.a !== at.b && (
+        <header className="sc-chart__head">
+          <b className={ahead ? 'is-a' : 'is-b'}>{pctDiff != null ? `${pctDiff} %` : fmt.int(Math.abs(at.a - at.b))}</b>
+          <div>
+            <strong>{ahead ? 'Mejor' : 'Peor'} que en {labelBefore} a esta altura</strong>
+            <small>{fmt.int(Math.abs(at.a - at.b))} pts de diferencia tras {m} partidos{sinceText && ` · ${ahead ? 'por delante' : 'por detrás'} ${sinceText}`}</small>
+          </div>
+        </header>
+      )}
       <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={`Puntos SFA acumulados: ${labelNow} ${fmt.int(last(a) ?? 0)}, ${labelBefore} ${fmt.int(last(b) ?? 0)}`}>
         {ticks.map((t) => (
           <g key={t}>
@@ -133,6 +152,8 @@ function PaceChart({ now, before, labelNow, labelBefore }: { now: PlayerFixture[
         <path className="sc-chart__line is-a" d={path(a)} />
         {b.length > 0 && <circle className="sc-chart__dot is-b" cx={x(b.length - 1)} cy={y(last(b) ?? 0)} r="4" />}
         {a.length > 0 && <circle className="sc-chart__dot is-a" cx={x(a.length - 1)} cy={y(last(a) ?? 0)} r="5" />}
+        {b.length > 0 && <text className="sc-chart__end is-b" x={x(b.length - 1) - 10} y={y(last(b) ?? 0) + ((last(b) ?? 0) > (last(a) ?? 0) ? -10 : 18)} textAnchor="end">{fmt.int(last(b) ?? 0)}</text>}
+        {a.length > 0 && <text className="sc-chart__end is-a" x={x(a.length - 1) - 10} y={y(last(a) ?? 0) + ((last(a) ?? 0) >= (last(b) ?? 0) ? -10 : 18)} textAnchor="end">{fmt.int(last(a) ?? 0)}</text>}
         {Array.from({ length: n }, (_, i) => (
           <text key={i} className="sc-chart__tick" x={x(i)} y={H - 8} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}>
             {n <= 12 || i % 2 === 0 || i === n - 1 ? i + 1 : ''}
@@ -145,6 +166,67 @@ function PaceChart({ now, before, labelNow, labelBefore }: { now: PlayerFixture[
         <small>Puntos SFA acumulados, partido a partido</small>
       </figcaption>
     </figure>
+  )
+}
+
+/* ── Standout matches: the same "moments" vocabulary as the profile and duel compare ── */
+
+const ELITE_MATCH_PTS = 2500
+
+function longestStreak(list: PlayerFixture[]) {
+  let best = 0
+  let run = 0
+  for (const f of list) {
+    run = goalsOf(f) + assistsOf(f) > 0 ? run + 1 : 0
+    best = Math.max(best, run)
+  }
+  return best
+}
+
+function moments(list: PlayerFixture[]) {
+  return {
+    hatTricks: list.filter((f) => goalsOf(f) >= 3).length,
+    braces: list.filter((f) => goalsOf(f) === 2).length,
+    goalAndAssist: list.filter((f) => goalsOf(f) > 0 && assistsOf(f) > 0).length,
+    elite: list.filter((f) => f.sfa_pts >= ELITE_MATCH_PTS).length,
+    streak: longestStreak(list),
+    blank: list.filter((f) => goalsOf(f) + assistsOf(f) === 0).length,
+  }
+}
+
+function Moments({ now, before, labelNow, labelBefore }: { now: PlayerFixture[]; before: PlayerFixture[]; labelNow: string; labelBefore: string }) {
+  const a = moments(now)
+  const b = moments(before)
+  const rows: Array<{ label: string; hint: string; a: number; b: number; lowerIsBetter?: boolean }> = [
+    { label: 'Hat-tricks', hint: '3 goles o más', a: a.hatTricks, b: b.hatTricks },
+    { label: 'Dobletes', hint: '2 goles', a: a.braces, b: b.braces },
+    { label: 'Gol y asistencia', hint: 'en el mismo partido', a: a.goalAndAssist, b: b.goalAndAssist },
+    { label: 'Partidazos', hint: `${fmt.int(ELITE_MATCH_PTS)} pts SFA o más`, a: a.elite, b: b.elite },
+    { label: 'Mejor racha', hint: 'partidos seguidos con gol o asistencia', a: a.streak, b: b.streak },
+    { label: 'En blanco', hint: 'sin gol ni asistencia', a: a.blank, b: b.blank, lowerIsBetter: true },
+  ]
+  const visible = rows.filter((row) => row.a > 0 || row.b > 0)
+  if (visible.length === 0) return null
+  return (
+    <section className="pf-panel cv-panel sc-moments">
+      <header className="pf-panel__head"><div><h2>Partidos especiales</h2><p>{labelNow} contra {labelBefore}, en los mismos partidos</p></div></header>
+      <ul>
+        {visible.map((row) => {
+          const win = row.a === row.b ? null : (row.lowerIsBetter ? row.a < row.b : row.a > row.b) ? 'a' : 'b'
+          return (
+            <li key={row.label} className={win ? `is-win-${win}` : 'is-tie'}>
+              <div className="sc-moments__score">
+                <b className="is-a">{row.a}</b>
+                <span aria-hidden="true">vs</span>
+                <b className="is-b">{row.b}</b>
+              </div>
+              <strong>{row.label}</strong>
+              <small>{row.hint}</small>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
@@ -333,6 +415,7 @@ export default function SelfCompare({ seasons, value, onChange }: { seasons: Sea
 
           <ChapterHead index={1} title="El ritmo" text="Cómo se fueron sumando los puntos SFA en cada temporada, con el mismo número de partidos." />
           <PaceChart now={sliceNow} before={sliceBefore} labelNow={labelNow} labelBefore={labelBefore} />
+          <Moments now={sliceNow} before={sliceBefore} labelNow={labelNow} labelBefore={labelBefore} />
           <Ledger now={sliceNow} before={sliceBefore} labelNow={labelNow} labelBefore={labelBefore} />
 
           <ChapterHead index={2} title="Los números brutos" text="Lo que hizo en esos partidos, sin contexto." />
