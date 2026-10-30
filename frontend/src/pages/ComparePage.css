@@ -889,33 +889,6 @@ a.cv-act:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .sc-pick__vs { padding-bottom: 16px; font: 800 0.8rem/1 var(--font-display); text-transform: uppercase; color: var(--text-faint); }
 .sc-pick .cmp-picker__search-row { min-height: 46px; border: 1px solid var(--tp-line); border-radius: 11px; background: var(--tp-panel-2); }
 
-.sc-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px 28px;
-  padding: 24px;
-  border: 1px solid var(--tp-line);
-  border-radius: 18px;
-  background:
-    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--cv-a) 12%, transparent), transparent 60%),
-    var(--tp-panel);
-}
-.sc-hero__who { display: flex; align-items: center; gap: 16px; min-width: 0; }
-.sc-hero__who img { width: 68px; height: 68px; flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px var(--cv-a); }
-.sc-hero__who h2 { margin: 6px 0 0; font: 800 clamp(1.6rem, 3.4vw, 2.4rem)/0.95 var(--font-display); text-transform: uppercase; }
-.sc-hero__score { display: flex; gap: 28px; }
-.sc-hero__score > div { display: grid; gap: 4px; justify-items: end; }
-.sc-hero__score small { font: 700 0.66rem/1 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
-.sc-hero__score b { font: 800 clamp(2rem, 4.4vw, 3rem)/0.9 var(--font-display); font-variant-numeric: tabular-nums; }
-.sc-hero__score .is-a b { color: var(--cv-a); }
-.sc-hero__score .is-b b { color: var(--cv-b); }
-.sc-hero__score span { font: 500 0.78rem/1 var(--font-body); color: var(--text-dim); }
-.sc-hero__verdict { grid-column: 1 / -1; margin: 0; padding-top: 16px; border-top: 1px solid var(--tp-line); font: 500 1rem/1.45 var(--font-body); color: var(--text-dim); }
-.sc-hero__verdict strong { font-weight: 800; }
-.sc-hero__verdict .is-a { color: var(--cv-a); }
-.sc-hero__verdict .is-b { color: var(--cv-b); }
-
 .sc-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
 .sc-steps { display: flex; align-items: center; gap: 12px; }
 .sc-steps .sc-pick__label { margin: 0; }
@@ -964,7 +937,6 @@ a.cv-act:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
   background: var(--tp-panel-2);
 }
 .sc-ledger__cell.is-empty { display: flex; justify-content: center; font: 500 0.78rem/1 var(--font-body); color: var(--text-faint); }
-.sc-ledger__crest img { width: 24px; height: 24px; object-fit: contain; }
 .sc-ledger__rival { display: grid; gap: 3px; min-width: 0; }
 .sc-ledger__rival strong, .sc-ledger__rival small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-ledger__rival strong { font: 700 0.84rem/1.1 var(--font-body); }
@@ -978,18 +950,13 @@ a.cv-act:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 @media (max-width: 820px) {
   .sc-pick { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
   .sc-pick__player { grid-column: 1 / -1; }
-  .sc-hero { grid-template-columns: minmax(0, 1fr); padding: 18px; }
-  .sc-hero__score { justify-content: space-between; }
-  .sc-hero__score > div { justify-items: start; }
 }
 
 @media (max-width: 640px) {
-  .sc-hero__who img { width: 54px; height: 54px; }
   .sc-chart { padding: 14px 12px 12px; }
   .sc-chart figcaption small { width: 100%; margin-left: 0; }
   .sc-ledger__names, .sc-ledger li { grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr); gap: 5px; }
   .sc-ledger__cell { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 7px 8px; }
-  .sc-ledger__crest { display: none; }
   .sc-ledger__rival strong { font-size: 0.76rem; }
   .sc-ledger__cell b { font-size: 0.86rem; }
 }
@@ -1014,19 +981,58 @@ a.cv-act:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .sc-chart__end.is-a { fill: var(--cv-a); }
 .sc-chart__end.is-b { fill: var(--cv-b); }
 
-.sc-moments ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
-.sc-moments li { display: grid; align-content: start; gap: 4px; padding: 14px; border: 1px solid transparent; border-radius: 12px; background: var(--tp-panel-2); }
-.sc-moments li.is-win-a { border-color: color-mix(in srgb, var(--cv-a) 40%, transparent); }
-.sc-moments li.is-win-b { border-color: color-mix(in srgb, var(--cv-b) 40%, transparent); }
-.sc-moments__score { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-.sc-moments__score b { font: 800 1.9rem/0.9 var(--font-display); font-variant-numeric: tabular-nums; color: var(--text-faint); }
-.sc-moments li.is-win-a .sc-moments__score b.is-a { color: var(--cv-a); }
-.sc-moments li.is-win-b .sc-moments__score b.is-b { color: var(--cv-b); }
-.sc-moments li.is-tie .sc-moments__score b { color: var(--text-dim); }
-.sc-moments__score span { font: 700 0.66rem/1 var(--font-body); text-transform: uppercase; color: var(--text-faint); }
-.sc-moments strong { font: 700 0.86rem/1.2 var(--font-body); }
-.sc-moments small { font: 500 0.72rem/1.3 var(--font-body); color: var(--text-faint); }
+
+/* Self mode v3: duel hero per season, moment cards, readable ledger */
+.sc-duel .cv-duel__card.is-b .cv-duel__photo { filter: grayscale(0.55) brightness(0.9); }
+
+.sc-moments { display: grid; gap: 12px; }
+.sc-moments__legend { display: flex; gap: 18px; font: 700 0.7rem/1 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; }
+.sc-moments__legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sc-moments__legend span::before { width: 8px; height: 8px; border-radius: 50%; content: ''; }
+.sc-moments__legend .is-a { color: var(--cv-a); }
+.sc-moments__legend .is-a::before { background: var(--cv-a); }
+.sc-moments__legend .is-b { color: var(--cv-b); }
+.sc-moments__legend .is-b::before { background: var(--cv-b); }
+.sc-moments__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+
+.sc-mo { min-height: 0; }
+.sc-mo.is-win-a { --mo-tint: 212, 175, 85; }
+.sc-mo.is-win-b { --mo-tint: 143, 163, 184; }
+.sc-mo.is-tie { --mo-tint: 120, 120, 120; }
+.sc-mo__value { display: flex; align-items: baseline; gap: 12px; margin: 4px 0 2px; }
+.sc-mo__value b { font: 800 5.2rem/0.8 var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.sc-mo__value b.is-a { color: var(--text); }
+.sc-mo__value b.is-b { font-size: 2.6rem; color: var(--cv-b); }
+.sc-mo.is-win-a .sc-mo__value b.is-a { color: var(--cv-a); }
+.sc-mo.is-win-b .sc-mo__value b.is-a { color: var(--text-dim); }
+.sc-mo__value > span { font: 700 0.72rem/1 var(--font-body); text-transform: uppercase; color: var(--text-faint); }
+.sc-mo .pf-mo__rival { display: flex; align-items: center; gap: 7px; min-width: 0; }
+
+.sc-crest { display: inline-grid; flex: none; width: 22px; height: 22px; place-items: center; }
+.sc-crest img { width: 22px; height: 22px; object-fit: contain; }
+
+.sc-ledger__cell { grid-template-columns: 22px minmax(0, 1fr) auto; }
+.sc-ledger__rival strong { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sc-ledger__rival strong .pf-venue { flex: none; }
+.sc-ledger__rival small { display: flex; align-items: center; gap: 6px; }
+.sc-ledger__rival small .pf-venue { flex: none; transform: scale(0.85); transform-origin: left center; }
+.sc-ledger__ga { flex: none; font-weight: 700; color: var(--text-dim); }
+
 @media (max-width: 640px) {
-  .sc-moments ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sc-moments li { padding: 12px; }
+  .sc-moments__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sc-mo { gap: 8px; padding: 14px 12px; }
+  .sc-mo__value { gap: 7px; }
+  .sc-mo__value b { font-size: 3.4rem; }
+  .sc-mo__value b.is-b { font-size: 1.8rem; }
+  .sc-mo .pf-mo__foot { flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 10px; }
+  .sc-mo .pf-mo__where { font-size: 0.76rem; }
+  .sc-mo .pf-mo__where small { display: none; }
+  .sc-mo .pf-mo__pts { font-size: 1.3rem; }
+
+  .sc-ledger__cell { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 6px; padding: 7px 8px; }
+  .sc-crest img { width: 20px; height: 20px; }
+  .sc-ledger__comp { display: none; }
+  .sc-ledger__rival strong { gap: 4px; font-size: 0.76rem; }
+  .sc-ledger__n { font-size: 0.78rem; }
+  .sc-ledger__names, .sc-ledger li { grid-template-columns: 16px minmax(0, 1fr) minmax(0, 1fr); gap: 4px; }
 }

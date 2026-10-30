@@ -3,6 +3,7 @@ import { fetchPlayer, fetchPlayerFixtures } from '../../api/client'
 import type { PlayerFixture, RankedPlayer, SeasonItem } from '../../types'
 import { getSeasonLabel, seasonItemValue } from '../../utils/season'
 import PlayerPicker from './PlayerPicker'
+import PlayerPortrait from '../shared/PlayerPortrait'
 import SeasonDropdown from '../shared/SeasonDropdown'
 import { ChapterHead, DetailPanel, fmt, type Metric } from './CompareView'
 
@@ -135,7 +136,7 @@ function PaceChart({ now, before, labelNow, labelBefore }: { now: PlayerFixture[
           <b className={ahead ? 'is-a' : 'is-b'}>{pctDiff != null ? `${pctDiff} %` : fmt.int(Math.abs(at.a - at.b))}</b>
           <div>
             <strong>{ahead ? 'Mejor' : 'Peor'} que en {labelBefore} a esta altura</strong>
-            <small>{fmt.int(Math.abs(at.a - at.b))} pts de diferencia tras {m} partidos{sinceText && ` · ${ahead ? 'por delante' : 'por detrás'} ${sinceText}`}</small>
+            {sinceText && <small>{ahead ? 'Por delante' : 'Por detrás'} {sinceText}</small>}
           </div>
         </header>
       )}
@@ -169,9 +170,18 @@ function PaceChart({ now, before, labelNow, labelBefore }: { now: PlayerFixture[
   )
 }
 
-/* ── Standout matches: the same "moments" vocabulary as the profile and duel compare ── */
+/* ── Standout matches: the profile's "most valuable goal" card, as season vs season ── */
 
 const ELITE_MATCH_PTS = 2500
+const shortDate = (iso: string) => new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(new Date(iso)).replace('.', '')
+
+function Venue({ home }: { home: boolean }) {
+  return <i className={`pf-venue ${home ? 'is-home' : 'is-away'}`} title={home ? 'Local' : 'Visitante'}>{home ? 'L' : 'V'}</i>
+}
+
+function Crest({ src }: { src: string | null }) {
+  return <span className="sc-crest">{src && <img src={src} alt="" width={22} height={22} loading="lazy" decoding="async" />}</span>
+}
 
 function longestStreak(list: PlayerFixture[]) {
   let best = 0
@@ -183,49 +193,106 @@ function longestStreak(list: PlayerFixture[]) {
   return best
 }
 
-function moments(list: PlayerFixture[]) {
-  return {
-    hatTricks: list.filter((f) => goalsOf(f) >= 3).length,
-    braces: list.filter((f) => goalsOf(f) === 2).length,
-    goalAndAssist: list.filter((f) => goalsOf(f) > 0 && assistsOf(f) > 0).length,
-    elite: list.filter((f) => f.sfa_pts >= ELITE_MATCH_PTS).length,
-    streak: longestStreak(list),
-    blank: list.filter((f) => goalsOf(f) + assistsOf(f) === 0).length,
-  }
+type MomentRow = { label: string; a: number; b: number; lowerIsBetter?: boolean; matches?: [PlayerFixture[], PlayerFixture[]] }
+
+function momentRows(now: PlayerFixture[], before: PlayerFixture[]): MomentRow[] {
+  const pick = (test: (f: PlayerFixture) => boolean): [PlayerFixture[], PlayerFixture[]] => [now.filter(test), before.filter(test)]
+  const hat = pick((f) => goalsOf(f) >= 3)
+  const brace = pick((f) => goalsOf(f) === 2)
+  const both = pick((f) => goalsOf(f) > 0 && assistsOf(f) > 0)
+  const elite = pick((f) => f.sfa_pts >= ELITE_MATCH_PTS)
+  return [
+    { label: 'Hat-tricks', a: hat[0].length, b: hat[1].length, matches: hat },
+    { label: 'Dobletes', a: brace[0].length, b: brace[1].length, matches: brace },
+    { label: 'Gol + asistencia', a: both[0].length, b: both[1].length, matches: both },
+    { label: `Partidos de +${fmt.int(ELITE_MATCH_PTS)} pts`, a: elite[0].length, b: elite[1].length, matches: elite },
+    { label: 'Racha con gol o asistencia', a: longestStreak(now), b: longestStreak(before) },
+    { label: 'Partidos en blanco', a: now.filter((f) => goalsOf(f) + assistsOf(f) === 0).length, b: before.filter((f) => goalsOf(f) + assistsOf(f) === 0).length, lowerIsBetter: true },
+  ]
+}
+
+function MomentCard({ row, labelNow, labelBefore }: { row: MomentRow; labelNow: string; labelBefore: string }) {
+  const win = row.a === row.b ? null : (row.lowerIsBetter ? row.a < row.b : row.a > row.b) ? 'a' : 'b'
+  // Footer: the best such match of the season that wins the card.
+  const pool = row.matches ? (win === 'b' ? row.matches[1] : row.matches[0].length ? row.matches[0] : row.matches[1]) : []
+  const best = [...pool].sort((x, y) => y.sfa_pts - x.sfa_pts)[0]
+  const rival = best ? rivalOf(best) : null
+  return (
+    <article className={`pf-mo sc-mo${win ? ` is-win-${win}` : ' is-tie'}`}>
+      <span className="pf-mo__kind">{row.label}</span>
+      <span className="sc-mo__value">
+        <b className="is-a" title={labelNow}>{row.a}</b>
+        <span>vs</span>
+        <b className="is-b" title={labelBefore}>{row.b}</b>
+      </span>
+      {best && rival && (
+        <span className="pf-mo__foot">
+          <span className="pf-mo__where">
+            <span className="pf-mo__rival"><Crest src={rival.logo} /><Venue home={rival.home} />{rival.name}</span>
+            <small>{best.competition} · {shortDate(best.played_at)}</small>
+          </span>
+          <b className="pf-mo__pts">+{fmt.int(best.sfa_pts)}<em>pts</em></b>
+        </span>
+      )}
+    </article>
+  )
 }
 
 function Moments({ now, before, labelNow, labelBefore }: { now: PlayerFixture[]; before: PlayerFixture[]; labelNow: string; labelBefore: string }) {
-  const a = moments(now)
-  const b = moments(before)
-  const rows: Array<{ label: string; hint: string; a: number; b: number; lowerIsBetter?: boolean }> = [
-    { label: 'Hat-tricks', hint: '3 goles o más', a: a.hatTricks, b: b.hatTricks },
-    { label: 'Dobletes', hint: '2 goles', a: a.braces, b: b.braces },
-    { label: 'Gol y asistencia', hint: 'en el mismo partido', a: a.goalAndAssist, b: b.goalAndAssist },
-    { label: 'Partidazos', hint: `${fmt.int(ELITE_MATCH_PTS)} pts SFA o más`, a: a.elite, b: b.elite },
-    { label: 'Mejor racha', hint: 'partidos seguidos con gol o asistencia', a: a.streak, b: b.streak },
-    { label: 'En blanco', hint: 'sin gol ni asistencia', a: a.blank, b: b.blank, lowerIsBetter: true },
-  ]
-  const visible = rows.filter((row) => row.a > 0 || row.b > 0)
-  if (visible.length === 0) return null
+  const rows = momentRows(now, before).filter((row) => row.a > 0 || row.b > 0)
+  if (rows.length === 0) return null
   return (
-    <section className="pf-panel cv-panel sc-moments">
-      <header className="pf-panel__head"><div><h2>Partidos especiales</h2><p>{labelNow} contra {labelBefore}, en los mismos partidos</p></div></header>
-      <ul>
-        {visible.map((row) => {
-          const win = row.a === row.b ? null : (row.lowerIsBetter ? row.a < row.b : row.a > row.b) ? 'a' : 'b'
-          return (
-            <li key={row.label} className={win ? `is-win-${win}` : 'is-tie'}>
-              <div className="sc-moments__score">
-                <b className="is-a">{row.a}</b>
-                <span aria-hidden="true">vs</span>
-                <b className="is-b">{row.b}</b>
-              </div>
-              <strong>{row.label}</strong>
-              <small>{row.hint}</small>
-            </li>
-          )
-        })}
-      </ul>
+    <section className="sc-moments" aria-label="Partidos especiales">
+      <div className="sc-moments__legend" aria-hidden="true"><span className="is-a">{labelNow}</span><span className="is-b">{labelBefore}</span></div>
+      <div className="sc-moments__cards">
+        {rows.map((row) => <MomentCard key={row.label} row={row} labelNow={labelNow} labelBefore={labelBefore} />)}
+      </div>
+    </section>
+  )
+}
+
+/* ── Hero: the duel cards, one per season ────────────────────────────────── */
+
+function SeasonCard({ player, label, totals: t, side, lead }: { player: RankedPlayer; label: string; totals: Totals; side: 'a' | 'b'; lead: boolean }) {
+  return (
+    <div className={`cv-duel__card is-${side}${lead ? ' is-lead' : ''} sc-season`}>
+      <PlayerPortrait player={player} className="cv-duel__photo" eager allowArtwork />
+      <span className="cv-duel__copy">
+        <span className="cv-duel__meta">{player.name}</span>
+        <strong className="cv-duel__name">{label}</strong>
+        <span className="cv-duel__pts">{fmt.int(t.pts)}<small> pts SFA</small></span>
+        <span className="cv-duel__chip">{t.goals} G · {t.assists} A</span>
+      </span>
+    </div>
+  )
+}
+
+function SelfHero({ player, n, compName, labelNow, labelBefore, now, before, matchesNow, matchesBefore }: {
+  player: RankedPlayer; n: number; compName: string | null; labelNow: string; labelBefore: string
+  now: Totals; before: Totals; matchesNow: number; matchesBefore: number
+}) {
+  const total = Math.max(now.pts, 0) + Math.max(before.pts, 0) || 1
+  const share = Math.max(now.pts, 0) / total
+  const diff = now.pts - before.pts
+  const gapPct = Math.min(now.pts, before.pts) > 0 ? (Math.abs(diff) / Math.min(now.pts, before.pts)) * 100 : null
+  return (
+    <section className="cv-duel sc-duel" aria-label="Resumen">
+      <SeasonCard player={player} label={labelNow} totals={now} side="a" lead={diff >= 0} />
+      <div className="cv-duel__center">
+        <span className="cv-duel__vs">VS</span>
+        <span className="cv-duel__period">Primeros {n} partidos{compName ? ` · ${compName}` : ''}</span>
+        <div className="cv-duel__share" aria-label={`${labelNow} ${Math.round(share * 100)} %, ${labelBefore} ${Math.round((1 - share) * 100)} %`}>
+          <i className="is-a" style={{ flexGrow: share }} />
+          <i className="is-b" style={{ flexGrow: 1 - share }} />
+        </div>
+        {diff !== 0 && (
+          <span className="cv-duel__verdict">
+            <b>{diff > 0 ? labelNow : labelBefore}</b> lidera por <b>{fmt.int(Math.abs(diff))} pts</b>{gapPct != null && ` (+${Math.round(gapPct)} %)`}
+          </span>
+        )}
+        <span className="cv-duel__sample">{matchesNow} PJ · {fmt.int(now.minutes)}' &nbsp;|&nbsp; {matchesBefore} PJ · {fmt.int(before.minutes)}'</span>
+      </div>
+      <SeasonCard player={player} label={labelBefore} totals={before} side="b" lead={diff < 0} />
     </section>
   )
 }
@@ -233,16 +300,17 @@ function Moments({ now, before, labelNow, labelBefore }: { now: PlayerFixture[];
 /* ── Match-by-match ledger ───────────────────────────────────────────────── */
 
 function MatchCell({ fixture }: { fixture?: PlayerFixture }) {
-  if (!fixture) return <div className="sc-ledger__cell is-empty">Sin partido</div>
+  if (!fixture) return <div className="sc-ledger__cell is-empty">—</div>
   const rival = rivalOf(fixture)
   const g = goalsOf(fixture)
   const as = assistsOf(fixture)
+  const ga = [g && `${g} G`, as && `${as} A`].filter(Boolean).join(' ')
   return (
     <div className="sc-ledger__cell">
-      <span className="sc-ledger__crest">{rival.logo && <img src={rival.logo} alt="" loading="lazy" />}</span>
+      <Crest src={rival.logo} />
       <span className="sc-ledger__rival">
-        <strong>{rival.home ? '' : '@ '}{rival.name}</strong>
-        <small>{fixture.competition}{g + as > 0 && ` · ${[g && `${g} G`, as && `${as} A`].filter(Boolean).join(' ')}`}</small>
+        <strong>{rival.name}</strong>
+        <small><Venue home={rival.home} /><span className="sc-ledger__comp">{fixture.competition}</span>{ga && <span className="sc-ledger__ga">{ga}</span>}</small>
       </span>
       <b>{fmt.int(fixture.sfa_pts)}</b>
     </div>
@@ -334,9 +402,6 @@ export default function SelfCompare({ seasons, value, onChange }: { seasons: Sea
 
   const labelNow = shortSeason(scopeNow, seasons)
   const labelBefore = shortSeason(scopeBefore, seasons)
-  const diff = tNow.pts - tBefore.pts
-  const name = picked?.name ?? 'El jugador'
-  const short = name.split(' ').slice(-1)[0]
 
   return (
     <>
@@ -372,26 +437,13 @@ export default function SelfCompare({ seasons, value, onChange }: { seasons: Sea
 
       {!loading && !error && filtered && player && scopeNow !== scopeBefore && (
         <div className="cv-results">
-          <section className="sc-hero">
-            <div className="sc-hero__who">
-              {picked?.photo_url && <img src={picked.photo_url} alt="" />}
-              <div>
-                <span className="pf-eyebrow">Primeros {n} partidos{comp != null ? ` · ${competitions.find((c) => c.id === comp)?.name}` : ''}</span>
-                <h2>{name}</h2>
-              </div>
-            </div>
-            <div className="sc-hero__score">
-              <div className="is-a"><small>{labelNow}</small><b>{fmt.int(tNow.pts)}</b><span>{tNow.goals} G · {tNow.assists} A · {sliceNow.length} PJ</span></div>
-              <div className="is-b"><small>{labelBefore}</small><b>{fmt.int(tBefore.pts)}</b><span>{tBefore.goals} G · {tBefore.assists} A · {sliceBefore.length} PJ</span></div>
-            </div>
-            <p className="sc-hero__verdict">
-              {sliceNow.length === 0 || sliceBefore.length === 0
-                ? 'Falta una de las dos temporadas en este filtro.'
-                : diff === 0
-                  ? `${short} va exactamente al mismo ritmo que en ${labelBefore}.`
-                  : <>{short} va <strong className={diff > 0 ? 'is-a' : 'is-b'}>{fmt.int(Math.abs(diff))} pts {diff > 0 ? 'por encima' : 'por debajo'}</strong> de su arranque en {labelBefore}{tBefore.pts > 0 && ` (${diff > 0 ? '+' : '−'}${Math.round(Math.abs(diff) / tBefore.pts * 100)} %)`}.</>}
-            </p>
-          </section>
+          {picked && (
+            <SelfHero
+              player={picked} n={n} compName={comp != null ? competitions.find((c) => c.id === comp)?.name ?? null : null}
+              labelNow={labelNow} labelBefore={labelBefore} now={tNow} before={tBefore}
+              matchesNow={sliceNow.length} matchesBefore={sliceBefore.length}
+            />
+          )}
 
           <section className="sc-controls" aria-label="Periodo">
             <div className="sc-steps">
