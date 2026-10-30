@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import './ComparePage.css'
 import { fetchCompare, fetchPlayerAchievements, fetchPlayerIndividualHonors, fetchRanking, fetchSeasons } from '../api/client'
 import PlayerPicker from '../components/compare/PlayerPicker'
+import SelfCompare, { type SelfParams } from '../components/compare/SelfCompare'
 import {
   BestPanel,
   ChapterHead,
@@ -364,6 +365,7 @@ export default function ComparePage() {
   const [error, setError] = useState<string | null>(null)
   const urlA = Number(params.get('a')) || null
   const urlB = Number(params.get('b')) || null
+  const mode = params.get('mode') === 'self' ? 'self' : 'duel'
 
   useEffect(() => {
     fetchSeasons()
@@ -382,7 +384,7 @@ export default function ComparePage() {
   const idB = selectedB?.id ?? urlB
 
   useEffect(() => {
-    if (!idA || !idB || !scope) {
+    if (mode === 'self' || !idA || !idB || !scope) {
       setData(null)
       return undefined
     }
@@ -400,15 +402,45 @@ export default function ComparePage() {
       .catch(() => { if (active) setError('No se pudo completar la comparación.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [scope, idA, idB])
+  }, [mode, scope, idA, idB])
 
   useEffect(() => {
+    if (mode === 'self') return
     const next = new URLSearchParams()
     if (scope) next.set('scope', scope)
     if (idA) next.set('a', String(idA))
     if (idB) next.set('b', String(idB))
     setParams(next, { replace: true })
-  }, [scope, idA, idB, setParams])
+  }, [mode, scope, idA, idB, setParams])
+
+  // Self mode: same player, latest season against the one before by default.
+  const periods = seasons.filter((item) => item.kind === 'award_period')
+  const selfValue: SelfParams = {
+    player: Number(params.get('p')) || idA || null,
+    now: params.get('now') ?? (periods[0] ? seasonItemValue(periods.find((item) => item.is_latest) ?? periods[0]) : ''),
+    before: params.get('before') ?? '',
+    n: Number(params.get('n')) || null,
+    comp: Number(params.get('comp')) || null,
+  }
+  if (!selfValue.before) {
+    const current = periods.find((item) => seasonItemValue(item) === selfValue.now)
+    const previous = [...periods].sort((x, y) => y.season.localeCompare(x.season)).find((item) => current && item.season < current.season)
+    selfValue.before = previous ? seasonItemValue(previous) : ''
+  }
+  const setSelf = (value: SelfParams) => {
+    const next = new URLSearchParams({ mode: 'self' })
+    if (value.player) next.set('p', String(value.player))
+    if (value.now) next.set('now', value.now)
+    if (value.before) next.set('before', value.before)
+    if (value.n) next.set('n', String(value.n))
+    if (value.comp) next.set('comp', String(value.comp))
+    setParams(next, { replace: true })
+  }
+  const setMode = (next: 'duel' | 'self') => {
+    if (next === mode) return
+    if (next === 'self') setSelf({ ...selfValue, player: idA ?? selfValue.player, n: null, comp: null })
+    else setParams(new URLSearchParams(scope ? { scope } : {}), { replace: true })
+  }
 
   const clear = (side: 'a' | 'b') => {
     setData(null)
@@ -435,8 +467,17 @@ export default function ComparePage() {
           <h1>Comparador</h1>
           <p className="cv-head__lead">Quién tiene más impacto y, sobre todo, en qué contexto lo consigue.</p>
         </div>
-        {seasons.length > 0 && <SeasonDropdown items={seasons} value={scope} onChange={setScope} includeAll={false} />}
+        {mode === 'duel' && seasons.length > 0 && <SeasonDropdown items={seasons} value={scope} onChange={setScope} includeAll={false} />}
       </header>
+
+      <div className="tp-segment cv-mode" role="group" aria-label="Tipo de comparación">
+        <button type="button" className={mode === 'duel' ? 'is-active' : undefined} aria-pressed={mode === 'duel'} onClick={() => setMode('duel')}>Dos jugadores</button>
+        <button type="button" className={mode === 'self' ? 'is-active' : undefined} aria-pressed={mode === 'self'} onClick={() => setMode('self')}>Él contra sí mismo</button>
+      </div>
+
+      {mode === 'self' && seasons.length > 0 && <SelfCompare seasons={seasons} value={selfValue} onChange={setSelf} />}
+
+      {mode === 'duel' && <>
 
       <section className="cv-pick" aria-label="Seleccionar jugadores">
         <div className="cv-pick__slot is-a">
@@ -470,6 +511,7 @@ export default function ComparePage() {
           {selectedCount === 0 && <Suggestions scope={scope} onPick={(x, y) => { setSelectedA(x); setSelectedB(y) }} />}
         </section>
       )}
+      </>}
     </main>
   )
 }
