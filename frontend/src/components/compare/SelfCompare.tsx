@@ -23,7 +23,7 @@ function rivalOf(f: PlayerFixture) {
 }
 
 function shortSeason(value: string, items: SeasonItem[]) {
-  return getSeasonLabel(value, items).replace(/^Temporada\s+/i, '')
+  return getSeasonLabel(value, items).replace(/^Temporada\s+/i, '').replace(/^(\d{4})\/\d{2}(\d{2})$/, '$1/$2')
 }
 
 interface Totals {
@@ -251,49 +251,85 @@ function Moments({ now, before, labelNow, labelBefore }: { now: PlayerFixture[];
   )
 }
 
-/* ── Hero: the duel cards, one per season ────────────────────────────────── */
+/* ── Hero: points first, then the season, then the output that explains it ── */
+
+function SeasonStats({ t }: { t: Totals }) {
+  return (
+    <span className="sc-stats">
+      <span><b>{t.goals}</b>goles</span>
+      <span><b>{t.assists}</b>asist.</span>
+      <span><b>{fmt.int(t.minutes)}'</b>min</span>
+    </span>
+  )
+}
 
 function SeasonCard({ player, label, totals: t, side, lead }: { player: RankedPlayer; label: string; totals: Totals; side: 'a' | 'b'; lead: boolean }) {
   return (
     <div className={`cv-duel__card is-${side}${lead ? ' is-lead' : ''} sc-season`}>
       <PlayerPortrait player={player} className="cv-duel__photo" eager allowArtwork />
-      <span className="cv-duel__copy">
-        <span className="cv-duel__meta">{player.name}</span>
-        <strong className="cv-duel__name">{label}</strong>
-        <span className="cv-duel__pts">{fmt.int(t.pts)}<small> pts SFA</small></span>
-        <span className="cv-duel__chip">{t.goals} G · {t.assists} A</span>
+      <span className="sc-season__copy">
+        <span className="sc-tag">{label}</span>
+        <span className="sc-season__pts"><b>{fmt.int(t.pts)}</b><small>pts SFA</small></span>
+        <SeasonStats t={t} />
       </span>
     </div>
   )
 }
 
-function SelfHero({ player, n, compName, labelNow, labelBefore, now, before, matchesNow, matchesBefore }: {
-  player: RankedPlayer; n: number; compName: string | null; labelNow: string; labelBefore: string
-  now: Totals; before: Totals; matchesNow: number; matchesBefore: number
+function SelfHero({ player, n, compName, labelNow, labelBefore, now, before }: {
+  player: RankedPlayer; n: number; compName: string | null; labelNow: string; labelBefore: string; now: Totals; before: Totals
 }) {
   const total = Math.max(now.pts, 0) + Math.max(before.pts, 0) || 1
   const share = Math.max(now.pts, 0) / total
   const diff = now.pts - before.pts
-  const gapPct = Math.min(now.pts, before.pts) > 0 ? (Math.abs(diff) / Math.min(now.pts, before.pts)) * 100 : null
+  const gapPct = Math.min(now.pts, before.pts) > 0 ? Math.round((Math.abs(diff) / Math.min(now.pts, before.pts)) * 100) : null
+  const period = `Primeros ${n} partidos${compName ? ` · ${compName}` : ''}`
+  const bar = (
+    <div className="cv-duel__share" aria-label={`${labelNow} ${Math.round(share * 100)} %, ${labelBefore} ${Math.round((1 - share) * 100)} %`}>
+      <i className="is-a" style={{ flexGrow: share }} />
+      <i className="is-b" style={{ flexGrow: 1 - share }} />
+    </div>
+  )
+  const delta = diff !== 0 && (
+    <span className={`sc-delta is-${diff > 0 ? 'a' : 'b'}`}>
+      <b>{diff > 0 ? '+' : '−'}{fmt.int(Math.abs(diff))}</b> pts{gapPct != null && <em>{diff > 0 ? '+' : '−'}{gapPct} %</em>}
+    </span>
+  )
   return (
-    <section className="cv-duel sc-duel" aria-label="Resumen">
-      <SeasonCard player={player} label={labelNow} totals={now} side="a" lead={diff >= 0} />
-      <div className="cv-duel__center">
-        <span className="cv-duel__vs">VS</span>
-        <span className="cv-duel__period">Primeros {n} partidos{compName ? ` · ${compName}` : ''}</span>
-        <div className="cv-duel__share" aria-label={`${labelNow} ${Math.round(share * 100)} %, ${labelBefore} ${Math.round((1 - share) * 100)} %`}>
-          <i className="is-a" style={{ flexGrow: share }} />
-          <i className="is-b" style={{ flexGrow: 1 - share }} />
+    <>
+      <section className="cv-duel sc-duel" aria-label="Resumen">
+        <SeasonCard player={player} label={labelNow} totals={now} side="a" lead={diff >= 0} />
+        <div className="cv-duel__center">
+          <strong className="sc-duel__who">{player.name}</strong>
+          <span className="cv-duel__period">{period}</span>
+          <span className="cv-duel__vs">VS</span>
+          {bar}
+          {delta}
         </div>
-        {diff !== 0 && (
-          <span className="cv-duel__verdict">
-            <b>{diff > 0 ? labelNow : labelBefore}</b> lidera por <b>{fmt.int(Math.abs(diff))} pts</b>{gapPct != null && ` (+${Math.round(gapPct)} %)`}
-          </span>
-        )}
-        <span className="cv-duel__sample">{matchesNow} PJ · {fmt.int(now.minutes)}' &nbsp;|&nbsp; {matchesBefore} PJ · {fmt.int(before.minutes)}'</span>
-      </div>
-      <SeasonCard player={player} label={labelBefore} totals={before} side="b" lead={diff < 0} />
-    </section>
+        <SeasonCard player={player} label={labelBefore} totals={before} side="b" lead={diff < 0} />
+      </section>
+
+      <section className="sc-combo" aria-label="Resumen">
+        <div className="sc-combo__top">
+          <div className="sc-combo__who">
+            <span className="cv-duel__period">{period}</span>
+            <strong>{player.name}</strong>
+            {delta}
+          </div>
+          <PlayerPortrait player={player} className="sc-combo__photo" eager allowArtwork />
+        </div>
+        <div className="sc-combo__split">
+          {[{ side: 'a' as const, label: labelNow, t: now }, { side: 'b' as const, label: labelBefore, t: before }].map((col) => (
+            <div key={col.side} className={`is-${col.side}`}>
+              <span className="sc-tag">{col.label}</span>
+              <span className="sc-season__pts"><b>{fmt.int(col.t.pts)}</b><small>pts SFA</small></span>
+              <SeasonStats t={col.t} />
+            </div>
+          ))}
+        </div>
+        {bar}
+      </section>
+    </>
   )
 }
 
@@ -441,7 +477,6 @@ export default function SelfCompare({ seasons, value, onChange }: { seasons: Sea
             <SelfHero
               player={picked} n={n} compName={comp != null ? competitions.find((c) => c.id === comp)?.name ?? null : null}
               labelNow={labelNow} labelBefore={labelBefore} now={tNow} before={tBefore}
-              matchesNow={sliceNow.length} matchesBefore={sliceBefore.length}
             />
           )}
 
