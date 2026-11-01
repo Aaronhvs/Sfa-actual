@@ -11,6 +11,7 @@ from sfa.api.v1.compare import router as compare_router
 from sfa.api.v1.competitions import router as competitions_router
 from sfa.api.v1.elo_router import router as elo_router
 from sfa.api.v1.health import router as health_router
+from sfa.api.v1.live import router as live_router
 from sfa.api.v1.players import router as players_router
 from sfa.api.v1.ranking import router as ranking_router
 from sfa.api.v1.ranking_explanations import router as ranking_explanations_router
@@ -103,3 +104,4 @@ app.include_router(elo_router, prefix="/api/v1", tags=["elo"])
 app.include_router(scoring_rules_router, prefix="/api/v1", tags=["scoring"])
 app.include_router(achievements_router, prefix="/api/v1", tags=["scoring"])
 app.include_router(wc_router, prefix="/api/v1", tags=["mundial"])
+app.include_router(live_router, prefix="/api/v1", tags=["live"])

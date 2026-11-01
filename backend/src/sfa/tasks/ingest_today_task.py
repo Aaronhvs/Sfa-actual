@@ -88,6 +88,21 @@ def _collect_relevant_fixtures(
     return selected
 
 
+async def _publish_live_teams(
+    redis_url: str,
+    fixtures: list[dict],
+    known_league_ids: set[int],
+    cycle_name: str,
+) -> None:
+    """Best effort: the live indicator must never block ingestion."""
+    from sfa.infrastructure.live_teams import live_team_ids, publish_live_teams
+
+    try:
+        await publish_live_teams(redis_url, live_team_ids(fixtures, known_league_ids))
+    except Exception:
+        logger.warning("[%s_ingestion_task] Could not publish live teams", cycle_name, exc_info=True)
+
+
 def _dates_to_check(now_utc: datetime) -> list[str]:
     dates = [now_utc.date().isoformat()]
     if now_utc.hour < 4:
@@ -115,6 +130,7 @@ async def _run_ingest_today() -> dict:
             _dates_to_check(now_utc),
             include_all_finished=False,
             cycle_name="live",
+            publish_live=True,
         ),
     )
 
@@ -151,6 +167,7 @@ async def _run_ingest_dates(
     *,
     include_all_finished: bool,
     cycle_name: str,
+    publish_live: bool = False,
 ) -> dict:
     from sfa.application.use_cases.ingest_competition import LEAGUES
     from sfa.core.config import get_settings
@@ -176,6 +193,8 @@ async def _run_ingest_dates(
             fixtures.extend(data.get("response", []))
 
         league_map = {league.id: league for league in LEAGUES}
+        if publish_live:
+            await _publish_live_teams(settings.REDIS_URL, fixtures, set(league_map), cycle_name)
         to_ingest = _collect_relevant_fixtures(
             fixtures,
             set(league_map),
