@@ -66,6 +66,8 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
     ) -> PlayerDetailResult:
         if season is not None and scope is not None:
             raise ValueError("scope and season are mutually exclusive")
+        if scope == "all":
+            season, scope = "all", None
         explicit_rules_version = rules_version_id is not None
         if rules_version_id is None:
             rules_version_id = self._default_rules_version_id
@@ -141,9 +143,13 @@ class GetPlayerDetailUseCase(GetPlayerDetailUseCaseProtocol):
             global_rank = await self._score_repo.get_global_rank_all_seasons(
                 player_id, total_pts, historical_rules_version_id,
             )
+            available = (await self._season_repo.get_available_scopes_for_player(player_id)
+                         if self._season_repo is not None else [])
             return self._build_result(
                 score=score,
                 season="all",
+                scope="all",
+                available_scopes=[item.key for item in available if item.key],
                 competitions=competitions,
                 available_seasons=available_seasons,
                 total_matches=total_matches,

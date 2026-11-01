@@ -1,8 +1,13 @@
 import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
+from sfa.api.v1.players import router
 from sfa.api.v1.schemas.players import PlayerDetailSchema
 from sfa.application.use_cases.get_player_detail import GetPlayerDetailUseCase
-from sfa.domain.ports import PlayerScoreDTO, SFAScoreRepositoryProtocol
+from sfa.core.dependencies import get_player_detail_use_case
+from sfa.domain.ports import PlayerScoreDTO, SeasonDTO, SeasonRepositoryProtocol, SFAScoreRepositoryProtocol
+from sfa.domain.season_scope import ScopeNotFoundError
 
 
 def _score() -> PlayerScoreDTO:
@@ -33,8 +38,8 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
     async def get_ranking_max_matches(self, **scope):
         return 1
 
-    async def get_ranking(self, season, position=None, competition_id=None, limit=50, offset=0, name=None, bonus_label=None,
-                          rules_version_id=None, use_total=False, **eligibility):
+    async def get_ranking(self, season, position=None, competition_id=None, limit=50, offset=0,
+                          name=None, bonus_label=None, rules_version_id=None, use_total=False, **eligibility):
         return []
 
     async def get_ranking_total(self, season, position=None, competition_id=None, name=None, bonus_label=None,
@@ -57,7 +62,8 @@ class FakeSFAScoreRepository(SFAScoreRepositoryProtocol):
         return ["2025", "2024"]
 
     async def get_ranking_all_seasons(self, position=None, competition_id=None, limit=50, offset=0,
-                                      name=None, bonus_label=None, rules_version_id=None, use_total=False, **eligibility):
+                                    name=None, bonus_label=None, rules_version_id=None,
+                                    use_total=False, **eligibility):
         return []
 
     async def get_ranking_total_all_seasons(self, position=None, competition_id=None,
@@ -121,3 +127,52 @@ class TestGetPlayerDetailMultiSeason:
 
         assert result.season == "2024"
         assert result.available_seasons == ["2025", "2024"]
+
+
+class FakeSeasonRepository(SeasonRepositoryProtocol):
+    async def resolve_scope(self, scope_key=None):
+        raise ScopeNotFoundError(scope_key)
+
+    async def get_available_seasons(self):
+        return [SeasonDTO(season="2025", is_latest=True, key="season-2025"),
+                SeasonDTO(season="2024", is_latest=False, key="season-2024")]
+
+    async def get_available_scopes_for_player(self, player_id):
+        assert player_id == 1
+        return await self.get_available_seasons()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("params", [{"scope": "all"}, {"season": "all"}])
+async def test_historical_aliases_preserve_totals_and_available_scopes(params):
+    use_case = GetPlayerDetailUseCase(FakeSFAScoreRepository(), season_repo=FakeSeasonRepository())
+    result = await use_case.execute(1, **params)
+
+    assert result.scope == result.season == "all"
+    assert (result.matches, result.total_goals, result.total_assists, result.sfa_pts) == (25, 7, 9, 275.5)
+    assert result.available_scopes == ["season-2025", "season-2024"]
+
+
+@pytest.mark.anyio
+async def test_all_scope_does_not_bypass_mutually_exclusive_parameters():
+    use_case = GetPlayerDetailUseCase(FakeSFAScoreRepository(), season_repo=FakeSeasonRepository())
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        await use_case.execute(1, season="2025", scope="all")
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("query", ["scope=all", "season=all"])
+async def test_historical_profile_endpoint_supports_both_links(query):
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+
+    async def dependency():
+        return GetPlayerDetailUseCase(FakeSFAScoreRepository(), season_repo=FakeSeasonRepository())
+
+    app.dependency_overrides[get_player_detail_use_case] = dependency
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(f"/api/v1/players/1?{query}")
+    assert response.status_code == 200
+    assert response.json()["scope"] == "all"
+    assert response.json()["available_scopes"] == ["season-2025", "season-2024"]
+    assert response.json()["sfa_pts"] == 275.5

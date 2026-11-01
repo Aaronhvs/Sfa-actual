@@ -28,6 +28,17 @@ GET http://localhost:8000/api/v1/players/999999
 
 ###
 
+### Historical profile from the ranking link (same totals as season=all)
+GET http://localhost:8000/api/v1/players/1?scope=all
+
+### Historical profile from the season picker
+GET http://localhost:8000/api/v1/players/1?season=all
+
+### Conflicting selectors remain invalid (expects 422)
+GET http://localhost:8000/api/v1/players/1?season=2025&scope=all
+
+###
+
 ### Eventos del jugador (última temporada)
 GET http://localhost:8000/api/v1/players/1/events
 
