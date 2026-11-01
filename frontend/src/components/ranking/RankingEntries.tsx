@@ -3,6 +3,7 @@ import type { RankedPlayer } from '../../types'
 import { worldCupTeamFlagUrl } from '../../utils/worldCupTeams'
 import PlayerPortrait from '../shared/PlayerPortrait'
 import { FootballIcon, TeamCrest } from '../shared/FootballVisuals'
+import LiveDot from '../shared/LiveDot'
 
 const POSITION_LABELS: Record<string, string> = {
   DEL: 'Delantero', EXT: 'Extremo', MCO: 'Mediapunta', MC: 'Centrocampista', LAT: 'Lateral', DC: 'Central', GK: 'Portero',
@@ -21,7 +22,8 @@ function Club({ player, isWorldCup }: { player: RankedPlayer; isWorldCup: boolea
   return (
     <span className="rk-club">
       <TeamCrest key={player.team} url={flag ?? player.team_logo_url} name={player.team} />
-      <span>{player.team}</span>
+      <span className="rk-club__name">{player.team}</span>
+      <LiveDot logoUrl={player.team_logo_url} />
     </span>
   )
 }

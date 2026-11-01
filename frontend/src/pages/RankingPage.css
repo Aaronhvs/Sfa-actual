@@ -386,7 +386,8 @@
   color: var(--text-faint);
 }
 
-.rk-club span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-club__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .rk-club .sfa-team-crest { width: 16px; height: 16px; font-size: 8px; }
 
 .rk-pos,

@@ -18,6 +18,8 @@
 .sfa-gallery__name { position:absolute; top:64px; left:42px; right:26px; transform:rotate(-17deg); transform-origin:left bottom; font:800 clamp(24px,2.2vw,30px)/1.02 var(--font-display); text-transform:uppercase; overflow-wrap:anywhere; }
 .sfa-gallery__team { position:absolute; right:22px; top:74px; }
 .sfa-gallery__team .sfa-team-crest { width:30px; height:30px; }
+/* Live badge sits on the crest corner, ringed so it reads over any card photo. */
+.sfa-gallery__live { position:absolute; right:-3px; bottom:-3px; width:9px; height:9px; box-shadow:0 0 0 2px #141414; }
 .sfa-gallery__portrait { position:absolute; display:grid; place-items:center; top:164px; left:50%; width:140px; height:140px; transform:translateX(-50%); margin:0; border-radius:50%; overflow:hidden; background:var(--surface); }
 .sfa-gallery__portrait img { width:100%; height:100%; object-fit:cover; }
 .sfa-gallery__portrait > span { font:700 54px var(--font-display); color:var(--gold); }

@@ -1,0 +1,24 @@
+/* Team has a match in progress: a quiet green dot with a slow halo. */
+.sfa-live-dot {
+  position: relative;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3ecf72;
+}
+.sfa-live-dot::after {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  content: '';
+  animation: sfa-live-pulse 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@keyframes sfa-live-pulse {
+  from { opacity: 0.55; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sfa-live-dot::after { animation: none; }
+}
