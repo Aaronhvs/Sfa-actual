@@ -4,6 +4,7 @@ import { worldCupTeamFlagUrl } from '../../utils/worldCupTeams'
 import PlayerPortrait from '../shared/PlayerPortrait'
 import { FootballIcon, TeamCrest } from '../shared/FootballVisuals'
 import LiveDot from '../shared/LiveDot'
+import RankMove from '../shared/RankMove'
 
 const POSITION_LABELS: Record<string, string> = {
   DEL: 'Delantero', EXT: 'Extremo', MCO: 'Mediapunta', MC: 'Centrocampista', LAT: 'Lateral', DC: 'Central', GK: 'Portero',
@@ -32,7 +33,7 @@ function Club({ player, isWorldCup }: { player: RankedPlayer; isWorldCup: boolea
 export function RankingRow({ player, href, isWorldCup = false }: EntryProps) {
   return (
     <Link className="rk-row" to={href}>
-      <b className="rk-row__rank">{player.rank}</b>
+      <span className="rk-row__rank"><b>{player.rank}</b><RankMove change={player.rank_change} /></span>
       <PlayerPortrait player={player} className="rk-row__photo" />
       <span className="rk-row__who">
         <strong>{player.name}</strong>
@@ -55,7 +56,7 @@ export function RankingTile({ player, href, isWorldCup = false }: EntryProps) {
   return (
     <Link className="rk-tile" to={href}>
       <span className="rk-tile__top">
-        <b>{player.rank}</b>
+        <b>{player.rank}<RankMove change={player.rank_change} className="rk-tile__move" /></b>
         <span className="rk-pos">{player.position}</span>
       </span>
       <PlayerPortrait player={player} className="rk-tile__photo" />

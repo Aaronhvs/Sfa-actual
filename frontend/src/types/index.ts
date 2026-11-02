@@ -103,6 +103,8 @@ export interface RankedPlayer {
   duels_won: number
   b1_bonus_pts: number
   b1_bonus_label: string | null
+  /** Places gained (+) or lost (-) over the last 7 days; null when not comparable. */
+  rank_change?: number | null
 }
 
 export interface RankingResponse {

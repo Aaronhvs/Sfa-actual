@@ -1,0 +1,7 @@
+.sfa-rank-move {
+  flex: none;
+  width: 9px;
+  height: 6px;
+}
+.sfa-rank-move.is-up { fill: #3ecf72; }
+.sfa-rank-move.is-down { fill: #e5534b; }

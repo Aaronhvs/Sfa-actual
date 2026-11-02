@@ -5,6 +5,7 @@ import type { RankedPlayer } from '../types'
 import './HomeRankingGallery.css'
 import { FootballIcon, TeamCrest } from './shared/FootballVisuals'
 import LiveDot from './shared/LiveDot'
+import RankMove from './shared/RankMove'
 
 export default function HomeRankingGallery({ players, playerUrl }: {
   players: RankedPlayer[]
@@ -57,7 +58,7 @@ export default function HomeRankingGallery({ players, playerUrl }: {
         <li className={`sfa-gallery__panel${index === active ? ' is-expanded' : ''}${player.rank === 1 ? ' is-leader' : ''}`} key={player.id} data-player-id={player.id}>
           <div className="sfa-gallery__backdrop" aria-hidden="true" />
           <div className="sfa-gallery__visual">
-            <span className="sfa-gallery__top"><span className="sfa-gallery__rank" aria-label={`Puesto ${player.rank}`}>{player.rank}</span></span>
+            <span className="sfa-gallery__top"><span className="sfa-gallery__rank" aria-label={`Puesto ${player.rank}`}>{player.rank}<RankMove change={player.rank_change} className="sfa-gallery__move" /></span></span>
             <PlayerPortrait player={player} className="sfa-gallery__portrait" eager allowArtwork />
             <span className="sfa-gallery__identity"><span className="sfa-gallery__name">{player.name}</span><span className="sfa-gallery__team"><TeamCrest key={player.team} url={player.team_logo_url} name={player.team} /><LiveDot logoUrl={player.team_logo_url} className="sfa-gallery__live" /></span></span>
             <span className="sfa-gallery__score">{player.sfa_pts.toLocaleString('es-ES', { maximumFractionDigits: 0 })}<span>puntos SFA</span></span>

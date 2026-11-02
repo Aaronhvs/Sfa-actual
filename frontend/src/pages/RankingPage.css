@@ -336,10 +336,14 @@
 .rk-row:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
 
 .rk-row__rank {
+  position: relative;
   font: 800 1.15rem/1 var(--font-display);
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
 }
+/* Under the number without shifting it, so ranks stay aligned row to row. */
+.rk-row__rank .sfa-rank-move { position: absolute; top: calc(100% + 4px); left: 1px; }
+.rk-tile__top b { display: inline-flex; align-items: center; gap: 6px; }
 
 .rk-row__photo,
 .rk-tile__photo {

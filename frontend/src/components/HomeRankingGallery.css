@@ -13,6 +13,9 @@
 .sfa-gallery__rank { color:#e5e2d9; font:800 36px/1 var(--font-display); }
 .sfa-gallery__rank::before { content:'#'; }
 .sfa-gallery__panel.is-leader .sfa-gallery__rank { color:var(--gold); }
+.sfa-gallery__rank { display:inline-flex; align-items:center; }
+.sfa-gallery__move { width:12px; height:8px; margin-left:8px; }
+@media (max-width: 680px) { .sfa-gallery__move { width:8px; height:6px; margin-left:5px; } }
 .sfa-gallery__expand { display:grid; place-items:center; width:30px; height:30px; border:1px solid #ffffff38; border-radius:50%; color:#d9d5c7; font:18px var(--font-body); }
 .sfa-gallery__identity { display:contents; }
 .sfa-gallery__name { position:absolute; top:64px; left:42px; right:26px; transform:rotate(-17deg); transform-origin:left bottom; font:800 clamp(24px,2.2vw,30px)/1.02 var(--font-display); text-transform:uppercase; overflow-wrap:anywhere; }
