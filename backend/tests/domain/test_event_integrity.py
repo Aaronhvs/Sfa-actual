@@ -34,6 +34,27 @@ def test_mbappe_penalties_are_recovered_by_provider_id():
     assert all(c.after.event_type == "GOAL_PENALTY" for c in plan.changes)
 
 
+def test_comment_marked_shootout_after_90_is_reclassified_without_adding_match_goals():
+    actual = goal(minute=40, detail="Normal Goal")
+    converted = {**goal(minute=91), "comments": "Penalty Shootout"}
+    missed = {**goal(actor=999, minute=92, detail="Missed Penalty", team=81),
+              "comments": "Penalty Shootout"}
+    actors = (Appearance(888, 278, 2, 541, 1, 0, 90), Appearance(1000, 999, 3, 81, 0, 0, 90))
+    plan = prepare_plan(snapshot(actors=actors), source([actual, converted, missed]))
+    assert not plan.pending and not plan.warnings
+    types = [change.after.event_type for change in plan.changes]
+    assert types == ["GOAL", "GOAL_SHOOTOUT", "MISSED_SHOOTOUT"]
+    assert [change.after.minute for change in plan.changes] == [40, 120, 120]
+
+
+def test_fixture_timeline_labels_shootout_separately_from_regular_penalties():
+    from sfa.infrastructure.repositories.ingestion_repository import _normalize_fixture_event_type
+
+    assert _normalize_fixture_event_type("Goal", "Penalty", True) == "shootout_penalty"
+    assert _normalize_fixture_event_type("Goal", "Missed Penalty", True) == "shootout_missed_penalty"
+    assert _normalize_fixture_event_type("Goal", "Penalty") == "penalty"
+
+
 def test_garcia_wrong_actor_is_corrected_preserving_event_id():
     old = StoredAction(45, 804, 2, 15, "GOAL", "0:0", 0, False)
     real = Appearance(2039, 146751, 2, 541, 1, 0, 90)

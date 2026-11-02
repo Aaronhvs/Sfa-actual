@@ -189,9 +189,11 @@ class FixtureDetailRepository(FixtureDetailRepositoryProtocol):
                 fixture_external_id,
             )
             return []
+        from sfa.domain.scoring.services import is_shootout_attempt_event
+
         events: list[FixtureTimelineEventDTO] = []
         for raw in raw_events:
-            event_type = _normalize_fixture_event_type(raw.type, raw.detail)
+            event_type = _normalize_fixture_event_type(raw.type, raw.detail, is_shootout_attempt_event(raw))
             if event_type is None:
                 continue
             events.append(

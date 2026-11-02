@@ -76,6 +76,7 @@ class FixtureEventRawDTO:
     source_sequence: int | None = None
     player_external_id: int | None = None
     assist_external_id: int | None = None
+    comments: str | None = None
 
 
 @dataclass(frozen=True)

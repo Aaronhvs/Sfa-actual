@@ -215,6 +215,8 @@ def is_missed_penalty_event(event: FixtureEventRawDTO) -> bool:
 def is_shootout_attempt_event(event: FixtureEventRawDTO) -> bool:
     if not is_penalty_attempt_event(event):
         return False
+    if (event.comments or "").strip().casefold() == "penalty shootout" or "shootout" in event.detail.casefold():
+        return True
     return event.minute > 120 or (event.minute == 120 and event.extra_minute > 0)
 
 
@@ -268,7 +270,7 @@ class ScoreTimeline:
         for _, event in indexed_events:
             if event.type != "Goal" or event.detail == "Missed Penalty":
                 continue
-            if event.detail == "Penalty" and event.minute + event.extra_minute > 120:
+            if is_shootout_attempt_event(event):
                 continue
             if event.team_external_id not in (
                 home_team_external_id,
@@ -390,7 +392,8 @@ class SFAScoringService:
         if group in self._config.base_points:
             return group
         # MCO and other fine-grained groups fall back to MF for v1 configs
-        return PositionGroup.MF if PositionGroup.MF in self._config.base_points else next(iter(self._config.base_points))
+        return (PositionGroup.MF if PositionGroup.MF in self._config.base_points
+                else next(iter(self._config.base_points)))
 
     def score_event(
         self,

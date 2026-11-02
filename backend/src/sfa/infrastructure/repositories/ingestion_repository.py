@@ -27,10 +27,12 @@ from sfa.infrastructure.models.standings.models import StandingSnapshot
 from sfa.infrastructure.models.teams.models import Team
 
 
-def _normalize_fixture_event_type(event_type: str, detail: str) -> str | None:
+def _normalize_fixture_event_type(event_type: str, detail: str, is_shootout: bool = False) -> str | None:
     t = event_type.lower()
     d = detail.lower()
     if t == "goal":
+        if is_shootout:
+            return "shootout_missed_penalty" if "missed penalty" in d else "shootout_penalty"
         if "own goal" in d:
             return "own_goal"
         if "missed penalty" in d:
@@ -602,9 +604,11 @@ class IngestionRepository(IngestionRepositoryPort):
             )
         )
 
+        from sfa.domain.scoring.services import is_shootout_attempt_event
+
         rows = []
         for dto in events:
-            event_type = _normalize_fixture_event_type(dto.type, dto.detail)
+            event_type = _normalize_fixture_event_type(dto.type, dto.detail, is_shootout_attempt_event(dto))
             if event_type is None:
                 continue
             rows.append(FixtureEvent(

@@ -1,7 +1,32 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
+import pytest
+
 from sfa.domain.ingestion_ports import FixtureEventRawDTO
 from sfa.domain.scoring.services import ScoreTimeline, ShootoutDecider
+
+
+@pytest.mark.parametrize("detail", ["Penalty", "Missed Penalty"])
+def test_explicit_shootout_comment_is_not_a_match_goal(detail):
+    from sfa.domain.scoring.services import is_shootout_attempt_event
+
+    ordinary = _goal(40, 1)
+    kick = replace(_goal(91, 2, detail=detail), comments="Penalty Shootout")
+    timeline = ScoreTimeline.build(1, 2, [ordinary, kick])
+    assert is_shootout_attempt_event(kick)
+    assert timeline.transition_for(ordinary).home_after == 1
+    with pytest.raises(ValueError, match="not a scored regulation goal"):
+        timeline.transition_for(kick)
+
+
+def test_extra_time_penalty_without_shootout_evidence_stays_a_match_goal():
+    from sfa.domain.scoring.services import is_shootout_attempt_event
+
+    kick = _goal(95, 1, detail="Penalty")
+    assert not is_shootout_attempt_event(kick)
+    assert ScoreTimeline.build(1, 2, [kick]).transition_for(kick).home_after == 1
 
 
 def _goal(

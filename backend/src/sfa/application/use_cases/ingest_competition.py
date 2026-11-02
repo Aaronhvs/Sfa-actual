@@ -490,6 +490,7 @@ class IngestCompetitionUseCase:
         is_shootout = is_shootout_attempt_event(evt)
 
         if is_shootout:
+            db_minute = 120
             score_diff = 0
             score_before_str = None
         else:

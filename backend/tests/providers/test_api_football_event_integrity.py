@@ -36,3 +36,17 @@ async def test_malformed_goal_cannot_be_silently_dropped_from_timeline():
     provider = ProviderWithFakeClient({"errors": [], "response": [{"type": "Goal", "detail": "Normal Goal"}]})
     with pytest.raises(ValueError, match="partial event timeline"):
         await provider.fetch_fixture_events(123)
+
+
+@pytest.mark.anyio
+async def test_provider_retains_explicit_shootout_phase_below_minute_120():
+    from sfa.domain.scoring.services import is_shootout_attempt_event
+
+    event = {"type": "Goal", "detail": "Penalty", "comments": "Penalty Shootout",
+             "time": {"elapsed": 91, "extra": None}, "team": {"id": 50},
+             "player": {"id": 631, "name": "Foden"}, "assist": {"id": None, "name": None}}
+    provider = ProviderWithFakeClient({"errors": [], "response": [event]})
+    rows = await provider.fetch_fixture_events(123)
+    assert rows[0].minute == 91 and rows[0].player_external_id == 631
+    assert rows[0].comments == "Penalty Shootout"
+    assert is_shootout_attempt_event(rows[0])

@@ -570,6 +570,7 @@ class APIFootballProvider:
                             if isinstance(assist_external_id, int) and assist_external_id > 0
                             else None
                         ),
+                        comments=e.get("comments") if isinstance(e.get("comments"), str) else None,
                     )
                 )
             except (KeyError, TypeError) as exc:

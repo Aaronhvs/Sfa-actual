@@ -13,7 +13,7 @@ from sfa.domain.scoring.services import (
     is_shootout_attempt_event,
 )
 
-PARSER_VERSION = "event-integrity-v2"
+PARSER_VERSION = "event-integrity-v3"
 ACTION_TYPES = frozenset(
     {
         "GOAL",
@@ -190,6 +190,7 @@ def parse_source(external_id: int, payload: dict) -> tuple[FixtureEventRawDTO, .
                     source_sequence=sequence,
                     player_external_id=row["player"].get("id"),
                     assist_external_id=row["assist"].get("id"),
+                    comments=row.get("comments") if isinstance(row.get("comments"), str) else None,
                 )
             )
         except (KeyError, TypeError) as exc:
