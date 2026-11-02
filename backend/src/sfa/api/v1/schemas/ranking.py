@@ -20,6 +20,8 @@ class RankedPlayerSchema(BaseModel):
     duels_won: int = 0
     b1_bonus_pts: float = 0.0
     b1_bonus_label: str | None = None
+    # Places gained (+) or lost (-) over the last 7 days; null when not comparable.
+    rank_change: int | None = None
 
 
 class RankingPaginationSchema(BaseModel):

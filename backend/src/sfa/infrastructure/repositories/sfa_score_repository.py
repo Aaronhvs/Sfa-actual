@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from unicodedata import combining, normalize
 
 from sqlalchemy import Integer, Numeric, String, and_, case, cast, func, literal, or_, select
@@ -108,6 +108,31 @@ def _legacy_position_expression(team_name, competition_id):
         (name.contains("olise") & or_(world_cup, team.in_(("france", "francia"))), "MCO"),
         (name.contains("alex baena") & or_(world_cup, team.in_(("spain", "espana"))), "EXT"),
         else_=cast(Player.position, String),
+    )
+
+
+RANK_MOVEMENT_WINDOW = timedelta(days=7)
+
+
+def _recent_points_subquery(b1_scope_filter, rules_version_id: int, competition_id: int | None):
+    """Points and appearances from fixtures played inside the movement window."""
+    filters = [
+        b1_scope_filter,
+        PlayerEventScore.rules_version_id == rules_version_id,
+        Fixture.played_at >= func.now() - RANK_MOVEMENT_WINDOW,
+    ]
+    if competition_id is not None:
+        filters.append(PlayerEventScore.competition_id == competition_id)
+    return (
+        select(
+            PlayerEventScore.player_id,
+            func.sum(PlayerEventScore.final_points).label("recent_pts"),
+            func.count(func.distinct(PlayerEventScore.fixture_id)).label("recent_matches"),
+        )
+        .join(Fixture, Fixture.id == PlayerEventScore.fixture_id)
+        .where(*filters)
+        .group_by(PlayerEventScore.player_id)
+        .subquery()
     )
 
 
@@ -792,8 +817,26 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
         rank_col = func.rank().over(
             order_by=[order_col.desc(), contextual_total_pts.desc()]
         ).label("rank")
+        # Rank a week ago: same population, minus what was earned in the window.
+        # Profile orderings (goals/assists) have no points-based past rank.
+        recent_agg = (
+            _recent_points_subquery(b1_filters[0], rules_version_id, competition_id)
+            if rules_version_id is not None and bonus_label is None
+            else None
+        )
+        if recent_agg is not None:
+            prev_pts = contextual_total_pts - func.coalesce(recent_agg.c.recent_pts, 0)
+            prev_matches = agg.c.sum_matches - func.coalesce(recent_agg.c.recent_matches, 0)
+            prev_eligible = and_(prev_pts > 0, prev_matches >= max(min_matches, 1))
+            prev_rank_col = case(
+                (prev_eligible, func.rank().over(partition_by=prev_eligible, order_by=prev_pts.desc())),
+                else_=None,
+            ).label("prev_rank")
+        else:
+            prev_rank_col = literal(None, Integer).label("prev_rank")
         selected_columns = [
             rank_col,
+            prev_rank_col,
             Player.id.label("player_id"),
             Player.name.label("player_name"),
             Player.birth_date.label("birth_date"),
@@ -828,6 +871,8 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
             stmt = stmt.outerjoin(b1_agg, Player.id == b1_agg.c.player_id)
         if honor_agg is not None:
             stmt = stmt.outerjoin(honor_agg, Player.id == honor_agg.c.player_id)
+        if recent_agg is not None:
+            stmt = stmt.outerjoin(recent_agg, Player.id == recent_agg.c.player_id)
         stmt = stmt.where(Player.id.in_(_positive_total_player_ids(
             agg, contextual_total_pts, honor_agg, 0 if name and name.strip() else min_matches)))
         if position is not None:
@@ -981,6 +1026,7 @@ class SFAScoreRepository(SFAScoreRepositoryProtocol):
                 continue
             result.append(RankedPlayerDTO(
                 rank=row["rank"],
+                prev_rank=row["prev_rank"],
                 player_id=row["player_id"],
                 player_name=row["player_name"],
                 team_name=team_name,

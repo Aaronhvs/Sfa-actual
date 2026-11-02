@@ -64,6 +64,7 @@ class RankedPlayerDTO:
     duels_won: int = 0
     b1_bonus_pts: float = 0.0
     b1_bonus_label: str | None = None
+    prev_rank: int | None = None
 
 
 @dataclass(frozen=True)

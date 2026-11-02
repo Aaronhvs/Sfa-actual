@@ -92,6 +92,7 @@ async def get_ranking(
                 duels_won=r.duels_won,
                 b1_bonus_pts=r.b1_bonus_pts,
                 b1_bonus_label=r.b1_bonus_label,
+                rank_change=r.prev_rank - r.rank if r.prev_rank is not None else None,
             )
             for r in result.ranking
         ],
