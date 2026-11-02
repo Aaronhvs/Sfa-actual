@@ -456,6 +456,8 @@ export function MatchEvents({ detail, model, scope }: { detail: TournamentMatchD
                       {event.event_type.includes('card') ? <Card red={isRed} /> : <span className="mt-ev__dot" />}
                       <b>{displayName(event.actor, event.player_name, false)}</b>
                       {event.event_type === 'missed_penalty' && <span> · penal fallado</span>}
+                      {event.event_type === 'shootout_penalty' && <span> · tanda: convertido</span>}
+                      {event.event_type === 'shootout_missed_penalty' && <span> · tanda: fallado</span>}
                     </>
                   )}
                 </div>
