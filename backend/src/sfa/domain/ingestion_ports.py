@@ -11,6 +11,10 @@ class ProviderDailyQuotaExceededError(RuntimeError):
     """Raised when an external provider's daily request quota is exhausted."""
 
 
+class MissingPlayerPositionError(ValueError):
+    """A new provider identity cannot be persisted without a supported position."""
+
+
 @dataclass(frozen=True)
 class StandingRawDTO:
     team_external_id: int
@@ -222,11 +226,15 @@ class IngestionRepositoryPort(Protocol):
     ) -> int: ...
 
     async def upsert_player(
-        self, external_id: int, name: str, position: Position,
+        self, external_id: int, name: str, position: Position | None,
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
     ) -> int: ...
+
+    async def resolve_missing_player_position(
+        self, player_id: int, fixture_id: int, team_id: int,
+    ) -> Position | None: ...
 
     async def upsert_fixture(
         self, external_id: int, competition_id: int,

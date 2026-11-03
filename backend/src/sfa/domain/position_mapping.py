@@ -7,6 +7,10 @@ BASE_POSITION_MAP: dict[str, Position] = {
     "Midfielder": Position.MC,
     "Defender":   Position.DC,
     "Goalkeeper": Position.GK,
+    "G": Position.GK,
+    "D": Position.DC,
+    "M": Position.MC,
+    "F": Position.DEL,
 }
 
 # Jugadores con posición refinada que API-Football no distingue correctamente.
@@ -286,13 +290,17 @@ KNOWN_POSITIONS: dict[str, Position] = {
 }
 
 
-def map_position(player_name: str, api_football_position: str) -> Position:
+def map_position(player_name: str, api_football_position: str | None) -> Position | None:
     """Determina la posición SFA de un jugador.
 
     1. Si el jugador está en KNOWN_POSITIONS, retorna esa posición.
     2. Si no, usa el mapeo base de API-Football.
-    3. Si la posición de API-Football no se reconoce, retorna MC por defecto.
+    Missing or unsupported provider positions remain unresolved.
     """
+    raw = (api_football_position or "").strip()
+    generic = next((value for key, value in BASE_POSITION_MAP.items() if key.casefold() == raw.casefold()), None)
+    if generic is None:
+        return None
     if player_name in KNOWN_POSITIONS:
         return KNOWN_POSITIONS[player_name]
-    return BASE_POSITION_MAP.get(api_football_position, Position.MC)
+    return generic

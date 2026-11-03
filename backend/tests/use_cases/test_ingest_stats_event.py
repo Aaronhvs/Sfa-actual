@@ -9,6 +9,7 @@ from sfa.application.use_cases.ingest_competition import IngestCompetitionUseCas
 from sfa.domain.ingestion_ports import (
     FixtureEventRawDTO,
     FixtureRawDTO,
+    MissingPlayerPositionError,
     PlayerFixtureInfoRow,
     PlayerStatsRawDTO,
     StandingRawDTO,
@@ -133,6 +134,8 @@ class FakeIngestionRepository:
         self._fixture_counter = 0
         self._team_ids: dict[int, int] = {}
         self._player_ids: dict[int, int] = {}
+        self._player_positions: dict[int, Position] = {}
+        self.manual_positions: dict[int, Position] = {}
         self._fixture_ids: dict[int, int] = {}
         self.fixture_scores: dict[int, tuple[int | None, int | None, str | None]] = {}
         # player_events keyed by (player_id, fixture_id) → list of event dicts
@@ -161,15 +164,26 @@ class FakeIngestionRepository:
         return self._team_ids[external_id]
 
     async def upsert_player(
-        self, external_id: int, name: str, position: Position,
+        self, external_id: int, name: str, position: Position | None,
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
     ) -> int:
+        if position is None and external_id not in self._player_ids:
+            raise MissingPlayerPositionError(f"Missing position for {external_id}")
         if external_id not in self._player_ids:
             self._player_counter += 1
             self._player_ids[external_id] = self._player_counter
+        pid = self._player_ids[external_id]
+        if position is not None and (pid not in self._player_positions or update_position):
+            self._player_positions[pid] = position
         return self._player_ids[external_id]
+
+    async def resolve_missing_player_position(self, player_id, fixture_id, team_id):
+        if player_id in self.manual_positions:
+            return self.manual_positions[player_id]
+        retained = self._player_positions[player_id]
+        return retained if retained != Position.MC else None
 
     async def upsert_fixture(
         self,

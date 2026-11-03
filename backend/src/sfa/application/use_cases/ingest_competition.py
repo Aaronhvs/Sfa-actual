@@ -8,6 +8,7 @@ from sfa.domain.ingestion_ports import (
     FixtureEventRawDTO,
     FootballDataProviderPort,
     IngestionRepositoryPort,
+    MissingPlayerPositionError,
     ProviderDailyQuotaExceededError,
 )
 from sfa.domain.name_matching import event_matches_player as _event_matches_player
@@ -291,12 +292,17 @@ class IngestCompetitionUseCase:
                                 ps.player_name in KNOWN_POSITIONS
                                 or position != Position.MC
                             )
-                            player_db_id = await self._repo.upsert_player(
-                                ps.player_external_id, ps.player_name,
-                                position,
-                                photo_url=ps.photo_url,
-                                update_position=update_pos,
-                            )
+                            try:
+                                player_db_id = await self._repo.upsert_player(
+                                    ps.player_external_id, ps.player_name, position,
+                                    photo_url=ps.photo_url, update_position=update_pos,
+                                )
+                            except MissingPlayerPositionError:
+                                logger.warning(
+                                    "[IngestCompetition] Pending position: provider_player_id=%s fixture=%s",
+                                    ps.player_external_id, fixture.external_id,
+                                )
+                                continue
 
                             await self._repo.upsert_player_stats(
                                 player_db_id,
@@ -333,6 +339,16 @@ class IngestCompetitionUseCase:
                             )
 
                             # GK: skip SFA event scoring
+                            if position is None:
+                                position = await self._repo.resolve_missing_player_position(
+                                    player_db_id, fixture_db_id, proc_team_db_id,
+                                )
+                                if position is None:
+                                    logger.warning(
+                                        "[IngestCompetition] Stats retained, scoring pending position: "
+                                        "provider_player_id=%s fixture=%s", ps.player_external_id, fixture.external_id,
+                                    )
+                                    continue
                             if position == Position.GK:
                                 continue
 

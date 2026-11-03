@@ -12,6 +12,7 @@ from sfa.domain.ingestion_ports import (
     FixtureInfoRow,
     IngestionLogRow,
     IngestionRepositoryPort,
+    MissingPlayerPositionError,
     PlayerFixtureInfoRow,
 )
 from sfa.infrastructure.models.competitions.models import Competition, CompetitionStage
@@ -54,6 +55,24 @@ def _normalize_fixture_event_type(event_type: str, detail: str, is_shootout: boo
 class IngestionRepository(IngestionRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def resolve_missing_player_position(
+        self, player_id: int, fixture_id: int, team_id: int,
+    ) -> Position | None:
+        # Legacy API MC cannot establish a position: old readers fabricated it
+        # from missing values. Accepted contextual decisions remain authoritative.
+        accepted = func.sfa_accepted_position(
+            Player.id, team_id, Fixture.competition_id, Fixture.season, Fixture.played_at, Fixture.id,
+        )
+        retained = case(
+            (or_(Player.position != Position.MC, Player.position_source != "apifootball"), Player.position),
+            else_=None,
+        )
+        value = await self._session.scalar(
+            select(func.coalesce(accepted, retained))
+            .select_from(Player).join(Fixture, Fixture.id == fixture_id).where(Player.id == player_id)
+        )
+        return Position(value) if value else None
 
     async def upsert_competition(
         self,
@@ -113,13 +132,20 @@ class IngestionRepository(IngestionRepositoryPort):
         return result2.scalar_one()
 
     async def upsert_player(
-        self, external_id: int, name: str, position: Position,
+        self, external_id: int, name: str, position: Position | None,
         photo_url: str | None = None,
         update_position: bool = True,
         position_source: str = "apifootball",
     ) -> int:
         if external_id <= 0:
             raise ValueError("player external_id must be a positive integer")
+
+        if position is None:
+            stored = await self._session.scalar(select(Player.position).where(Player.external_id == external_id))
+            if stored is None:
+                raise MissingPlayerPositionError(f"Missing position for provider player_id={external_id}")
+            position = stored
+            update_position = False
 
         insert_stmt = pg_insert(Player).values(
             external_id=external_id, name=name,
