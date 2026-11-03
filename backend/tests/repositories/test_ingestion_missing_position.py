@@ -42,3 +42,22 @@ async def test_missing_provider_position_cannot_overwrite_existing_goalkeeper():
     compiled = session.writes[0].compile(dialect=postgresql.dialect())
     assert compiled.params['position'] == Position.GK
     assert 'position =' not in str(compiled).split('DO UPDATE SET')[1]
+
+
+class FakePositionSession:
+    def __init__(self, available, position):
+        self.values = iter([available, position])
+        self.reads = []
+
+    async def scalar(self, statement):
+        self.reads.append(str(statement.compile(dialect=postgresql.dialect())))
+        return next(self.values)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("available", [True, False])
+async def test_missing_position_resolution_supports_databases_without_position_publication(available):
+    session = FakePositionSession(available, Position.GK)
+    result = await IngestionRepository(session).resolve_missing_player_position(17, 55, 9)
+    assert result == Position.GK
+    assert ("sfa_accepted_position(" in session.reads[1]) is available

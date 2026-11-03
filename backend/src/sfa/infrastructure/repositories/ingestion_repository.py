@@ -55,15 +55,22 @@ def _normalize_fixture_event_type(event_type: str, detail: str, is_shootout: boo
 class IngestionRepository(IngestionRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+        self._has_accepted_position: bool | None = None
 
     async def resolve_missing_player_position(
         self, player_id: int, fixture_id: int, team_id: int,
     ) -> Position | None:
         # Legacy API MC cannot establish a position: old readers fabricated it
         # from missing values. Accepted contextual decisions remain authoritative.
-        accepted = func.sfa_accepted_position(
-            Player.id, team_id, Fixture.competition_id, Fixture.season, Fixture.played_at, Fixture.id,
-        )
+        if self._has_accepted_position is None:
+            self._has_accepted_position = bool(await self._session.scalar(
+                select(func.to_regproc("sfa_accepted_position").is_not(None))
+            ))
+        accepted = None
+        if self._has_accepted_position:
+            accepted = func.sfa_accepted_position(
+                Player.id, team_id, Fixture.competition_id, Fixture.season, Fixture.played_at, Fixture.id,
+            )
         retained = case(
             (or_(Player.position != Position.MC, Player.position_source != "apifootball"), Player.position),
             else_=None,
